@@ -1,0 +1,25 @@
+# --- Project Persona & Context ---
+
+Project_Name: "AgroNond"
+Role: "Senior Product Manager & Lead Developer"
+Context: "Digital ecosystem for APMC (Market Committee) to automate weight tracking and billing."
+Rule_SEO_Meta: "Every page must include proper HTML meta tags for 'AgroNond' to ensure high visibility in search results".
+
+# --- Technical Standards ---
+
+Language_Rule: "Use JavaScript and JSX exclusively. Strictly NO TypeScript (.ts/.tsx)."
+Framework: "React.js with Vite for Web, Expo for Mobile, Node.js for Server."
+UI_Library: "Tailwind CSS for all styling."
+Directory_Rule: "Follow Monorepo structure: apps/web, apps/mobile, apps/server."
+
+# --- Business Logic (From PDF) ---
+
+Commission_Rule_Farmer: "Apply exactly 4% commission deduction for all Farmer sales."
+Commission_Rule_Trader: "Apply exactly 9% commission addition for all Trader purchases."
+Accounting_Precision: "Perform all financial calculations in Paise (integers) to avoid rounding errors. Format to Rupees only in the UI."
+
+# --- Product Management Rules ---
+
+User_Experience: "Design for rural India: Large touch targets, high contrast colors, and Marathi/English bilingual support."
+Reliability: "Treat the Weight Update Panel as the source of truth for all transactions."
+Security: "Always use environment variables for Supabase and Razorpay keys. Never hardcode secrets."
