@@ -9,6 +9,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Loading, { PageLoading } from './components/Loading';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'));
@@ -18,6 +19,7 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Login = lazy(() => import('./pages/Login'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -74,9 +76,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        {isInitialLoad && <Loading text="Growing your experience" />}
-        <ScrollToTop />
-        <Suspense fallback={<PageLoading />}>
+        <ErrorBoundary>
+          {isInitialLoad && <Loading text="Growing your experience" />}
+          <ScrollToTop />
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             {/* Login page without navbar/footer */}
             <Route
@@ -139,8 +142,15 @@ function App() {
                 </Layout>
               }
             />
+
+            {/* 404 Catch-all */}
+            <Route
+              path="*"
+              element={<NotFound />}
+            />
           </Routes>
         </Suspense>
+      </ErrorBoundary>
       </Router>
     </AuthProvider>
   );
