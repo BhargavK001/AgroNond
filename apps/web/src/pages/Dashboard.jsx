@@ -2,17 +2,35 @@ import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
+import SystemStatus from '../components/SystemStatus';
 
 export default function Dashboard() {
   const { user, profile, signOut, loading } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to role selection if no role is set
-  useEffect(() => {
-    if (!loading && user && profile && !profile.role) {
-      navigate('/login', { state: { step: 'role' } });
-    }
-  }, [user, profile, loading, navigate]);
+  // No automatic redirect to prevent loops
+  // If role is missing, we show a blocking UI instead
+  if (!loading && user && profile && !profile.role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white shadow-lg rounded-xl p-8 text-center border border-gray-100">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Profile Incomplete</h2>
+          <p className="text-gray-600 mb-6">
+            Please select a role to continue accessing the dashboard.
+          </p>
+          <Button 
+            onClick={() => navigate('/login', { state: { step: 'role' } })}
+            className="w-full"
+          >
+            Complete Setup
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSignOut = async () => {
     await signOut();
@@ -111,6 +129,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* System Health Check */}
+        <SystemStatus />
 
         {/* Quick Actions */}
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-[var(--border)]">

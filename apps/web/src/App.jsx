@@ -44,6 +44,19 @@ function Layout({ children, hideNav = false, hideFooter = false }) {
 }
 
 // Initial loading screen
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // Data is fresh for 5 minutes
+      gcTime: 1000 * 60 * 30, // Keep unused data in cache for 30 minutes
+      retry: 1,
+    },
+  },
+});
+
 function InitialLoading() {
   const [showLoading, setShowLoading] = useState(true);
 
@@ -74,85 +87,87 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <Router>
-        <ErrorBoundary>
-          {isInitialLoad && <Loading text="Growing your experience" />}
-          <ScrollToTop />
-          <Suspense fallback={<PageLoading />}>
-          <Routes>
-            {/* Login page without navbar/footer */}
-            <Route
-              path="/login"
-              element={
-                <Layout hideNav hideFooter>
-                  <Login />
-                </Layout>
-              }
-            />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <ErrorBoundary>
+            {isInitialLoad && <Loading text="Growing your experience" />}
+            <ScrollToTop />
+            <Suspense fallback={<PageLoading />}>
+              <Routes>
+                {/* Login page without navbar/footer */}
+                <Route
+                  path="/login"
+                  element={
+                    <Layout hideNav hideFooter>
+                      <Login />
+                    </Layout>
+                  }
+                />
 
-            {/* Protected Dashboard */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+                {/* Protected Dashboard */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
 
-            {/* Pages with navbar and footer */}
-            <Route
-              path="/"
-              element={
-                <Layout>
-                  <Home />
-                </Layout>
-              }
-            />
-            <Route
-              path="/about"
-              element={
-                <Layout>
-                  <About />
-                </Layout>
-              }
-            />
-            <Route
-              path="/services"
-              element={
-                <Layout>
-                  <Services />
-                </Layout>
-              }
-            />
-            <Route
-              path="/contact"
-              element={
-                <Layout>
-                  <Contact />
-                </Layout>
-              }
-            />
-            <Route
-              path="/privacy"
-              element={
-                <Layout>
-                  <Privacy />
-                </Layout>
-              }
-            />
-
-            {/* 404 Catch-all */}
-            <Route
-              path="*"
-              element={<NotFound />}
-            />
-          </Routes>
-        </Suspense>
-      </ErrorBoundary>
-      </Router>
-    </AuthProvider>
+                {/* Pages with navbar and footer */}
+                <Route
+                  path="/"
+                  element={
+                    <Layout>
+                      <Home />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/about"
+                  element={
+                    <Layout>
+                      <About />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/services"
+                  element={
+                    <Layout>
+                      <Services />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/contact"
+                  element={
+                    <Layout>
+                      <Contact />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/privacy"
+                  element={
+                    <Layout>
+                      <Privacy />
+                    </Layout>
+                  }
+                />
+                
+                {/* 404 Catch-all */}
+                <Route
+                  path="*"
+                  element={<NotFound />}
+                />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
