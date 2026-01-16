@@ -70,74 +70,116 @@ export default function Home() {
   return (
     <main>
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center gradient-bg-subtle overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-[var(--primary)]/10 rounded-full blur-3xl animate-pulse-soft" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-[var(--primary)]/5 rounded-full blur-3xl animate-pulse-soft delay-300" />
-          <LeafDecoration className="absolute top-40 right-20 w-24 h-24 text-[var(--primary)]/20 animate-float" />
-          <LeafDecoration className="absolute bottom-40 left-32 w-16 h-16 text-[var(--primary)]/15 animate-float delay-200" />
+      <section className="relative min-h-screen flex items-center gradient-bg-subtle bg-pattern overflow-hidden">
+        {/* Animated Decorative Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Gradient Blobs */}
+          <div className="absolute top-20 left-10 w-72 h-72 bg-[var(--primary)]/20 rounded-full blur-3xl animate-pulse-soft" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-[var(--accent)]/10 rounded-full blur-3xl animate-pulse-soft delay-500" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[var(--primary)]/5 rounded-full blur-3xl" />
+          
+          {/* Floating Farm Elements */}
+          <WheatIcon className="absolute top-32 right-[15%] w-16 h-16 text-[var(--primary)]/20 animate-sway" />
+          <LeafIcon className="absolute top-48 left-[10%] w-12 h-12 text-[var(--primary)]/25 animate-float delay-200" />
+          <TractorIcon className="absolute bottom-32 left-[8%] w-20 h-20 text-[var(--primary)]/15 animate-float-slow" />
+          <VegetableIcon className="absolute bottom-48 right-[12%] w-14 h-14 text-[var(--primary)]/20 animate-float delay-300" />
         </div>
 
-        <div className="container relative z-10 py-32">
+        <div className="container relative z-10 py-20 sm:py-24 lg:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[var(--border)] shadow-sm mb-8 animate-fade-in-down">
-              <span className="w-2 h-2 rounded-full bg-[var(--primary)] animate-pulse" />
-              <span className="text-sm font-medium text-[var(--text-secondary)]">
-                Digital Agricultural Market Platform
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/90 border border-[var(--primary-200)] shadow-lg mb-6 sm:mb-8 animate-fade-in-down backdrop-blur-sm">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary)]" />
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">
+                🌾 India's Digital Mandi Platform
               </span>
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in-up">
-              <span className="text-[var(--text-primary)]">Digitizing </span>
+            {/* Main Heading */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 animate-fade-in-up tracking-tight">
+              <span className="text-[var(--text-primary)]">Transforming </span>
               <span className="gradient-text">Agricultural</span>
-              <br />
-              <span className="text-[var(--text-primary)]">Markets</span>
+              <br className="hidden sm:block" />
+              <span className="sm:hidden"> </span>
+              <span className="text-[var(--text-primary)]">Markets </span>
+              <span className="gradient-text">Digitally</span>
             </h1>
 
-            <p className="text-xl text-[var(--text-secondary)] mb-10 max-w-2xl mx-auto animate-fade-in-up delay-100">
-              Empowering farmers with transparent billing, real-time tracking, and secure invoicing. 
-              A complete digital transformation for market committees.
+            {/* Subheading */}
+            <p className="text-base sm:text-lg md:text-xl text-[var(--text-secondary)] mb-6 sm:mb-8 max-w-xl mx-auto animate-fade-in-up delay-100 leading-relaxed px-2">
+              Empowering <strong className="text-[var(--primary)]">5000+ farmers</strong> with 
+              transparent billing, real-time tracking, and secure digital invoicing.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up delay-200">
-              <Button to="/login" size="lg">
-                Get Started
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up delay-200 px-4">
+              <Button to="/login" size="lg" className="magnetic-btn group w-full sm:w-auto">
+                <span className="flex items-center justify-center gap-2">
+                  Start Trading Now
+                  <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+              </Button>
+              <Button to="/about" variant="outline" size="lg" className="magnetic-btn w-full sm:w-auto">
+                Learn How It Works
+              </Button>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6 animate-fade-in-up delay-300">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-              </Button>
-              <Button to="/about" variant="outline" size="lg">
-                Learn More
-              </Button>
+                <span>Free Registration</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>OTP Based Login</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span>Govt Approved</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-          <svg className="w-6 h-6 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce-soft">
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs text-[var(--text-muted)] font-medium">Scroll to explore</span>
+            <svg className="w-6 h-6 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="section bg-[var(--surface)]">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-sm font-semibold mb-4">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+            <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
               Features
             </span>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
               Everything You Need
             </h2>
-            <p className="text-[var(--text-secondary)] text-lg">
-              A comprehensive platform designed for farmers, traders, and market committees.
+            <p className="text-[var(--text-secondary)] text-sm sm:text-base">
+              A comprehensive platform for farmers, traders, and market committees.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature, index) => (
               <FeatureCard
                 key={index}
@@ -154,7 +196,7 @@ export default function Home() {
       {/* Stats Section */}
       <section className="section">
         <div className="container">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {stats.map((stat, index) => (
               <StatCard
                 key={index}
@@ -171,34 +213,34 @@ export default function Home() {
       {/* How It Works Section */}
       <section className="section bg-[var(--surface)]">
         <div className="container">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="inline-block px-4 py-1.5 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-sm font-semibold mb-4">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+            <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
               Process
             </span>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
               How It Works
             </h2>
-            <p className="text-[var(--text-secondary)] text-lg">
+            <p className="text-[var(--text-secondary)] text-sm sm:text-base">
               Simple three-step process to get started with digital trading.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {steps.map((item, index) => (
               <div
                 key={index}
-                className="relative p-8 rounded-2xl bg-white border border-[var(--border)] hover-lift animate-fade-in-up"
+                className="relative p-5 sm:p-8 rounded-2xl bg-white border border-[var(--border)] hover-lift animate-fade-in-up"
                 style={{ animationDelay: `${index * 150}ms` }}
               >
-                <div className="text-6xl font-bold text-[var(--primary)]/10 absolute top-4 right-6">
+                <div className="text-4xl sm:text-6xl font-bold text-[var(--primary)]/10 absolute top-4 right-4 sm:right-6">
                   {item.step}
                 </div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold mb-6">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold mb-4 sm:mb-6 text-sm sm:text-base">
                     {index + 1}
                   </div>
-                  <h4 className="text-xl font-bold mb-3">{item.title}</h4>
-                  <p className="text-[var(--text-secondary)]">{item.description}</p>
+                  <h4 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">{item.title}</h4>
+                  <p className="text-[var(--text-secondary)] text-sm sm:text-base">{item.description}</p>
                 </div>
               </div>
             ))}
@@ -265,10 +307,35 @@ function UptimeIcon() {
   );
 }
 
-function LeafDecoration({ className }) {
+function WheatIcon({ className }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M17.75 4.09L15.22 6.03L16.13 9.09L13.5 7.28L10.87 9.09L11.78 6.03L9.25 4.09L12.44 4L13.5 1L14.56 4L17.75 4.09M21.25 11L19.61 12.25L20.2 14.23L18.5 13.06L16.8 14.23L17.39 12.25L15.75 11L17.81 10.95L18.5 9L19.19 10.95L21.25 11M18.97 15.95C19.8 15.87 20.69 17.05 20.16 17.8C19.84 18.25 19.5 18.67 19.08 19.07C15.17 23 8.84 23 4.94 19.07C1.03 15.17 1.03 8.83 4.94 4.93C5.34 4.53 5.76 4.17 6.21 3.85C6.96 3.32 8.14 4.21 8.06 5.04C7.79 7.9 8.75 10.87 10.95 13.06C13.14 15.26 16.1 16.22 18.97 15.95Z" />
+      <path d="M12 2L9.5 8.5L3 6L7 12L3 18L9.5 15.5L12 22L14.5 15.5L21 18L17 12L21 6L14.5 8.5L12 2Z" />
     </svg>
   );
 }
+
+function LeafIcon({ className }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z" />
+    </svg>
+  );
+}
+
+function TractorIcon({ className }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M5,4V11.26C3.2,11.9 2,13.6 2,15.5C2,18 4,20 6.5,20C8.79,20 10.71,18.28 10.97,16H15.17C15.06,16.32 15,16.66 15,17A3,3 0 0,0 18,20A3,3 0 0,0 21,17C21,15.77 20.19,14.71 19.07,14.29C18.86,13.16 18.03,12.24 17,11.83V8H22V6H17V4M7,6H15V11H13V9H7M6.5,13.5A2,2 0 0,1 8.5,15.5A2,2 0 0,1 6.5,17.5A2,2 0 0,1 4.5,15.5A2,2 0 0,1 6.5,13.5M18,15.5A1.5,1.5 0 0,1 19.5,17A1.5,1.5 0 0,1 18,18.5A1.5,1.5 0 0,1 16.5,17A1.5,1.5 0 0,1 18,15.5Z" />
+    </svg>
+  );
+}
+
+function VegetableIcon({ className }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12,6C10.89,6 10,5.1 10,4C10,3.62 10.1,3.26 10.29,2.95L12,0L13.71,2.95C13.9,3.26 14,3.62 14,4C14,5.1 13.1,6 12,6M16.56,12.17C14.28,11.04 12.5,9.54 11.5,7.7C10.5,9.54 8.72,11.04 6.44,12.17C5.16,12.78 4.25,14.07 4,15.5C3.88,16.28 4.03,17.04 4.39,17.7C4.97,18.88 6.12,19.7 7.5,19.91C7.67,19.97 7.83,20 8,20C10.21,20 12,18.21 12,16C12,18.21 13.79,20 16,20C16.17,20 16.33,19.97 16.5,19.91C17.88,19.7 19.03,18.88 19.61,17.7C19.97,17.04 20.12,16.28 20,15.5C19.75,14.07 18.84,12.78 17.56,12.17H16.56Z" />
+    </svg>
+  );
+}
+

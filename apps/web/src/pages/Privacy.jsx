@@ -113,13 +113,11 @@ Your continued use of the platform constitutes acceptance of any changes.`,
     title: '9. Contact Us',
     content: `For privacy-related questions or concerns:
 
-**Email:** privacy@agronond.gov.in
-**Phone:** +91 98765 43210
-**Address:** Market Committee Office, Agricultural Market Yard
+**Email:** bhargavk056@gmail.com
+**Phone:** +91 94205 30466
+**Website:** agronond.bhargavkarande.dev
 
-**Data Protection Officer:**
-Name: [DPO Name]
-Email: dpo@agronond.gov.in`,
+For privacy and data protection inquiries, please contact us at the email above.`,
   },
 ];
 

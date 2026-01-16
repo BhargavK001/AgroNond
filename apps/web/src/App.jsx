@@ -1,17 +1,23 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState, Suspense, lazy } from 'react';
+
+// Auth Provider
+import { AuthProvider } from './context/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import Loading, { PageLoading } from './components/Loading';
+import ProtectedRoute from './components/ProtectedRoute';
 
-// Pages
-import Home from './pages/Home';
-import About from './pages/About';
-import Services from './pages/Services';
-import Contact from './pages/Contact';
-import Login from './pages/Login';
-import Privacy from './pages/Privacy';
+// Lazy load pages for better performance
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Services = lazy(() => import('./pages/Services'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Login = lazy(() => import('./pages/Login'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -35,64 +41,108 @@ function Layout({ children, hideNav = false, hideFooter = false }) {
   );
 }
 
-function App() {
-  return (
-    <Router>
-      <ScrollToTop />
-      <Routes>
-        {/* Login page without navbar/footer */}
-        <Route
-          path="/login"
-          element={
-            <Layout hideNav hideFooter>
-              <Login />
-            </Layout>
-          }
-        />
+// Initial loading screen
+function InitialLoading() {
+  const [showLoading, setShowLoading] = useState(true);
 
-        {/* Pages with navbar and footer */}
-        <Route
-          path="/"
-          element={
-            <Layout>
-              <Home />
-            </Layout>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <Layout>
-              <About />
-            </Layout>
-          }
-        />
-        <Route
-          path="/services"
-          element={
-            <Layout>
-              <Services />
-            </Layout>
-          }
-        />
-        <Route
-          path="/contact"
-          element={
-            <Layout>
-              <Contact />
-            </Layout>
-          }
-        />
-        <Route
-          path="/privacy"
-          element={
-            <Layout>
-              <Privacy />
-            </Layout>
-          }
-        />
-      </Routes>
-    </Router>
+  useEffect(() => {
+    // Show loading for minimum 2 seconds for smooth experience
+    const timer = setTimeout(() => {
+      setShowLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!showLoading) return null;
+
+  return <Loading text="Growing your experience" />;
+}
+
+function App() {
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    // Hide initial loading after animation completes
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <AuthProvider>
+      <Router>
+        {isInitialLoad && <Loading text="Growing your experience" />}
+        <ScrollToTop />
+        <Suspense fallback={<PageLoading />}>
+          <Routes>
+            {/* Login page without navbar/footer */}
+            <Route
+              path="/login"
+              element={
+                <Layout hideNav hideFooter>
+                  <Login />
+                </Layout>
+              }
+            />
+
+            {/* Protected Dashboard */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Pages with navbar and footer */}
+            <Route
+              path="/"
+              element={
+                <Layout>
+                  <Home />
+                </Layout>
+              }
+            />
+            <Route
+              path="/about"
+              element={
+                <Layout>
+                  <About />
+                </Layout>
+              }
+            />
+            <Route
+              path="/services"
+              element={
+                <Layout>
+                  <Services />
+                </Layout>
+              }
+            />
+            <Route
+              path="/contact"
+              element={
+                <Layout>
+                  <Contact />
+                </Layout>
+              }
+            />
+            <Route
+              path="/privacy"
+              element={
+                <Layout>
+                  <Privacy />
+                </Layout>
+              }
+            />
+          </Routes>
+        </Suspense>
+      </Router>
+    </AuthProvider>
   );
 }
 

@@ -19,7 +19,7 @@ const contactInfo = [
       </svg>
     ),
     title: 'Phone',
-    details: ['+91 98765 43210', '+91 12345 67890'],
+    details: ['+91 94205 30466'],
   },
   {
     icon: (
@@ -28,7 +28,7 @@ const contactInfo = [
       </svg>
     ),
     title: 'Email',
-    details: ['support@agronond.gov.in', 'info@agronond.gov.in'],
+    details: ['bhargavk056@gmail.com'],
   },
   {
     icon: (
