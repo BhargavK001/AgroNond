@@ -1,5 +1,12 @@
-import Button from '../components/Button';
-import { FeatureCard, StatCard } from '../components/Card';
+import { motion } from 'framer-motion';
+import ScrollReveal, { StaggerContainer, StaggerItem } from '../components/ScrollReveal';
+import AnimatedCounter from '../components/AnimatedCounter';
+import { FeatureGlowCard } from '../components/GlowCard';
+import { FloatingElement } from '../components/ParallaxImage';
+import ShimmerButton from '../components/ShimmerButton';
+
+// CTA Background Image
+import ctaBackground from '../assets/hero-farmer.jpg';
 
 // Feature icons
 const features = [
@@ -42,10 +49,10 @@ const features = [
 ];
 
 const stats = [
-  { value: '5000+', label: 'Registered Farmers', icon: <FarmerIcon /> },
-  { value: '₹50L+', label: 'Daily Transactions', icon: <TransactionIcon /> },
-  { value: '100+', label: 'Market Committees', icon: <MarketIcon /> },
-  { value: '99.9%', label: 'System Uptime', icon: <UptimeIcon /> },
+  { value: '5000+', label: 'Registered Farmers' },
+  { value: '₹50L+', label: 'Daily Transactions' },
+  { value: '100+', label: 'Market Committees' },
+  { value: '99.9%', label: 'System Uptime' },
 ];
 
 const steps = [
@@ -69,205 +76,245 @@ const steps = [
 export default function Home() {
   return (
     <main>
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center gradient-bg-subtle bg-pattern overflow-hidden">
-        {/* Animated Decorative Elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Gradient Blobs */}
-          <div className="absolute top-20 left-10 w-72 h-72 bg-[var(--primary)]/20 rounded-full blur-3xl animate-pulse-soft" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-[var(--accent)]/10 rounded-full blur-3xl animate-pulse-soft delay-500" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[var(--primary)]/5 rounded-full blur-3xl" />
-          
-          {/* Floating Farm Elements */}
-          <WheatIcon className="absolute top-32 right-[15%] w-16 h-16 text-[var(--primary)]/20 animate-sway" />
-          <LeafIcon className="absolute top-48 left-[10%] w-12 h-12 text-[var(--primary)]/25 animate-float delay-200" />
-          <TractorIcon className="absolute bottom-32 left-[8%] w-20 h-20 text-[var(--primary)]/15 animate-float-slow" />
-          <VegetableIcon className="absolute bottom-48 right-[12%] w-14 h-14 text-[var(--primary)]/20 animate-float delay-300" />
-        </div>
+      {/* Hero Section - Enhanced */}
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Mesh Gradient Background */}
+        <div className="mesh-gradient-bg" />
+        
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-pattern opacity-50" />
+
+        {/* Floating Decorative Elements */}
+        <FloatingElement className="top-32 right-[15%]" speed={0.2} delay={0.2}>
+          <WheatIcon className="w-16 h-16 text-[var(--primary)]/20" />
+        </FloatingElement>
+        <FloatingElement className="top-48 left-[10%]" speed={0.15} delay={0.4}>
+          <LeafIcon className="w-12 h-12 text-[var(--primary)]/25" />
+        </FloatingElement>
+        <FloatingElement className="bottom-32 left-[8%]" speed={0.25} delay={0.6}>
+          <TractorIcon className="w-20 h-20 text-[var(--primary)]/15" />
+        </FloatingElement>
+        <FloatingElement className="bottom-48 right-[12%]" speed={0.18} delay={0.3}>
+          <VegetableIcon className="w-14 h-14 text-[var(--primary)]/20" />
+        </FloatingElement>
 
         <div className="container relative z-10 py-20 sm:py-24 lg:py-32">
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/90 border border-[var(--primary-200)] shadow-lg mb-6 sm:mb-8 animate-fade-in-down backdrop-blur-sm">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary)]" />
-              </span>
-              <span className="text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">
-                🌾 India's Digital Mandi Platform
-              </span>
-            </div>
+            <ScrollReveal variant="fadeDown" delay={0}>
+              <motion.div 
+                className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/90 border border-[var(--primary-200)] shadow-lg mb-6 sm:mb-8 backdrop-blur-sm"
+                whileHover={{ scale: 1.05 }}
+              >
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--primary)]" />
+                </span>
+                <span className="text-xs sm:text-sm font-semibold text-[var(--text-secondary)]">
+                  🌾 India's Digital Mandi Platform
+                </span>
+              </motion.div>
+            </ScrollReveal>
 
-            {/* Main Heading */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 animate-fade-in-up tracking-tight">
-              <span className="text-[var(--text-primary)]">Transforming </span>
-              <span className="gradient-text">Agricultural</span>
-              <br className="hidden sm:block" />
-              <span className="sm:hidden"> </span>
-              <span className="text-[var(--text-primary)]">Markets </span>
-              <span className="gradient-text">Digitally</span>
-            </h1>
+            {/* Main Heading with stagger animation */}
+            <ScrollReveal variant="fadeUp" delay={0.1}>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 tracking-tight">
+                <span className="text-[var(--text-primary)]">Transforming </span>
+                <span className="gradient-text">Agricultural</span>
+                <br className="hidden sm:block" />
+                <span className="sm:hidden"> </span>
+                <span className="text-[var(--text-primary)]">Markets </span>
+                <span className="gradient-text">Digitally</span>
+              </h1>
+            </ScrollReveal>
 
             {/* Subheading */}
-            <p className="text-base sm:text-lg md:text-xl text-[var(--text-secondary)] mb-6 sm:mb-8 max-w-xl mx-auto animate-fade-in-up delay-100 leading-relaxed px-2">
-              Empowering <strong className="text-[var(--primary)]">5000+ farmers</strong> with 
-              transparent billing, real-time tracking, and secure digital invoicing.
-            </p>
+            <ScrollReveal variant="fadeUp" delay={0.2}>
+              <p className="text-base sm:text-lg md:text-xl text-[var(--text-secondary)] mb-6 sm:mb-8 max-w-xl mx-auto leading-relaxed px-2">
+                Empowering <strong className="text-[var(--primary)]">5000+ farmers</strong> with 
+                transparent billing, real-time tracking, and secure digital invoicing.
+              </p>
+            </ScrollReveal>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up delay-200 px-4">
-              <Button to="/login" size="lg" className="magnetic-btn group w-full sm:w-auto">
-                <span className="flex items-center justify-center gap-2">
-                  Start Trading Now
-                  <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </span>
-              </Button>
-              <Button to="/about" variant="outline" size="lg" className="magnetic-btn w-full sm:w-auto">
-                Learn How It Works
-              </Button>
-            </div>
+            {/* CTA Buttons with shimmer effect */}
+            <ScrollReveal variant="fadeUp" delay={0.3}>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+                <ShimmerButton to="/login" size="lg" variant="primary">
+                  <span className="flex items-center gap-2">
+                    Start Trading Now
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </span>
+                </ShimmerButton>
+                <ShimmerButton to="/about" variant="outline" size="lg">
+                  Learn How It Works
+                </ShimmerButton>
+              </div>
+            </ScrollReveal>
 
             {/* Trust Badges */}
-            <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6 animate-fade-in-up delay-300">
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>Free Registration</span>
+            <ScrollReveal variant="fadeUp" delay={0.4}>
+              <div className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+                {[
+                  { icon: '✓', text: 'Free Registration' },
+                  { icon: '✓', text: 'OTP Based Login' },
+                  { icon: '✓', text: 'Govt Approved' },
+                ].map((badge, i) => (
+                  <motion.div 
+                    key={i}
+                    className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]"
+                    whileHover={{ scale: 1.05, color: 'var(--primary)' }}
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>{badge.text}</span>
+                  </motion.div>
+                ))}
               </div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>OTP Based Login</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>Govt Approved</span>
-              </div>
-            </div>
+            </ScrollReveal>
           </div>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce-soft">
+        <motion.div 
+          className="absolute bottom-10 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        >
           <div className="flex flex-col items-center gap-2">
             <span className="text-xs text-[var(--text-muted)] font-medium">Scroll to explore</span>
             <svg className="w-6 h-6 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
             </svg>
           </div>
-        </div>
+        </motion.div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - Enhanced with Glow Cards */}
       <section className="section bg-[var(--surface)]">
         <div className="container">
-          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
-            <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
-              Features
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
-              Everything You Need
-            </h2>
-            <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-              A comprehensive platform for farmers, traders, and market committees.
-            </p>
-          </div>
+          <ScrollReveal variant="fadeUp">
+            <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+              <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
+                Features
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
+                Everything You Need
+              </h2>
+              <p className="text-[var(--text-secondary)] text-sm sm:text-base">
+                A comprehensive platform for farmers, traders, and market committees.
+              </p>
+            </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <StaggerContainer staggerDelay={0.15} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature, index) => (
-              <FeatureCard
-                key={index}
-                icon={feature.icon}
-                title={feature.title}
-                description={feature.description}
-                index={index}
-              />
+              <StaggerItem key={index}>
+                <FeatureGlowCard
+                  icon={feature.icon}
+                  title={feature.title}
+                  description={feature.description}
+                  index={index}
+                />
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Stats Section - Enhanced with Animated Counters */}
       <section className="section">
         <div className="container">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <StaggerContainer staggerDelay={0.1} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {stats.map((stat, index) => (
-              <StatCard
-                key={index}
-                value={stat.value}
-                label={stat.label}
-                icon={stat.icon}
-                index={index}
-              />
+              <StaggerItem key={index}>
+                <motion.div 
+                  className="stat-card-enhanced text-center"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <div className="stat-value">
+                    <AnimatedCounter value={stat.value} duration={2000} />
+                  </div>
+                  <p className="stat-label">{stat.label}</p>
+                </motion.div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </section>
 
-      {/* How It Works Section */}
+      {/* How It Works Section - Enhanced with step cards */}
       <section className="section bg-[var(--surface)]">
         <div className="container">
-          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
-            <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
-              Process
-            </span>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
-              How It Works
-            </h2>
-            <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-              Simple three-step process to get started with digital trading.
-            </p>
-          </div>
+          <ScrollReveal variant="fadeUp">
+            <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+              <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
+                Process
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
+                How It Works
+              </h2>
+              <p className="text-[var(--text-secondary)] text-sm sm:text-base">
+                Simple three-step process to get started with digital trading.
+              </p>
+            </div>
+          </ScrollReveal>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {steps.map((item, index) => (
-              <div
-                key={index}
-                className="relative p-5 sm:p-8 rounded-2xl bg-white border border-[var(--border)] hover-lift animate-fade-in-up"
-                style={{ animationDelay: `${index * 150}ms` }}
-              >
-                <div className="text-4xl sm:text-6xl font-bold text-[var(--primary)]/10 absolute top-4 right-4 sm:right-6">
-                  {item.step}
-                </div>
-                <div className="relative z-10">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold mb-4 sm:mb-6 text-sm sm:text-base">
-                    {index + 1}
+              <ScrollReveal key={index} variant="fadeUp" delay={index * 0.15}>
+                <motion.div
+                  className="step-card-enhanced relative"
+                  whileHover={{ y: -8 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                >
+                  {/* Big step number background */}
+                  <div className="absolute top-4 right-4 sm:right-6 text-4xl sm:text-6xl font-bold text-[var(--primary)]/10">
+                    {item.step}
                   </div>
-                  <h4 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">{item.title}</h4>
-                  <p className="text-[var(--text-secondary)] text-sm sm:text-base">{item.description}</p>
-                </div>
-              </div>
+                  
+                  <div className="relative z-10">
+                    <div className="step-number-badge mb-4 sm:mb-6">
+                      {index + 1}
+                    </div>
+                    <h4 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">{item.title}</h4>
+                    <p className="text-[var(--text-secondary)] text-sm sm:text-base">{item.description}</p>
+                  </div>
+                </motion.div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA Section - Enhanced with Image Background */}
       <section className="section">
         <div className="container">
-          <div className="relative rounded-3xl gradient-bg p-12 md:p-16 text-center overflow-hidden">
-            {/* Decorative circles */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-
-            <div className="relative z-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Transform Your Market?
-              </h2>
-              <p className="text-white/80 text-lg mb-8 max-w-xl mx-auto">
-                Join thousands of farmers and traders already benefiting from digital market management.
-              </p>
-              <Button to="/login" variant="secondary" size="lg">
-                Start Now — It's Free
-              </Button>
+          <ScrollReveal variant="scale">
+            <div className="cta-section-image text-center" style={{ backgroundImage: `url(${ctaBackground})` }}>
+              {/* Dark overlay for text readability */}
+              <div className="cta-overlay" />
+              <motion.div 
+                className="relative z-10"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8 }}
+              >
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                  Ready to Transform Your Market?
+                </h2>
+                <p className="text-white/90 text-lg mb-8 max-w-xl mx-auto">
+                  Join thousands of farmers and traders already benefiting from digital market management.
+                </p>
+                <ShimmerButton to="/login" variant="secondary" size="lg">
+                  Start Now — It's Free
+                </ShimmerButton>
+              </motion.div>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
     </main>
@@ -275,38 +322,6 @@ export default function Home() {
 }
 
 // Icon Components
-function FarmerIcon() {
-  return (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  );
-}
-
-function TransactionIcon() {
-  return (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
-
-function MarketIcon() {
-  return (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-    </svg>
-  );
-}
-
-function UptimeIcon() {
-  return (
-    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
-
 function WheatIcon({ className }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -338,4 +353,3 @@ function VegetableIcon({ className }) {
     </svg>
   );
 }
-
