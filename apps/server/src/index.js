@@ -10,6 +10,7 @@ import morgan from 'morgan';
 
 // Import routes (these use env vars, so must come after dotenv.config())
 import usersRouter from './routes/users.js';
+import contactRouter from './routes/contact.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,6 +36,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/users', usersRouter);
+app.use('/api/contact', contactRouter);
 
 // 404 handler
 app.use((req, res) => {
