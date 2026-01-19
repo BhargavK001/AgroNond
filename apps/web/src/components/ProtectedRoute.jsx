@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PageLoading } from './Loading';
+import Loading, { PageLoading } from './Loading';
 
 /**
  * ProtectedRoute component
@@ -8,12 +8,12 @@ import { PageLoading } from './Loading';
  * Redirects to login if not authenticated
  */
 export default function ProtectedRoute({ children, requireRole = null }) {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileLoading } = useAuth();
   const location = useLocation();
 
-  // Show loading while checking auth state
+  // Show tractor animation while checking initial auth state
   if (loading) {
-    return <PageLoading />;
+    return <Loading text="Checking authentication" />;
   }
 
   // Not authenticated - redirect to login
@@ -22,9 +22,15 @@ export default function ProtectedRoute({ children, requireRole = null }) {
   }
 
   // Check if role is required and user has it
-  if (requireRole && profile?.role !== requireRole) {
-    // User doesn't have required role - redirect to dashboard
-    return <Navigate to="/dashboard" replace />;
+  if (requireRole) {
+    // Wait for profile to load before checking role
+    if (profileLoading) {
+      return <PageLoading />;
+    }
+    
+    if (profile?.role !== requireRole) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   // User is authenticated (and has required role if specified)
