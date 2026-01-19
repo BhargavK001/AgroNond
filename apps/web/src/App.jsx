@@ -28,7 +28,6 @@ const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
 
-// Trader Dashboard (Sidebar Layout + Pages)
 const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
 const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
 const PaymentTracker = lazy(() => import('./pages/trader/PaymentTracker'));

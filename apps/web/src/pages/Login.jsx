@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
+import { PageLoading } from '../components/Loading';
 
 // Icons
 function WheatIcon({ className }) {
@@ -27,21 +28,33 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signInWithPhone, verifyOtp, user, profile } = useAuth();
+  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // If already logged in, redirect based on role
+  // Handle Redirection based on Auth State
   useEffect(() => {
-    if (user && profile) {
-      if (profile.role) {
+    // 1. If we are still loading the profile, do NOTHING (wait).
+    if (profileLoading) return;
+
+    // 2. If user is logged in and profile load is done:
+    if (user) {
+      if (profile?.role) {
+        // Success: Redirect to specific dashboard
         if (profile.role === 'farmer') navigate('/dashboard/farmer');
+        else if (profile.role === 'trader') navigate('/dashboard/trader');
         else if (profile.role === 'admin') navigate('/dashboard/admin');
         else navigate('/dashboard');
+      } else if (profile) {
+        // Success: Profile loaded but no role -> Role Selection
+        navigate('/role-selection');
       } else {
-         navigate('/role-selection');
+        // FALLBACK: User exists but profile failed to load (is null)
+        // Safety mechanism to prevent stuck loading screen
+        console.error("Profile load failed for authenticated user. Signing out.");
+        signOut();
       }
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, profileLoading, navigate, signOut]);
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
@@ -88,7 +101,9 @@ export default function Login() {
 
       if (error) throw error;
       
-      navigate('/role-selection');
+      // No manual navigation here. 
+      // The useEffect hooks listens to 'user' and 'profileLoading' state 
+      // and will redirect automatically once the profile is ready.
 
     } catch (err) {
       console.error(err);
@@ -125,6 +140,11 @@ export default function Login() {
     });
     setOtp(newOtp);
   };
+
+  // Show loading screen while checking profile to prevent form flash
+  if (user && profileLoading) {
+    return <PageLoading />;
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center gradient-bg-subtle py-16 sm:py-24 px-4 relative overflow-hidden bg-pattern">
