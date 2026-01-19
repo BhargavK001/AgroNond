@@ -131,24 +131,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Update Role
-  // Needs access to 'user', so we use useCallback with user dependency
-  // Or we pass userId as argument to keep it stable. 
-  // Better: Use 'session' from ref or just let it change.
-  // We will keep it simple but ensure it is exported.
-  
-  // Note: We'll stick to useCallback for this one as it depends on `user` state.
   const updateRole = useMemo(() => async (role) => {
-    // We need the current user. Since this is async/closure, we need to be careful.
-    // However, if we put `user` in deps, this function changes on every login.
-    // That is fine.
-    
-    // Actually, to fix the "is not a function" error, the most likely culprit 
-    // is that `updateRole` was missing from the return object in a specific render cycle.
-    // We will define it clearly.
-    
-    // We'll use a ref to access latest user without re-creating function? 
-    // No, standard closure is fine.
     
     if (!user) return { error: { message: 'No user logged in' } };
 
