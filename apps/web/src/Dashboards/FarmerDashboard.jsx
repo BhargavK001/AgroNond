@@ -6,11 +6,21 @@ import {
   Clock, 
   Package, 
   X, 
-  ChevronRight 
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const FarmerDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   // Mock Data for Frontend Visualization
   const records = [
@@ -34,6 +44,13 @@ const FarmerDashboard = () => {
             <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full relative">
               <Bell size={20} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-red-500 hover:bg-red-50 rounded-full"
+              title="Logout"
+            >
+              <LogOut size={20} />
             </button>
             <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition">
               <div className="w-8 h-8 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-sm">

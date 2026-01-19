@@ -17,21 +17,23 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile from database
+  // Fetch user profile
   const fetchProfile = async (userId) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
-      
+        .maybeSingle(); // Use maybeSingle to avoid error if no profile
+
       if (error) {
         console.error('Error fetching profile:', error);
         return null;
       }
       
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+      }
       return data;
     } catch (error) {
       console.error('Profile fetch error:', error);
@@ -41,10 +43,14 @@ export function AuthProvider({ children }) {
 
   // Initialize auth state
   useEffect(() => {
+    let isMounted = true;
+    
     // Get initial session
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (initialSession) {
           setSession(initialSession);
@@ -54,7 +60,9 @@ export function AuthProvider({ children }) {
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -63,6 +71,8 @@ export function AuthProvider({ children }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        if (!isMounted) return;
+        
         console.log('Auth event:', event);
         setSession(newSession);
         setUser(newSession?.user ?? null);
@@ -77,7 +87,10 @@ export function AuthProvider({ children }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Send OTP to phone number
@@ -87,15 +100,11 @@ export function AuthProvider({ children }) {
       const { data, error } = await supabase.auth.signInWithOtp({
         phone,
         options: {
-          channel: 'sms',
+          shouldCreateUser: true, // Ensure user is created if not exists
         },
       });
 
-      if (error) {
-        console.error('Sign in error:', error);
-        return { error };
-      }
-
+      if (error) throw error;
       return { data, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -108,6 +117,7 @@ export function AuthProvider({ children }) {
   // Verify OTP code
   const verifyOtp = async (phone, token) => {
     try {
+      console.log('AuthContext: Verifying OTP for', phone);
       setLoading(true);
       const { data, error } = await supabase.auth.verifyOtp({
         phone,
@@ -115,12 +125,19 @@ export function AuthProvider({ children }) {
         type: 'sms',
       });
 
-      if (error) {
-        console.error('OTP verification error:', error);
-        return { error };
+      if (error) throw error;
+
+      console.log('AuthContext: OTP Verified. User:', data?.user?.id);
+
+      // Successfully verified
+      let userProfile = null;
+      if (data?.user) {
+        // Fetch profile immediately to check for role
+        userProfile = await fetchProfile(data.user.id);
+        console.log('AuthContext: Profile fetched after OTP:', userProfile);
       }
 
-      return { data, error: null };
+      return { data, profile: userProfile, error: null };
     } catch (error) {
       console.error('OTP verification error:', error);
       return { error };
@@ -129,22 +146,26 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Update user role in profile
+  // Update user role
   const updateRole = async (role) => {
-    if (!user) return { error: new Error('No user logged in') };
+    if (!user) return { error: { message: 'No user logged in' } };
 
     try {
+      const updates = {
+        id: user.id,
+        phone: user.phone,
+        role,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Upsert profile
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
+        .upsert(updates)
         .select()
         .single();
 
-      if (error) {
-        console.error('Update role error:', error);
-        return { error };
-      }
+      if (error) throw error;
 
       setProfile(data);
       return { data, error: null };
@@ -159,12 +180,8 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       
-      if (error) {
-        console.error('Sign out error:', error);
-        return { error };
-      }
-
       setUser(null);
       setSession(null);
       setProfile(null);
@@ -177,12 +194,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Get access token for API calls
-  const getAccessToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
-  };
-
   const value = useMemo(() => ({
     user,
     session,
@@ -192,8 +203,6 @@ export function AuthProvider({ children }) {
     verifyOtp,
     updateRole,
     signOut,
-    getAccessToken,
-    refreshProfile: () => user && fetchProfile(user.id),
   }), [user, session, profile, loading]);
 
   return (
