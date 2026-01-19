@@ -30,7 +30,15 @@ const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 // --- FARMER DASHBOARD IMPORT ---
 // Ensure your folder is named 'Dashboards' with a capital 'D'
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
-const TraderDashboard = lazy(() => import('./Dashboards/TraderDashboard'));
+
+// Trader Dashboard (Sidebar Layout + Pages)
+const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
+const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
+const PaymentTracker = lazy(() => import('./pages/trader/PaymentTracker'));
+const FarmerDirectory = lazy(() => import('./pages/trader/FarmerDirectory'));
+const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
+const MarketIntelligence = lazy(() => import('./pages/trader/MarketIntelligence'));
+const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -102,13 +110,20 @@ function App() {
                   } 
                 />
 
-                {/* Trader Dashboard */}
+                {/* Trader Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/trader" element={
                     <ProtectedRoute requireRole="trader">
-                      <TraderDashboard />
+                      <TraderLayout />
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  <Route index element={<TraderDashboardContent />} />
+                  <Route path="payments" element={<PaymentTracker />} />
+                  <Route path="farmers" element={<FarmerDirectory />} />
+                  <Route path="inventory" element={<InventoryManager />} />
+                  <Route path="market" element={<MarketIntelligence />} />
+                  <Route path="profile" element={<TraderProfile />} />
+                </Route>
 
                 {/* Committee Dashboard (Coming Soon) */}
                 <Route path="/dashboard/committee" element={

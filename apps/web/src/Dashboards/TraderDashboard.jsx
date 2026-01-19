@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import ScrollReveal, { StaggerContainer, StaggerItem } from '../components/ScrollReveal';
 import AnimatedCounter from '../components/AnimatedCounter';
-import TraderNavbar from '../components/TraderNavbar';
+import PriceTrendChart from '../components/charts/PriceTrendChart';
+import WeatherWidget from '../components/WeatherWidget';
+import { Card, CardBody, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
+import { Link } from 'react-router-dom';
 
 // Mock Data for Purchases
 const purchaseHistory = [
@@ -17,7 +19,7 @@ export default function TraderDashboard() {
   // Calculate Totals
   const totalQuantity = purchaseHistory.reduce((acc, item) => acc + item.quantity, 0);
   const totalBaseAmount = purchaseHistory.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
-  const commissionRate = 0.09; // 9%
+  const commissionRate = 0.09;
   const totalCommission = totalBaseAmount * commissionRate;
   const totalSpent = totalBaseAmount + totalCommission;
   
@@ -26,232 +28,252 @@ export default function TraderDashboard() {
     .reduce((acc, item) => acc + (item.quantity * item.rate * (1 + commissionRate)), 0);
 
   const stats = [
-    { label: 'Total Purchased', value: totalQuantity, unit: 'kg', icon: '🥗', color: 'from-green-500 to-emerald-600' },
-    { label: 'Total Spend', value: totalSpent, unit: '₹', icon: '💰', color: 'from-blue-500 to-indigo-600', isCurrency: true },
-    { label: 'Commission (9%)', value: totalCommission, unit: '₹', icon: '🧾', color: 'from-purple-500 to-violet-600', isCurrency: true },
-    { label: 'Pending Payments', value: pendingPayments, unit: '₹', icon: '⏳', color: 'from-orange-500 to-red-600', isCurrency: true },
+    { label: 'Total Purchased', value: totalQuantity, unit: 'kg', icon: '🥗', color: 'from-emerald-400 to-emerald-600', bgLight: 'bg-emerald-50' },
+    { label: 'Total Spend', value: totalSpent, unit: '₹', icon: '💰', color: 'from-blue-400 to-blue-600', bgLight: 'bg-blue-50', isCurrency: true },
+    { label: 'Commission (9%)', value: totalCommission, unit: '₹', icon: '🧾', color: 'from-violet-400 to-violet-600', bgLight: 'bg-violet-50', isCurrency: true },
+    { label: 'Pending Payments', value: pendingPayments, unit: '₹', icon: '⏳', color: 'from-amber-400 to-amber-600', bgLight: 'bg-amber-50', isCurrency: true },
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--surface-50)] font-sans selection:bg-[var(--primary-200)] relative overflow-x-hidden">
-      
-      {/* Background Ambience */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-[var(--primary)]/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[30%] h-[30%] bg-[var(--accent)]/5 rounded-full blur-[100px]" />
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium mb-3">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Live Dashboard
+        </span>
+        <h1 className="text-3xl font-bold text-slate-800">Trader Dashboard</h1>
+        <p className="text-slate-500 mt-1">Overview of your market activity and finances</p>
+      </motion.div>
+
+      {/* Top Widgets Row */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 lg:grid-cols-4 gap-6"
+      >
+        {/* Chart - Takes 3 cols */}
+        <div className="lg:col-span-3">
+          <PriceTrendChart />
+        </div>
+        
+        {/* Side Widgets - Takes 1 col */}
+        <div className="flex flex-col gap-4">
+          <WeatherWidget />
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex-1">
+            <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Quick Actions</h4>
+            <div className="space-y-2">
+              <Link to="/dashboard/trader/payments" className="block">
+                <button className="w-full flex items-center gap-3 px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-medium rounded-xl transition-colors text-left">
+                  <span className="text-lg">💳</span>
+                  Payment Tracker
+                </button>
+              </Link>
+              <Link to="/dashboard/trader/farmers" className="block">
+                <button className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium rounded-xl transition-colors text-left">
+                  <span className="text-lg">👨‍🌾</span>
+                  Farmer Directory
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {stats.map((stat, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 + index * 0.08, type: 'spring', stiffness: 200 }}
+            whileHover={{ y: -4 }}
+          >
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:shadow-lg hover:border-emerald-200 transition-all">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-12 h-12 rounded-2xl ${stat.bgLight} flex items-center justify-center text-2xl`}>
+                  {stat.icon}
+                </div>
+                {stat.label === 'Commission (9%)' && (
+                  <span className="px-2 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-bold">
+                    9%
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-1">
+                {stat.label}
+              </p>
+              <div className="flex items-baseline gap-1 text-2xl font-bold text-slate-800">
+                {stat.isCurrency && <span className="text-lg">₹</span>}
+                <AnimatedCounter value={stat.value} duration={2000} />
+                {!stat.isCurrency && <span className="text-lg text-slate-400 font-medium">{stat.unit}</span>}
+              </div>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
-      <TraderNavbar />
-
-      <main className="container pt-28 md:pt-32 pb-12 relative z-10">
-        
-        {/* Header Section */}
-        <ScrollReveal variant="fadeDown">
-          <div className="mb-10">
-            <h1 className="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-2">
-              Welcome back, <span className="gradient-text">Trader!</span> 👋
-            </h1>
-            <p className="text-[var(--text-secondary)] text-lg">
-              Here is an overview of your recent market activity and finances.
-            </p>
+      {/* Recent Purchases Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden"
+      >
+        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">Recent Purchases</h2>
+            <p className="text-slate-500 text-sm">Track your orders, payments, and invoices</p>
           </div>
-        </ScrollReveal>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+              Filter
+            </button>
+            <button className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors">
+              Export Report
+            </button>
+          </div>
+        </div>
 
-        {/* Stats Grid */}
-        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {stats.map((stat, index) => (
-            <StaggerItem key={index}>
-              <motion.div 
-                whileHover={{ y: -5, boxShadow: '0 20px 40px -15px rgba(0,0,0,0.1)' }}
-                className="relative overflow-hidden rounded-3xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-sm p-6 group"
-              >
-                <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.color} opacity-10 rounded-bl-full transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform duration-500`} />
-                
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 rounded-2xl bg-[var(--surface)] text-2xl shadow-inner">
-                      {stat.icon}
-                    </div>
-                    {stat.label === 'Commission (9%)' && (
-                      <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-bold">
-                        9% Applied
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto p-4">
+          <Table aria-label="Recent purchases table" removeWrapper>
+            <TableHeader>
+              <TableColumn>DATE</TableColumn>
+              <TableColumn>FARMER</TableColumn>
+              <TableColumn>CROP DETAIL</TableColumn>
+              <TableColumn align="end">QTY (KG)</TableColumn>
+              <TableColumn align="end">RATE/KG</TableColumn>
+              <TableColumn align="end">TOTAL (INC. 9%)</TableColumn>
+              <TableColumn align="center">STATUS</TableColumn>
+              <TableColumn align="center">ACTION</TableColumn>
+            </TableHeader>
+            <TableBody>
+              {purchaseHistory.map((item, index) => {
+                const baseCost = item.quantity * item.rate;
+                const tax = baseCost * 0.09;
+                const total = baseCost + tax;
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="text-slate-600 font-medium">
+                      {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-slate-800">{item.farmer}</div>
+                      <div className="text-xs text-slate-400">ID: FARM-{1000 + item.id}</div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-medium text-xs">
+                        {item.crop}
                       </span>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wider">
-                      {stat.label}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-slate-600">{item.quantity}</TableCell>
+                    <TableCell className="text-right text-slate-600">₹{item.rate}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="font-bold text-emerald-600">₹{Math.round(total).toLocaleString('en-IN')}</div>
+                      <div className="text-[10px] text-slate-400">Base: ₹{baseCost.toLocaleString()} + 9%</div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${
+                        item.status === 'Paid' 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : item.status === 'Pending'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-red-100 text-red-700'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          item.status === 'Paid' ? 'bg-emerald-500' : item.status === 'Pending' ? 'bg-amber-500' : 'bg-red-500'
+                        }`} />
+                        {item.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <button className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-emerald-600 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4 p-4">
+          {purchaseHistory.map((item, index) => {
+            const baseCost = item.quantity * item.rate;
+            const tax = baseCost * 0.09;
+            const total = baseCost + tax;
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-slate-50 rounded-2xl p-4 border border-slate-100"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium mb-1">
+                      {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
-                    <div className="flex items-baseline gap-1 text-3xl font-bold text-[var(--text-primary)]">
-                      {stat.isCurrency && <span className="text-xl">₹</span>}
-                      <AnimatedCounter value={stat.value} duration={2000} />
-                      {!stat.isCurrency && <span className="text-xl text-[var(--text-muted)] font-medium">{stat.unit}</span>}
-                    </div>
+                    <h3 className="font-bold text-slate-800">{item.farmer}</h3>
+                    <p className="text-sm text-emerald-600 font-medium">{item.crop}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                    item.status === 'Paid' 
+                      ? 'bg-emerald-100 text-emerald-700' 
+                      : item.status === 'Pending'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      item.status === 'Paid' ? 'bg-emerald-500' : item.status === 'Pending' ? 'bg-amber-500' : 'bg-red-500'
+                    }`} />
+                    {item.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-400 uppercase">Qty</p>
+                    <p className="font-bold text-sm">{item.quantity} <span className="text-[10px] font-normal">kg</span></p>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-400 uppercase">Rate</p>
+                    <p className="font-bold text-sm">₹{item.rate}</p>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-400 uppercase">Total</p>
+                    <p className="font-bold text-sm text-emerald-600">₹{Math.round(total).toLocaleString('en-IN')}</p>
                   </div>
                 </div>
+
+                <button className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Invoice
+                </button>
               </motion.div>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-
-        {/* Recent Purchases Section */}
-        <ScrollReveal variant="fadeUp" delay={0.2}>
-          <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg overflow-hidden">
-            <div className="p-6 md:p-8 border-b border-[var(--border)] flex flex-col md:flex-row justify-between items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-[var(--text-primary)]">Recent Purchases</h2>
-                <p className="text-[var(--text-secondary)] text-sm">Track your orders, payments, and invoices.</p>
-              </div>
-              <div className="flex gap-3">
-                 <button className="px-4 py-2 rounded-xl bg-white border border-[var(--border)] text-[var(--text-secondary)] text-sm font-medium hover:bg-[var(--surface-muted)] transition-colors shadow-sm">
-                   Filter
-                 </button>
-                 <button className="px-4 py-2 rounded-xl bg-[var(--primary)] text-white text-sm font-medium hover:bg-[var(--primary-600)] transition-colors shadow-lg shadow-[var(--primary)]/20">
-                   Export Report
-                 </button>
-              </div>
-            </div>
-
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[var(--surface)]/50 text-[var(--text-muted)] text-xs uppercase tracking-wider">
-                    <th className="p-5 font-semibold">Date</th>
-                    <th className="p-5 font-semibold">Farmer</th>
-                    <th className="p-5 font-semibold">Crop Detail</th>
-                    <th className="p-5 font-semibold text-right">Qty (Kg)</th>
-                    <th className="p-5 font-semibold text-right">Rate/Kg</th>
-                    <th className="p-5 font-semibold text-right">Total (Inc. 9%)</th>
-                    <th className="p-5 font-semibold text-center">Status</th>
-                    <th className="p-5 font-semibold text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)] text-sm">
-                  {purchaseHistory.map((item, index) => {
-                     const baseCost = item.quantity * item.rate;
-                     const tax = baseCost * 0.09;
-                     const total = baseCost + tax;
-                     
-                     return (
-                      <tr key={item.id} className="hover:bg-[var(--surface)]/60 transition-colors group">
-                        <td className="p-5 text-[var(--text-secondary)] font-medium">
-                          {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="p-5">
-                          <div className="font-semibold text-[var(--text-primary)]">{item.farmer}</div>
-                          <div className="text-xs text-[var(--text-muted)]">ID: FARM-{1000 + item.id}</div>
-                        </td>
-                        <td className="p-5">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface-muted)] text-[var(--text-primary)] font-medium text-xs border border-[var(--border)]">
-                            {item.crop}
-                          </span>
-                        </td>
-                        <td className="p-5 text-right font-medium text-[var(--text-secondary)]">
-                          {item.quantity}
-                        </td>
-                        <td className="p-5 text-right text-[var(--text-secondary)]">
-                          ₹{item.rate}
-                        </td>
-                        <td className="p-5 text-right">
-                          <div className="font-bold text-[var(--primary)]">₹{total.toLocaleString('en-IN')}</div>
-                          <div className="text-[10px] text-[var(--text-muted)]">Base: ₹{baseCost.toLocaleString()} + 9%</div>
-                        </td>
-                        <td className="p-5 text-center">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border ${
-                            item.status === 'Paid' 
-                              ? 'bg-green-50 text-green-700 border-green-200' 
-                              : item.status === 'Pending'
-                                ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                                : 'bg-red-50 text-red-700 border-red-200'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                               item.status === 'Paid' ? 'bg-green-500' : item.status === 'Pending' ? 'bg-yellow-500' : 'bg-red-500'
-                            }`} />
-                            {item.status}
-                          </span>
-                        </td>
-                        <td className="p-5 text-center">
-                          <button 
-                            className="p-2 text-[var(--primary)] hover:bg-[var(--primary-50)] rounded-xl transition-colors tooltip"
-                            title="Download Invoice"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4 p-4">
-              {purchaseHistory.map((item) => {
-                 const baseCost = item.quantity * item.rate;
-                 const tax = baseCost * 0.09;
-                 const total = baseCost + tax;
-                 return (
-                  <div key={item.id} className="bg-[var(--surface)]/50 border border-[var(--border)] rounded-2xl p-4 shadow-sm">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <p className="text-xs text-[var(--text-muted)] font-medium mb-1">
-                          {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </p>
-                        <h3 className="font-bold text-[var(--text-primary)]">{item.farmer}</h3>
-                        <p className="text-sm text-[var(--primary)] font-medium">{item.crop}</p>
-                      </div>
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                         item.status === 'Paid' 
-                           ? 'bg-green-50 text-green-700 border-green-200' 
-                           : item.status === 'Pending'
-                             ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
-                             : 'bg-red-50 text-red-700 border-red-200'
-                       }`}>
-                         <span className={`w-1.5 h-1.5 rounded-full ${
-                            item.status === 'Paid' ? 'bg-green-500' : item.status === 'Pending' ? 'bg-yellow-500' : 'bg-red-500'
-                         }`} />
-                         {item.status}
-                       </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                       <div className="bg-white p-2 rounded-xl border border-[var(--border)]">
-                          <p className="text-[10px] text-[var(--text-muted)] uppercase">Qty</p>
-                          <p className="font-bold text-sm">{item.quantity} <span className="text-[10px] font-normal">kg</span></p>
-                       </div>
-                       <div className="bg-white p-2 rounded-xl border border-[var(--border)]">
-                          <p className="text-[10px] text-[var(--text-muted)] uppercase">Rate</p>
-                          <p className="font-bold text-sm">₹{item.rate}</p>
-                       </div>
-                       <div className="bg-white p-2 rounded-xl border border-[var(--border)]">
-                          <p className="text-[10px] text-[var(--text-muted)] uppercase">Total</p>
-                          <p className="font-bold text-sm text-[var(--primary)]">₹{Math.round(total).toLocaleString('en-IN')}</p>
-                       </div>
-                    </div>
-
-                    <button className="w-full py-2.5 rounded-xl border border-[var(--primary)] text-[var(--primary)] font-semibold text-sm hover:bg-[var(--primary-50)] transition-colors flex items-center justify-center gap-2">
-                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                       </svg>
-                       Download Invoice
-                    </button>
-                  </div>
-                 );
-              })}
-            </div>
-            
-            <div className="p-4 bg-[var(--surface)]/30 text-center border-t border-[var(--border)]">
-              <button className="text-sm font-semibold text-[var(--primary)] hover:text-[var(--primary-700)] transition-colors">
-                View All Transactions &rarr;
-              </button>
-            </div>
-          </div>
-        </ScrollReveal>
-      </main>
+            );
+          })}
+        </div>
+        
+        <div className="p-4 bg-slate-50 text-center border-t border-slate-100">
+          <button className="text-sm font-medium text-emerald-600 hover:text-emerald-700">
+            View All Transactions →
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
