@@ -27,8 +27,10 @@ const RoleSelection = lazy(() => import('./pages/RoleSelection'));
 const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 // --- FARMER DASHBOARD IMPORT ---
+// --- FARMER DASHBOARD IMPORT ---
 // Ensure your folder is named 'Dashboards' with a capital 'D'
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
+const TraderDashboard = lazy(() => import('./Dashboards/TraderDashboard'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -100,10 +102,10 @@ function App() {
                   } 
                 />
 
-                {/* Trader Dashboard (Coming Soon) */}
+                {/* Trader Dashboard */}
                 <Route path="/dashboard/trader" element={
                     <ProtectedRoute requireRole="trader">
-                      <ComingSoon />
+                      <TraderDashboard />
                     </ProtectedRoute>
                   } 
                 />
