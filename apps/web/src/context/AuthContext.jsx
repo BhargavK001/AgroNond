@@ -17,34 +17,39 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile from database
-  const fetchProfile = async (userId) => {
+  // Fetch user profile
+  const fetchProfile = useMemo(() => async (userId) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
-      
+        .maybeSingle();
+
       if (error) {
         console.error('Error fetching profile:', error);
         return null;
       }
       
-      setProfile(data);
+      if (data) {
+        setProfile(data);
+      }
       return data;
     } catch (error) {
       console.error('Profile fetch error:', error);
       return null;
     }
-  };
+  }, []); // Stable reference
 
   // Initialize auth state
   useEffect(() => {
-    // Get initial session
+    let isMounted = true;
+    
     const initializeAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (initialSession) {
           setSession(initialSession);
@@ -54,21 +59,25 @@ export function AuthProvider({ children }) {
       } catch (error) {
         console.error('Auth initialization error:', error);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     initializeAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth event:', event);
+        if (!isMounted) return;
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
         if (newSession?.user) {
-          await fetchProfile(newSession.user.id);
+          fetchProfile(newSession.user.id).catch(err => 
+            console.error('Background profile fetch failed:', err)
+          );
         } else {
           setProfile(null);
         }
@@ -77,25 +86,22 @@ export function AuthProvider({ children }) {
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchProfile]);
 
-  // Send OTP to phone number
-  const signInWithPhone = async (phone) => {
+  // Send OTP
+  const signInWithPhone = useMemo(() => async (phone) => {
     try {
       setLoading(true);
       const { data, error } = await supabase.auth.signInWithOtp({
         phone,
-        options: {
-          channel: 'sms',
-        },
+        options: { shouldCreateUser: true },
       });
 
-      if (error) {
-        console.error('Sign in error:', error);
-        return { error };
-      }
-
+      if (error) throw error;
       return { data, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -103,10 +109,10 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Verify OTP code
-  const verifyOtp = async (phone, token) => {
+  // Verify OTP
+  const verifyOtp = useMemo(() => async (phone, token) => {
     try {
       setLoading(true);
       const { data, error } = await supabase.auth.verifyOtp({
@@ -115,11 +121,7 @@ export function AuthProvider({ children }) {
         type: 'sms',
       });
 
-      if (error) {
-        console.error('OTP verification error:', error);
-        return { error };
-      }
-
+      if (error) throw error;
       return { data, error: null };
     } catch (error) {
       console.error('OTP verification error:', error);
@@ -127,24 +129,44 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Update user role in profile
-  const updateRole = async (role) => {
-    if (!user) return { error: new Error('No user logged in') };
+  // Update Role
+  // Needs access to 'user', so we use useCallback with user dependency
+  // Or we pass userId as argument to keep it stable. 
+  // Better: Use 'session' from ref or just let it change.
+  // We will keep it simple but ensure it is exported.
+  
+  // Note: We'll stick to useCallback for this one as it depends on `user` state.
+  const updateRole = useMemo(() => async (role) => {
+    // We need the current user. Since this is async/closure, we need to be careful.
+    // However, if we put `user` in deps, this function changes on every login.
+    // That is fine.
+    
+    // Actually, to fix the "is not a function" error, the most likely culprit 
+    // is that `updateRole` was missing from the return object in a specific render cycle.
+    // We will define it clearly.
+    
+    // We'll use a ref to access latest user without re-creating function? 
+    // No, standard closure is fine.
+    
+    if (!user) return { error: { message: 'No user logged in' } };
 
     try {
+      const updates = {
+        id: user.id,
+        phone: user.phone,
+        role,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
+        .upsert(updates)
         .select()
         .single();
 
-      if (error) {
-        console.error('Update role error:', error);
-        return { error };
-      }
+      if (error) throw error;
 
       setProfile(data);
       return { data, error: null };
@@ -152,19 +174,14 @@ export function AuthProvider({ children }) {
       console.error('Update role error:', error);
       return { error };
     }
-  };
+  }, [user]); // Re-creates when user changes
 
-  // Sign out
-  const signOut = async () => {
+  const signOut = useMemo(() => async () => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       
-      if (error) {
-        console.error('Sign out error:', error);
-        return { error };
-      }
-
       setUser(null);
       setSession(null);
       setProfile(null);
@@ -175,13 +192,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Get access token for API calls
-  const getAccessToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token ?? null;
-  };
+  }, []);
 
   const value = useMemo(() => ({
     user,
@@ -192,9 +203,7 @@ export function AuthProvider({ children }) {
     verifyOtp,
     updateRole,
     signOut,
-    getAccessToken,
-    refreshProfile: () => user && fetchProfile(user.id),
-  }), [user, session, profile, loading]);
+  }), [user, session, profile, loading, signInWithPhone, verifyOtp, updateRole, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

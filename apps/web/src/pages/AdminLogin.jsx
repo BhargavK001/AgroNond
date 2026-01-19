@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 
 // Icons
+function AdminIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  );
+}
+
+// Background Icons
 function WheatIcon({ className }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -20,28 +29,28 @@ function LeafIcon({ className }) {
   );
 }
 
-export default function Login() {
+export default function AdminLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']); 
-  const [step, setStep] = useState('phone');
+  const [step, setStep] = useState('phone'); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signInWithPhone, verifyOtp, user, profile } = useAuth();
+  const { signInWithPhone, verifyOtp, user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // If already logged in, redirect based on role
+  // If already logged in and admin
   useEffect(() => {
     if (user && profile) {
-      if (profile.role) {
-        if (profile.role === 'farmer') navigate('/dashboard/farmer');
-        else if (profile.role === 'admin') navigate('/dashboard/admin');
-        else navigate('/dashboard');
+      if (profile.role === 'admin') {
+        navigate('/dashboard/admin');
       } else {
-         navigate('/role-selection');
+        // Logged in but not admin - force logout or show error
+        setError('Access Denied. Admins only.');
+        signOut();
       }
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, navigate, signOut]);
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
@@ -56,9 +65,12 @@ export default function Login() {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      
       const { error } = await signInWithPhone(formattedPhone);
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
       
       setStep('otp');
     } catch (err) {
@@ -83,12 +95,19 @@ export default function Login() {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      
-      const { error } = await verifyOtp(formattedPhone, otpValue);
+      const { data, profile: userProfile, error } = await verifyOtp(formattedPhone, otpValue);
 
       if (error) throw error;
-      
-      navigate('/role-selection');
+
+      // Check role immediately after verification
+      if (userProfile?.role === 'admin') {
+        navigate('/dashboard/admin');
+      } else {
+        await signOut();
+        setError('Access Denied. This portal is for Admins only.');
+        setStep('phone');
+        setOtp(['', '', '', '', '', '']);
+      }
 
     } catch (err) {
       console.error(err);
@@ -104,6 +123,7 @@ export default function Login() {
     newOtp[index] = value;
     setOtp(newOtp);
 
+    // Auto focus next input
     if (value && index < 5) {
       document.getElementById(`otp-${index + 1}`)?.focus();
     }
@@ -147,11 +167,10 @@ export default function Login() {
           </div>
           <div>
             <span className="text-xl sm:text-2xl font-bold block">AgroNond</span>
-            <span className="text-xs text-[var(--text-muted)]">Digital Mandi Platform</span>
+            <span className="text-xs text-[var(--text-muted)]">Admin Portal</span>
           </div>
         </Link>
-
-        {/* Card */}
+      
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 border border-[var(--border)] animate-scale-in">
           
           {error && (
@@ -161,15 +180,15 @@ export default function Login() {
           )}
 
           {step === 'phone' ? (
-             <>
+            <>
               <div className="text-center mb-5 sm:mb-8">
-                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Welcome Back</h1>
+                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Admin Login</h1>
                 <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                  Enter your mobile number to continue
+                  Authorized personnel only
                 </p>
               </div>
 
-              <form onSubmit={handlePhoneSubmit} className="space-y-4 sm:space-y-6">
+               <form onSubmit={handlePhoneSubmit} className="space-y-4 sm:space-y-6">
                 <div>
                   <label className="block text-sm font-medium mb-2">Mobile Number</label>
                   <div className="relative">
@@ -186,22 +205,22 @@ export default function Login() {
                   </div>
                 </div>
 
-                <Button type="submit" loading={loading} disabled={phoneNumber.length !== 10} className="w-full" size="lg">
+                <Button type="submit" loading={loading} disabled={phoneNumber.length !== 10} className="w-full bg-gray-900 border-gray-900 hover:bg-gray-800" size="lg">
                   Send OTP
                 </Button>
               </form>
             </>
           ) : (
-            <>
-              <div className="text-center mb-5 sm:mb-8">
-                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Verify OTP</h1>
+             <>
+               <div className="text-center mb-5 sm:mb-8">
+                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Verify Identity</h1>
                 <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                  Enter the 6-digit code sent to +91 {phoneNumber}
+                  Enter the code sent to +91 {phoneNumber}
                 </p>
               </div>
-
+            
               <form onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-6">
-                <div className="flex justify-center gap-1.5 sm:gap-2">
+                 <div className="flex justify-center gap-1.5 sm:gap-2">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
@@ -217,16 +236,13 @@ export default function Login() {
                   ))}
                 </div>
 
-                <Button type="submit" loading={loading} disabled={otp.join('').length !== 6} className="w-full" size="lg">
-                  Verify & Continue
+                <Button type="submit" loading={loading} disabled={otp.join('').length !== 6} className="w-full bg-gray-900 border-gray-900 hover:bg-gray-800" size="lg">
+                  Verify & Access
                 </Button>
                 
                 <div className="flex justify-between items-center text-sm">
                   <button type="button" onClick={() => setStep('phone')} className="text-[var(--primary)] hover:underline">
                     Change Number
-                  </button>
-                  <button type="button" onClick={handlePhoneSubmit} className="text-[var(--text-secondary)] hover:text-[var(--primary)]">
-                    Resend OTP
                   </button>
                 </div>
               </form>
