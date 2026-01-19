@@ -134,10 +134,19 @@ export function AuthProvider({ children }) {
     if (!user) return { error: new Error('No user logged in') };
 
     try {
+      // Use upsert to handle cases where the profile doesn't exist yet
+      // This can happen if the database trigger didn't run properly
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
+        .upsert(
+          { 
+            id: user.id, 
+            phone: user.phone || session?.user?.phone,
+            role, 
+            updated_at: new Date().toISOString() 
+          },
+          { onConflict: 'id' }
+        )
         .select()
         .single();
 
