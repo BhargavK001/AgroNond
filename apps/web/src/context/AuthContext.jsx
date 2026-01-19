@@ -16,9 +16,11 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Fetch user profile
   const fetchProfile = useMemo(() => async (userId) => {
+    setProfileLoading(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -38,6 +40,8 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Profile fetch error:', error);
       return null;
+    } finally {
+      setProfileLoading(false);
     }
   }, []); // Stable reference
 
@@ -182,11 +186,12 @@ export function AuthProvider({ children }) {
     session,
     profile,
     loading,
+    profileLoading,
     signInWithPhone,
     verifyOtp,
     updateRole,
     signOut,
-  }), [user, session, profile, loading, signInWithPhone, verifyOtp, updateRole, signOut]);
+  }), [user, session, profile, loading, profileLoading, signInWithPhone, verifyOtp, updateRole, signOut]);
 
   return (
     <AuthContext.Provider value={value}>
