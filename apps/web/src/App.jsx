@@ -8,7 +8,7 @@ import { AuthProvider } from './context/AuthContext';
 // Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import { PageLoading } from './components/Loading';
+import Loading from './components/Loading';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -26,9 +26,15 @@ const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const RoleSelection = lazy(() => import('./pages/RoleSelection'));
 const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
-// --- FARMER DASHBOARD IMPORT ---
-// Ensure your folder is named 'Dashboards' with a capital 'D'
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
+
+const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
+const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
+const PaymentTracker = lazy(() => import('./pages/trader/PaymentTracker'));
+const FarmerDirectory = lazy(() => import('./pages/trader/FarmerDirectory'));
+const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
+const MarketIntelligence = lazy(() => import('./pages/trader/MarketIntelligence'));
+const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -62,7 +68,7 @@ function App() {
         <Router>
           <ErrorBoundary>
             <ScrollToTop />
-            <Suspense fallback={<PageLoading />}>
+            <Suspense fallback={<Loading />}>
               <Routes>
                 {/* Login & Public Routes */}
                 <Route path="/login" element={
@@ -100,13 +106,20 @@ function App() {
                   } 
                 />
 
-                {/* Trader Dashboard (Coming Soon) */}
+                {/* Trader Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/trader" element={
                     <ProtectedRoute requireRole="trader">
-                      <ComingSoon />
+                      <TraderLayout />
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  <Route index element={<TraderDashboardContent />} />
+                  <Route path="payments" element={<PaymentTracker />} />
+                  <Route path="farmers" element={<FarmerDirectory />} />
+                  <Route path="inventory" element={<InventoryManager />} />
+                  <Route path="market" element={<MarketIntelligence />} />
+                  <Route path="profile" element={<TraderProfile />} />
+                </Route>
 
                 {/* Committee Dashboard (Coming Soon) */}
                 <Route path="/dashboard/committee" element={
@@ -116,8 +129,7 @@ function App() {
                   } 
                 />
 
-                {/* Admin Dashboard (Using Generic for now, or Coming Soon if not built) */}
-                {/* Since User said admin goes to main dashboard, I will point it there or create placeholder */}
+                {/* Admin Dashboard */}
                 <Route path="/dashboard/admin" element={
                     <ProtectedRoute requireRole="admin">
                        <Dashboard /> 
