@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { 
   Plus, Bell, TrendingUp, Clock, Package, X, Download, Eye, 
-  Trash2, Edit2, User, Phone, MapPin, Calendar, CheckCircle, Zap
+  Trash2, Edit2, User, Phone, MapPin, Calendar, CheckCircle, Zap, LogOut
 } from 'lucide-react';
 
 const FarmerDashboard = () => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+
   // --- STATE MANAGEMENT ---
   const [records, setRecords] = useState([]);
   const [profile, setProfile] = useState({
@@ -187,6 +192,12 @@ Generated on: ${new Date().toLocaleString('en-IN')}
     alert('Profile updated successfully! ');
   };
 
+  // --- LOGOUT HANDLER ---
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   // --- MODAL COMPONENT ---
   const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
@@ -225,6 +236,14 @@ Generated on: ${new Date().toLocaleString('en-IN')}
           <div className="flex items-center gap-6">
             <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
               <Bell size={22} />
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-full transition border border-red-200"
+              title="Sign Out"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">Logout</span>
             </button>
             <button 
               onClick={() => setModals({ ...modals, editProfile: true })}
