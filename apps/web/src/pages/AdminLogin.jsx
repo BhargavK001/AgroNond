@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
 
 // Icons
@@ -95,20 +96,31 @@ export default function AdminLogin() {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      const { data, profile: userProfile, error } = await verifyOtp(formattedPhone, otpValue);
+      const { data, error } = await verifyOtp(formattedPhone, otpValue);
 
       if (error) throw error;
 
-      // Check role immediately after verification
-      if (userProfile?.role === 'admin') {
-        navigate('/dashboard/admin');
-      } else {
-        await signOut();
-        setError('Access Denied. This portal is for Admins only.');
-        setStep('phone');
-        setOtp(['', '', '', '', '', '']);
+      // Manually fetch profile to verify role immediately
+      if (data?.user || data?.session?.user) {
+        const userId = data.user?.id || data.session?.user?.id;
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+          
+        if (profileError) throw profileError;
+        
+        if (profileData?.role === 'admin') {
+          navigate('/dashboard/admin');
+        } else {
+          await signOut();
+          setError('Access Denied. This portal is for Admins only.');
+          setStep('phone');
+          setOtp(['', '', '', '', '', '']);
+        }
       }
-
     } catch (err) {
       console.error(err);
       setError(err.message || 'Invalid OTP');

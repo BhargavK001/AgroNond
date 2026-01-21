@@ -36,6 +36,13 @@ const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
 const MarketIntelligence = lazy(() => import('./pages/trader/MarketIntelligence'));
 const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
+// Admin Dashboard
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
+const CommissionRules = lazy(() => import('./pages/admin/CommissionRules'));
+const TransactionHistory = lazy(() => import('./pages/admin/TransactionHistory'));
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -129,13 +136,18 @@ function App() {
                   } 
                 />
 
-                {/* Admin Dashboard */}
+                {/* Admin Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/admin" element={
                     <ProtectedRoute requireRole="admin">
-                       <Dashboard /> 
+                      <AdminLayout />
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="users" element={<UserManagement />} />
+                  <Route path="commission" element={<CommissionRules />} />
+                  <Route path="transactions" element={<TransactionHistory />} />
+                </Route>
 
                 {/* Generic Dashboard (Fallback) */}
                 <Route path="/dashboard" element={

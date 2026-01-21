@@ -11,6 +11,11 @@ import morgan from 'morgan';
 // Import routes (these use env vars, so must come after dotenv.config())
 import usersRouter from './routes/users.js';
 import contactRouter from './routes/contact.js';
+import purchasesRouter from './routes/purchases.js';
+import farmerContactsRouter from './routes/farmer-contacts.js';
+import inventoryRouter from './routes/inventory.js';
+import adminRouter from './routes/admin.js';
+import financeRouter from './routes/finance.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +42,11 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/users', usersRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/purchases', purchasesRouter);
+app.use('/api/farmer-contacts', farmerContactsRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/finance', financeRouter);
 
 // 404 handler
 app.use((req, res) => {
