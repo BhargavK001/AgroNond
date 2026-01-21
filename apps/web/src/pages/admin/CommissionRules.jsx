@@ -1,0 +1,323 @@
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Settings, Save, AlertCircle, CheckCircle, RefreshCw, Info, Loader } from 'lucide-react';
+import api from '../../lib/api';
+
+export default function CommissionRules() {
+  const [config, setConfig] = useState({
+    farmerRate: 4,
+    traderRate: 9
+  });
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Fetch Rules
+  const { data: rules, isLoading } = useQuery({
+    queryKey: ['commission-rules'],
+    queryFn: () => api.admin.commissionRules.list(),
+  });
+
+  // Initialize config from rules
+  useEffect(() => {
+    if (rules && rules.length > 0) {
+      // Find latest rule for farmer (crop_type = 'All')
+      const farmerRule = rules.find(r => r.role_type === 'farmer' && r.crop_type === 'All');
+      // Find latest rule for trader
+      const traderRule = rules.find(r => r.role_type === 'trader' && r.crop_type === 'All');
+
+      setConfig({
+        farmerRate: farmerRule ? parseFloat(farmerRule.rate) * 100 : 4,
+        traderRate: traderRule ? parseFloat(traderRule.rate) * 100 : 9
+      });
+    }
+  }, [rules]);
+
+  const createRuleMutation = useMutation({
+    mutationFn: (newRule) => api.admin.commissionRules.create(newRule),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['commission-rules']);
+    }
+  });
+
+  const handleChange = (field, value) => {
+    // Allow only valid numbers between 0 and 100
+    const numValue = parseFloat(value);
+    if (isNaN(numValue) || numValue < 0 || numValue > 100) return;
+    
+    setConfig(prev => ({ ...prev, [field]: numValue }));
+    setSaveSuccess(false);
+  };
+
+  const handleSave = async () => {
+    try {
+      // Create new rules for both (history tracking)
+      await Promise.all([
+        createRuleMutation.mutateAsync({
+          crop_type: 'All',
+          role_type: 'farmer', 
+          rate: config.farmerRate / 100
+        }),
+        createRuleMutation.mutateAsync({
+          crop_type: 'All',
+          role_type: 'trader', 
+          rate: config.traderRate / 100
+        })
+      ]);
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Failed to save rules:', error);
+    }
+  };
+
+  const handleReset = () => {
+    setConfig({
+      farmerRate: 4,
+      traderRate: 9
+    });
+    setSaveSuccess(false);
+  };
+
+  if (isLoading) {
+     return (
+      <div className="flex justify-center items-center h-96">
+        <Loader className="w-8 h-8 text-emerald-500 animate-spin" />
+      </div>
+    );
+  }
+
+  // Calculate example
+  const exampleAmount = 10000;
+  const farmerCommission = (exampleAmount * config.farmerRate) / 100;
+  const traderCommission = (exampleAmount * config.traderRate) / 100;
+  const totalCommission = farmerCommission + traderCommission;
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Commission Rules</h1>
+        <p className="text-gray-500 mt-1">Configure transaction commission rates for farmers and traders</p>
+      </div>
+
+      {/* Info Banner */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3"
+      >
+        <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-blue-700">
+          <p className="font-medium">How Commission Works</p>
+          <p className="mt-1">
+            Commission is deducted from every transaction. Farmers pay a lower rate as they are the primary producers, 
+            while traders pay a higher rate for market access and services.
+          </p>
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Commission Settings Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 rounded-xl bg-emerald-50">
+              <Settings className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">Rate Configuration</h2>
+              <p className="text-sm text-gray-500">Adjust commission percentages</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Farmer Rate */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Farmer Commission Rate
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={config.farmerRate}
+                  onChange={(e) => handleChange('farmerRate', e.target.value)}
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-lg font-medium"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                Default: 4% • Applied on farmer's sale amount
+              </p>
+            </div>
+
+            {/* Trader Rate */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Trader Commission Rate
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={config.traderRate}
+                  onChange={(e) => handleChange('traderRate', e.target.value)}
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all text-lg font-medium"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                Default: 9% • Applied on trader's purchase amount
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <button
+                onClick={handleSave}
+                disabled={createRuleMutation.isLoading}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50"
+              >
+                {createRuleMutation.isLoading ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    Save Changes
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Success Message */}
+            {saveSuccess && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl"
+              >
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Settings saved successfully!</span>
+              </motion.div>
+            )}
+
+            {/* Last Updated */}
+            <p className="text-sm text-gray-400 text-center">
+              Last updated: {rules?.[0]?.effective_date ? new Date(rules[0].effective_date).toLocaleString('en-IN') : 'Never'}
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Preview Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
+        >
+          <h2 className="text-lg font-semibold text-gray-800 mb-6">Commission Preview</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Example calculation for ₹{exampleAmount.toLocaleString()} transaction:
+          </p>
+
+          <div className="space-y-4">
+            {/* Farmer Commission */}
+            <div className="p-4 bg-emerald-50 rounded-xl">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Farmer Commission ({config.farmerRate}%)</span>
+                <span className="text-lg font-bold text-emerald-600">₹{farmerCommission.toLocaleString()}</span>
+              </div>
+              <div className="mt-2 h-2 bg-emerald-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(config.farmerRate * 5, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Trader Commission */}
+            <div className="p-4 bg-blue-50 rounded-xl">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Trader Commission ({config.traderRate}%)</span>
+                <span className="text-lg font-bold text-blue-600">₹{traderCommission.toLocaleString()}</span>
+              </div>
+              <div className="mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(config.traderRate * 5, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Total */}
+            <div className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Total Commission Collected</span>
+                <span className="text-xl font-bold text-gray-800">₹{totalCommission.toLocaleString()}</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Per ₹{exampleAmount.toLocaleString()} transaction
+              </p>
+            </div>
+          </div>
+
+          {/* Warning for high rates */}
+          {(config.farmerRate > 10 || config.traderRate > 15) && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-4 flex items-start gap-2 p-3 bg-amber-50 text-amber-700 rounded-xl"
+            >
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span className="text-sm">
+                High commission rates may discourage traders and farmers from using the market.
+              </span>
+            </motion.div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Rate Comparison */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl p-6 text-white"
+      >
+        <h3 className="text-lg font-semibold mb-4">Rate Summary</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white/20 backdrop-blur rounded-xl p-4">
+            <p className="text-emerald-100 text-sm">Farmer Rate</p>
+            <p className="text-3xl font-bold">{config.farmerRate}%</p>
+          </div>
+          <div className="bg-white/20 backdrop-blur rounded-xl p-4">
+            <p className="text-blue-100 text-sm">Trader Rate</p>
+            <p className="text-3xl font-bold">{config.traderRate}%</p>
+          </div>
+          <div className="bg-white/20 backdrop-blur rounded-xl p-4">
+            <p className="text-white/80 text-sm">Combined Rate</p>
+            <p className="text-3xl font-bold">{(config.farmerRate + config.traderRate).toFixed(1)}%</p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

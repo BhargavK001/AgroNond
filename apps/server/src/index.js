@@ -12,6 +12,11 @@ import morgan from 'morgan';
 import usersRouter from './routes/users.js';
 import contactRouter from './routes/contact.js';
 import recordsRouter from './routes/records.js';
+import purchasesRouter from './routes/purchases.js';
+import farmerContactsRouter from './routes/farmer-contacts.js';
+import inventoryRouter from './routes/inventory.js';
+import adminRouter from './routes/admin.js';
+import financeRouter from './routes/finance.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -39,6 +44,11 @@ app.get('/api/health', (req, res) => {
 app.use('/api/users', usersRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/records', recordsRouter);
+app.use('/api/purchases', purchasesRouter);
+app.use('/api/farmer-contacts', farmerContactsRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/finance', financeRouter);
 
 // 404 handler
 app.use((req, res) => {
