@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Fetch user profile
-  const fetchProfile = useMemo(() => async (userId) => {
+  const fetchProfile = useCallback(async (userId) => {
     setProfileLoading(true);
     try {
       const { data, error } = await supabase
@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
     } finally {
       setProfileLoading(false);
     }
-  }, []); // Stable reference
+  }, []);
 
   // Initialize auth state
   useEffect(() => {
@@ -79,6 +79,7 @@ export function AuthProvider({ children }) {
         setUser(newSession?.user ?? null);
         
         if (newSession?.user) {
+          // Only fetch if we don't have it (or to refresh)
           fetchProfile(newSession.user.id).catch(err => 
             console.error('Background profile fetch failed:', err)
           );
@@ -97,7 +98,7 @@ export function AuthProvider({ children }) {
   }, [fetchProfile]);
 
   // Send OTP
-  const signInWithPhone = useMemo(() => async (phone) => {
+  const signInWithPhone = useCallback(async (phone) => {
     try {
       setLoading(true);
       const { data, error } = await supabase.auth.signInWithOtp({
@@ -116,7 +117,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Verify OTP
-  const verifyOtp = useMemo(() => async (phone, token) => {
+  const verifyOtp = useCallback(async (phone, token) => {
     try {
       setLoading(true);
       const { data, error } = await supabase.auth.verifyOtp({
@@ -135,15 +136,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const updateRole = useMemo(() => async (role) => {
-    
+  const updateRole = useCallback(async (role) => {
     if (!user) return { error: { message: 'No user logged in' } };
 
     try {
       const updates = {
         id: user.id,
-        phone: user.phone,
-        role,
+        role: role, 
         updated_at: new Date().toISOString(),
       };
 
@@ -161,23 +160,24 @@ export function AuthProvider({ children }) {
       console.error('Update role error:', error);
       return { error };
     }
-  }, [user]); // Re-creates when user changes
+  }, [user]);
 
-  const signOut = useMemo(() => async () => {
+  // ✅ FIXED: Robust Sign Out Logic
+  const signOut = useCallback(async () => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // We don't return here; we ensure state is cleared in finally
+    } finally {
+      // Always clear local state to ensure UI updates
       setUser(null);
       setSession(null);
       setProfile(null);
-      return { error: null };
-    } catch (error) {
-      console.error('Sign out error:', error);
-      return { error };
-    } finally {
       setLoading(false);
+      return { error: null };
     }
   }, []);
 

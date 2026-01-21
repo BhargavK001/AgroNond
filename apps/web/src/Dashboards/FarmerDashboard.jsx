@@ -1,15 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import FarmerNavbar from '../components/FarmerNavbar';
+import { Toaster, toast } from 'react-hot-toast';
 import { 
-  Plus, Bell, TrendingUp, Clock, Package, X, Download, Eye, 
-  Trash2, Edit2, User, Phone, MapPin, Calendar, CheckCircle, Zap, LogOut
+  Plus, TrendingUp, Clock, Package, X, Download, Eye, 
+  Trash2, CheckCircle, Zap, Calendar, MapPin
 } from 'lucide-react';
 
-const FarmerDashboard = () => {
-  const navigate = useNavigate();
-  const { signOut } = useAuth();
+// --- MODAL COMPONENT (Unchanged) ---
+const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+  if (!isOpen) return null;
+  const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className={`bg-white rounded-3xl shadow-2xl w-full ${sizes[size]} border border-gray-200 max-h-[90vh] overflow-y-auto`}>
+        <div className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-gray-100">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
+            <X size={24} className="text-gray-500" />
+          </button>
+        </div>
+        <div className="px-6 py-6 sm:px-8">{children}</div>
+      </div>
+    </div>
+  );
+};
 
+const FarmerDashboard = () => {
   // --- STATE MANAGEMENT ---
   const [records, setRecords] = useState([]);
   const [profile, setProfile] = useState({
@@ -38,10 +54,10 @@ const FarmerDashboard = () => {
     trader: ''
   });
 
-  const [profileForm, setProfileForm] = useState({ ... profile });
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
+  const [profileForm, setProfileForm] = useState({ ...profile });
 
   const COMMISSION_RATE = 0.04;
 
@@ -57,12 +73,22 @@ const FarmerDashboard = () => {
     }
   }, []);
 
+  // Listen for profile edit event from navbar
+  useEffect(() => {
+    const handleOpenEditProfile = () => {
+      setModals({ ...modals, editProfile: true });
+    };
+
+    window.addEventListener('openEditProfile', handleOpenEditProfile);
+    return () => window.removeEventListener('openEditProfile', handleOpenEditProfile);
+  }, [modals]);
+
   useEffect(() => {
     localStorage.setItem('farmer-records', JSON.stringify(records));
   }, [records]);
 
   useEffect(() => {
-    localStorage.setItem('farmer-profile', JSON. stringify(profile));
+    localStorage.setItem('farmer-profile', JSON.stringify(profile));
   }, [profile]);
 
   // --- CALCULATIONS ---
@@ -87,15 +113,15 @@ const FarmerDashboard = () => {
 
   // --- HANDLERS ---
   const handleAddRecord = () => {
-    if (! formData.market || !formData. vegetable || !formData.quantity) {
-      alert('Please fill all fields');
+    if (!formData.market || !formData.vegetable || !formData.quantity) {
+      toast.error('Please fill all fields');
       return;
     }
 
     const newRecord = {
       id: Date.now(),
       date: new Date().toLocaleDateString('en-GB'),
-      market: formData. market,
+      market: formData.market,
       vegetable: formData.vegetable,
       quantity: parseFloat(formData.quantity),
       status: 'Pending',
@@ -105,27 +131,28 @@ const FarmerDashboard = () => {
     };
 
     setRecords([newRecord, ...records]);
-    setFormData({ market: '', vegetable: '', quantity:  '' });
-    setModals({ ... modals, addRecord: false });
+    setFormData({ market: '', vegetable: '', quantity: '' });
+    setModals({ ...modals, addRecord: false });
+    toast.success('New record added successfully!');
   };
 
   const openSaleModal = (record) => {
     setSelectedRecord(record);
-    setSaleData({ rate: '', trader:  '' });
+    setSaleData({ rate: '', trader: '' });
     setModals({ ...modals, markSold: true });
   };
 
   const handleConfirmSale = () => {
     if (!saleData.rate || !saleData.trader) {
-      alert('Please enter all details');
+      toast.error('Please enter all details');
       return;
     }
 
-    const rate = parseFloat(saleData. rate);
+    const rate = parseFloat(saleData.rate);
     const totalAmount = selectedRecord.quantity * rate;
 
     setRecords(records.map(r => 
-      r.id === selectedRecord. id 
+      r.id === selectedRecord.id 
         ? {
             ...r,
             status: 'Sold',
@@ -138,6 +165,7 @@ const FarmerDashboard = () => {
 
     setModals({ ...modals, markSold: false });
     setSelectedRecord(null);
+    toast.success('Sale confirmed!');
   };
 
   const generateInvoice = (record) => {
@@ -145,35 +173,13 @@ const FarmerDashboard = () => {
     const net = record.totalAmount - comm;
 
     const invoice = `
-╔════════════════════════════════════════════════════════════╗
-║                    AGRONOND - OFFICIAL INVOICE              ║
-╚════════════════════════════════════════════════════════════��
-
 FARMER DETAILS:
   Name: ${profile.name}
   Farmer ID: ${profile.farmerId}
-  Phone: ${profile.phone}
-  Location: ${profile.location}
 
 TRANSACTION DETAILS:
-  Date: ${record.date}
-  Market: ${record.market}
-  Vegetable: ${record.vegetable}
-
-QUANTITY & RATE:
-  Quantity: ${record.quantity} kg
-  Rate: ₹${record.rate}/kg
-  Trader: ${record.trader}
-
-FINANCIAL SUMMARY:
-  Gross Amount: ₹${record.totalAmount.toLocaleString('en-IN')}
-  Commission (4%): -₹${comm.toLocaleString('en-IN')}
-  ────────────────────────────────────
-  Net Payable: ₹${net. toLocaleString('en-IN')}
-
-────────────────────────────────────────────────────────────
-Support: +91 94205 30466 | Email: bhargavk056@gmail.com
-Generated on: ${new Date().toLocaleString('en-IN')}
+  Item: ${record.vegetable} (${record.quantity}kg)
+  Net Payable: ₹${net.toLocaleString('en-IN')}
     `;
 
     alert(invoice);
@@ -182,178 +188,129 @@ Generated on: ${new Date().toLocaleString('en-IN')}
   const handleDelete = (id) => {
     if (window.confirm('Permanently delete this record?')) {
       setRecords(records.filter(r => r.id !== id));
+      toast.success('Record deleted');
     }
   };
 
   const saveProfile = () => {
-    const initials = profileForm.name.slice(0, 2).toUpperCase();
-    setProfile({ ...profileForm, initials });
+    const initials = profileForm.name.slice(0, 2).toUpperCase() || 'FK';
+    const updatedProfile = { ...profileForm, initials };
+    setProfile(updatedProfile);
+    localStorage.setItem('farmer-profile', JSON.stringify(updatedProfile));
     setModals({ ...modals, editProfile: false });
-    alert('Profile updated successfully! ');
-  };
-
-  // --- LOGOUT HANDLER ---
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
-  // --- MODAL COMPONENT ---
-  const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
-    if (!isOpen) return null;
-    const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
-    return (
-      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-        <div className={`bg-white rounded-3xl shadow-2xl w-full ${sizes[size]} border border-gray-200`}>
-          <div className="flex justify-between items-center px-8 py-6 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
-              <X size={24} className="text-gray-500" />
-            </button>
-          </div>
-          <div className="px-8 py-6">{children}</div>
-        </div>
-      </div>
-    );
+    
+    // Trigger custom event to update navbar
+    window.dispatchEvent(new CustomEvent('farmerProfileUpdated'));
+    toast.success('Profile updated successfully!');
   };
 
   return (
     <div className="min-h-screen bg-white">
+      <Toaster position="top-center" reverseOrder={false} />
       
       {/* --- NAVBAR --- */}
-      <nav className="sticky top-0 z-40 border-b border-gray-100 bg-white">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">A</span>
-            </div>
-            <div>
-              <p className="text-lg font-bold text-gray-900">AgroNond</p>
-              <p className="text-xs text-gray-500 font-medium">Digital Mandi Platform</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
-              <Bell size={22} />
-            </button>
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-full transition border border-red-200"
-              title="Sign Out"
-            >
-              <LogOut size={18} />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-            <button 
-              onClick={() => setModals({ ...modals, editProfile: true })}
-              className="flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full transition border border-gray-200 group"
-            >
-              <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-sm">
-                {profile.initials}
-              </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-semibold text-gray-900">{profile.name || 'Farmer'}</p>
-                <p className="text-xs text-gray-500">{profile.farmerId || 'AGR-XXXX'}</p>
-              </div>
-            </button>
-          </div>
-        </div>
-      </nav>
+      <FarmerNavbar />
 
       {/* --- MAIN CONTENT --- */}
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      {/* 📱 Mobile: Padding reduced (px-4) */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
         
         {/* Header */}
-        <div className="mb-12">
-          <div className="flex justify-between items-start">
+        <div className="mb-8 sm:mb-12">
+          {/* 📱 Mobile: Flex column for stacking, Row on desktop */}
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
-              <h1 className="text-5xl font-bold text-gray-900 mb-3">Sales Dashboard</h1>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Calendar size={18} />
+              {/* 📱 Mobile: Smaller text */}
+              <h1 className="text-3xl sm:text-5xl font-bold text-gray-900 mb-2 sm:mb-3">Farmer Dashboard</h1>
+              <div className="flex items-center gap-2 text-gray-600 text-sm sm:text-base">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
               </div>
             </div>
+            
+            {/* 📱 Mobile: Full width button */}
             <button 
               onClick={() => setModals({ ...modals, addRecord: true })}
-              className="flex items-center gap-2 px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-full shadow-lg shadow-green-200 transition hover:shadow-xl hover:-translate-y-1"
+              className="w-full sm:w-auto flex justify-center items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl sm:rounded-full shadow-lg shadow-green-200 transition hover:shadow-xl hover:-translate-y-1"
             >
-              <Plus size={22} />
+              <Plus size={20} />
               New Record
             </button>
           </div>
         </div>
 
         {/* --- KPI CARDS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
           
           {/* Net Income */}
-          <div className="group bg-white p-8 rounded-3xl border border-gray-200 hover:border-green-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-4 bg-green-100 rounded-2xl text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                <TrendingUp size={28} />
+          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-green-200 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4 sm:mb-6">
+              <div className="p-3 sm:p-4 bg-green-100 rounded-2xl text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                <TrendingUp size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">+12%</span>
+              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full">+12%</span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-2">Net Income</p>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">₹{netIncome. toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-gray-500">After 4% commission</p>
+            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Net Income</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{netIncome.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-gray-500">After commission</p>
           </div>
 
           {/* Gross Sales */}
-          <div className="group bg-white p-8 rounded-3xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover: text-white transition-colors">
-                <Package size={28} />
+          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4 sm:mb-6">
+              <div className="p-3 sm:p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <Package size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full">{soldRecords.length} sales</span>
+              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">{soldRecords.length} sales</span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-2">Gross Sales</p>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">₹{totalGross.toLocaleString('en-IN')}</h3>
+            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Gross Sales</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalGross.toLocaleString('en-IN')}</h3>
             <p className="text-xs text-gray-500">All transactions</p>
           </div>
 
           {/* Pending Lots */}
-          <div className="group bg-white p-8 rounded-3xl border border-gray-200 hover:border-orange-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-4 bg-orange-100 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover: text-white transition-colors">
-                <Clock size={28} />
+          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-orange-200 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4 sm:mb-6">
+              <div className="p-3 sm:p-4 bg-orange-100 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                <Clock size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full">Active</span>
+              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 sm:px-3 py-1 rounded-full">Active</span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-2">Pending Lots</p>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{pendingRecords.length}</h3>
+            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Pending Lots</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{pendingRecords.length}</h3>
             <p className="text-xs text-gray-500">Awaiting sale</p>
           </div>
 
           {/* Total Volume */}
-          <div className="group bg-white p-8 rounded-3xl border border-gray-200 hover:border-purple-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-6">
-              <div className="p-4 bg-purple-100 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover: text-white transition-colors">
-                <Package size={28} />
+          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-purple-200 hover:shadow-lg transition-all duration-300">
+            <div className="flex justify-between items-start mb-4 sm:mb-6">
+              <div className="p-3 sm:p-4 bg-purple-100 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <Package size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1 rounded-full">{records.length} items</span>
+              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">{records.length} items</span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-2">Total Volume</p>
-            <h3 className="text-3xl font-bold text-gray-900 mb-1">{totalQuantity} kg</h3>
+            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Total Volume</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{totalQuantity} kg</h3>
             <p className="text-xs text-gray-500">Lifetime quantity</p>
           </div>
         </div>
 
-        {/* --- RECORDS TABLE --- */}
-        <div className="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm">
+        {/* --- RECORDS SECTION --- */}
+        <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
           
-          {/* Table Header */}
-          <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          {/* Header Controls */}
+          {/* 📱 Mobile: Flex col for full width filters */}
+          <div className="p-4 sm:px-8 sm:py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Sales Records</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Sales Records</h2>
               <p className="text-sm text-gray-600 mt-1">Manage and track all transactions</p>
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex w-full sm:w-auto gap-3">
               <select 
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 text-sm font-medium"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 text-sm"
               >
                 <option>All</option>
                 <option>Pending</option>
@@ -362,7 +319,7 @@ Generated on: ${new Date().toLocaleString('en-IN')}
               <select 
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 text-sm font-medium"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 text-sm"
               >
                 <option value="recent">Recent</option>
                 <option value="amount">Highest Amount</option>
@@ -370,8 +327,89 @@ Generated on: ${new Date().toLocaleString('en-IN')}
             </div>
           </div>
 
-          {/* Table Body */}
-          <div className="overflow-x-auto">
+          {/* 📱 MOBILE VIEW: CARDS (Visible only on small screens) */}
+          <div className="block sm:hidden">
+            {sortedRecords.length === 0 ? (
+               <div className="p-8 text-center">
+                 <p className="text-gray-500">No records found</p>
+               </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {sortedRecords.map((record) => (
+                  <div key={record.id} className="p-4 hover:bg-gray-50 transition-colors">
+                    {/* Top Row: Date & Status */}
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-semibold text-gray-500">{record.date}</span>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                          record.status === 'Sold'
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                        }`}>
+                          {record.status === 'Sold' ? <CheckCircle size={10} /> : <Clock size={10} />}
+                          {record.status}
+                      </span>
+                    </div>
+
+                    {/* Middle Row: Details */}
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
+                        <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
+                          <MapPin size={12} />
+                          {record.market}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
+                        {record.status === 'Sold' ? (
+                          <p className="text-sm font-bold text-green-600">₹{record.totalAmount.toLocaleString('en-IN')}</p>
+                        ) : (
+                          <p className="text-xs text-gray-400">---</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom Row: Actions */}
+                    <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
+                      {record.status === 'Pending' ? (
+                          <button 
+                            onClick={() => openSaleModal(record)}
+                            className="flex-1 py-2 bg-green-50 text-green-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1"
+                          >
+                            <CheckCircle size={14} /> Sell
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => generateInvoice(record)}
+                            className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1"
+                          >
+                            <Download size={14} /> Invoice
+                          </button>
+                      )}
+                      <button 
+                        onClick={() => {
+                          setSelectedRecord(record);
+                          setModals({ ...modals, details: true });
+                        }}
+                        className="p-2 bg-gray-100 text-gray-600 rounded-lg"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(record.id)}
+                        className="p-2 bg-red-50 text-red-600 rounded-lg"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 💻 DESKTOP VIEW: TABLE (Hidden on mobile) */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -412,10 +450,10 @@ Generated on: ${new Date().toLocaleString('en-IN')}
                         </span>
                       </td>
                       <td className="px-8 py-4 text-gray-700">{record.status === 'Sold' ? `₹${record.rate}` : '-'}</td>
-                      <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount. toLocaleString('en-IN')}` : '-'}</td>
+                      <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
                       <td className="px-8 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {record.status === 'Pending' ?  (
+                        <div className="flex justify-end gap-2">
+                          {record.status === 'Pending' ? (
                             <button 
                               onClick={() => openSaleModal(record)}
                               className="p-2.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition border border-green-200"
@@ -460,24 +498,26 @@ Generated on: ${new Date().toLocaleString('en-IN')}
         </div>
 
         {/* Commission Info Card */}
-        <div className="mt-8 p-8 bg-gradient-to-r from-blue-50 to-green-50 border border-green-200 rounded-3xl">
-          <div className="flex items-start gap-4">
-            <Zap size={28} className="text-green-600 mt-1" />
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">Platform Commission</h3>
+        <div className="mt-8 p-6 sm:p-8 bg-gradient-to-r from-blue-50 to-green-50 border border-green-200 rounded-3xl">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <Zap size={28} className="text-green-600 mt-1 shrink-0" />
+            <div className="flex-1 w-full">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">Platform Commission</h3>
               <p className="text-gray-700 text-sm mb-4">We charge a 4% commission on all sales to maintain our platform and provide continuous support.</p>
-              <div className="grid grid-cols-3 gap-6 text-sm">
-                <div>
+              
+              {/* 📱 Mobile: Stacked grid for stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-sm">
+                <div className="bg-white/50 p-3 rounded-xl sm:bg-transparent sm:p-0">
                   <p className="text-gray-600 font-medium mb-1">Gross Sales</p>
-                  <p className="text-2xl font-bold text-green-600">₹{totalGross.toLocaleString('en-IN')}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-600">₹{totalGross.toLocaleString('en-IN')}</p>
                 </div>
-                <div>
+                <div className="bg-white/50 p-3 rounded-xl sm:bg-transparent sm:p-0">
                   <p className="text-gray-600 font-medium mb-1">Commission (4%)</p>
-                  <p className="text-2xl font-bold text-orange-600">₹{totalCommission.toLocaleString('en-IN')}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-orange-600">₹{totalCommission.toLocaleString('en-IN')}</p>
                 </div>
-                <div>
+                <div className="bg-white/50 p-3 rounded-xl sm:bg-transparent sm:p-0">
                   <p className="text-gray-600 font-medium mb-1">Net Income</p>
-                  <p className="text-2xl font-bold text-gray-900">₹{netIncome.toLocaleString('en-IN')}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900">₹{netIncome.toLocaleString('en-IN')}</p>
                 </div>
               </div>
             </div>
@@ -485,11 +525,11 @@ Generated on: ${new Date().toLocaleString('en-IN')}
         </div>
       </main>
 
-      {/* --- MODALS --- */}
+      {/* --- MODALS (Code remains mostly the same, just verified responsive classes) --- */}
 
       {/* Add Record Modal */}
       <Modal 
-        isOpen={modals. addRecord}
+        isOpen={modals.addRecord}
         onClose={() => setModals({ ...modals, addRecord: false })}
         title="Add New Record"
         size="md"
@@ -516,7 +556,7 @@ Generated on: ${new Date().toLocaleString('en-IN')}
             <input 
               type="text"
               value={formData.vegetable}
-              onChange={(e) => setFormData({ ...formData, vegetable: e.target. value })}
+              onChange={(e) => setFormData({ ...formData, vegetable: e.target.value })}
               placeholder="e.g., Tomato, Spinach, Okra"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
             />
@@ -526,9 +566,9 @@ Generated on: ${new Date().toLocaleString('en-IN')}
             <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Kg) *</label>
             <input 
               type="number"
-              value={formData. quantity}
+              value={formData.quantity}
               onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-              placeholder="0. 00"
+              placeholder="0.00"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
             />
           </div>
@@ -566,7 +606,7 @@ Generated on: ${new Date().toLocaleString('en-IN')}
                 </div>
                 <div>
                   <p className="text-gray-600">Quantity</p>
-                  <p className="font-semibold text-gray-900">{selectedRecord. quantity} kg</p>
+                  <p className="font-semibold text-gray-900">{selectedRecord.quantity} kg</p>
                 </div>
               </div>
             </div>
@@ -576,9 +616,9 @@ Generated on: ${new Date().toLocaleString('en-IN')}
               <input 
                 type="number"
                 value={saleData.rate}
-                onChange={(e) => setSaleData({ ... saleData, rate: e. target.value })}
+                onChange={(e) => setSaleData({ ...saleData, rate: e.target.value })}
                 placeholder="0.00"
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus: border-green-500 focus: ring-2 focus:ring-green-200 outline-none"
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
               />
             </div>
 
@@ -586,8 +626,8 @@ Generated on: ${new Date().toLocaleString('en-IN')}
               <label className="block text-sm font-semibold text-gray-900 mb-2">Trader Name *</label>
               <input 
                 type="text"
-                value={saleData. trader}
-                onChange={(e) => setSaleData({ ...saleData, trader: e.target. value })}
+                value={saleData.trader}
+                onChange={(e) => setSaleData({ ...saleData, trader: e.target.value })}
                 placeholder="Enter trader name"
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
               />
@@ -611,72 +651,9 @@ Generated on: ${new Date().toLocaleString('en-IN')}
         )}
       </Modal>
 
-      {/* Profile Modal */}
-      <Modal 
-        isOpen={modals. editProfile}
-        onClose={() => setModals({ ...modals, editProfile: false })}
-        title="Edit Profile"
-        size="md"
-      >
-        <div className="space-y-5">
-          <div className="flex justify-center mb-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
-              {profile.initials}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Full Name *</label>
-            <input 
-              type="text"
-              value={profileForm.name}
-              onChange={(e) => setProfileForm({ ...profileForm, name: e.target. value })}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Phone Number</label>
-            <input 
-              type="tel"
-              value={profileForm. phone}
-              onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Farmer ID</label>
-            <input 
-              type="text"
-              value={profileForm.farmerId}
-              onChange={(e) => setProfileForm({ ...profileForm, farmerId: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Location</label>
-            <input 
-              type="text"
-              value={profileForm.location}
-              onChange={(e) => setProfileForm({ ...profileForm, location: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
-            />
-          </div>
-
-          <button 
-            onClick={saveProfile}
-            className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition"
-          >
-            Save Changes
-          </button>
-        </div>
-      </Modal>
-
       {/* Details Modal */}
       <Modal 
-        isOpen={modals. details}
+        isOpen={modals.details}
         onClose={() => setModals({ ...modals, details: false })}
         title="Record Details"
         size="md"
@@ -743,6 +720,73 @@ Generated on: ${new Date().toLocaleString('en-IN')}
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Profile Edit Modal */}
+      <Modal 
+        isOpen={modals.editProfile}
+        onClose={() => setModals({ ...modals, editProfile: false })}
+        title="Edit Profile"
+        size="md"
+      >
+        <div className="space-y-5">
+          <div className="flex justify-center mb-6">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
+              {profileForm.name ? profileForm.name.slice(0, 2).toUpperCase() : 'FK'}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Full Name *</label>
+            <input 
+              type="text"
+              value={profileForm.name}
+              onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+              placeholder="Enter your full name"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Phone Number</label>
+            <input 
+              type="tel"
+              value={profileForm.phone}
+              onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+              placeholder="Enter phone number"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Farmer ID</label>
+            <input 
+              type="text"
+              value={profileForm.farmerId}
+              onChange={(e) => setProfileForm({ ...profileForm, farmerId: e.target.value })}
+              placeholder="e.g., AGR-1234"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Location</label>
+            <input 
+              type="text"
+              value={profileForm.location}
+              onChange={(e) => setProfileForm({ ...profileForm, location: e.target.value })}
+              placeholder="Enter your location"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+            />
+          </div>
+
+          <button 
+            onClick={saveProfile}
+            className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition"
+          >
+            Save Changes
+          </button>
+        </div>
       </Modal>
     </div>
   );

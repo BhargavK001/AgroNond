@@ -43,6 +43,8 @@ export default function Login() {
         if (profile.role === 'farmer') navigate('/dashboard/farmer');
         else if (profile.role === 'trader') navigate('/dashboard/trader');
         else if (profile.role === 'admin') navigate('/dashboard/admin');
+        else if (profile.role === 'weight') navigate('/dashboard/weight');
+
         else navigate('/dashboard');
       } else if (profile) {
         // Success: Profile loaded but no role -> Role Selection
