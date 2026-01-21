@@ -136,9 +136,9 @@ function App() {
                 </Route>
 
                 {/* Committee Dashboard (Coming Soon) */}
-                <Route path="/dashboard/committee" element={
-                    <ProtectedRoute requireRole="committee">
-                      <ComingSoon />
+                <Route path="/dashboard/weight" element={
+                    <ProtectedRoute requireRole="weight">
+                    
                     </ProtectedRoute>
                   } 
                 />
