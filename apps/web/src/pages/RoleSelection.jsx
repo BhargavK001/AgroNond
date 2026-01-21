@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 
 // --- ICON COMPONENTS ---
+// Consistent stroke-width and style for all icons
+
 function FarmerIcon({ className = "w-12 h-12" }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -28,6 +30,14 @@ function CommitteeIcon({ className = "w-12 h-12" }) {
   );
 }
 
+function ScaleIcon({ className = "w-12 h-12" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+    </svg>
+  );
+}
+
 // Background Icons
 function WheatIcon({ className }) {
   return (
@@ -45,26 +55,51 @@ function LeafIcon({ className }) {
   );
 }
 
+// Updated Roles Configuration
 const roles = [
-  { id: 'farmer', label: 'Farmer', description: 'Sell your produce directly', icon: FarmerIcon },
-  { id: 'trader', label: 'Trader', description: 'Buy quality produce', icon: TraderIcon },
-  { id: 'committee', label: 'Market Committee', description: 'Manage APMC operations', icon: CommitteeIcon },
+  { 
+    id: 'farmer', 
+    label: 'Farmer', 
+    description: 'Sell your produce & track payments', 
+    icon: FarmerIcon 
+  },
+  { 
+    id: 'trader', 
+    label: 'Trader', 
+    description: 'Buy produce & manage inventory', 
+    icon: TraderIcon 
+  },
+  { 
+    id: 'weight', 
+    label: 'Weighing Staff', 
+    description: 'Update official weights for lots', 
+    icon: ScaleIcon 
+  },
+  { 
+    id: 'committee', 
+    label: 'Market Committee', 
+    description: 'Admin, Accounting & Oversight', 
+    icon: CommitteeIcon 
+  },
 ];
 
 export default function RoleSelection() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { updateRole, user, profile } = useAuth();
+  const { updateRole, profile } = useAuth(); // Removed 'user' as it wasn't used directly
   const navigate = useNavigate();
 
   // If user already has a role, redirect them
   useEffect(() => {
     if (profile?.role) {
-       if (profile.role === 'farmer') navigate('/dashboard/farmer');
-       else if (profile.role === 'trader') navigate('/dashboard/trader');
-       else if (profile.role === 'committee') navigate('/dashboard/committee');
-       else navigate('/dashboard');
+       switch (profile.role) {
+         case 'farmer': navigate('/dashboard/farmer'); break;
+         case 'trader': navigate('/dashboard/trader'); break;
+         case 'weight': navigate('/dashboard/committee'); break; 
+         case 'committee': navigate('/dashboard/admin'); break;
+         default: navigate('/dashboard');
+       }
     }
   }, [profile, navigate]);
 
@@ -80,7 +115,7 @@ export default function RoleSelection() {
         throw error;
       }
 
-      // Redirect based on role
+      // Redirect based on role (Match logic in App.js)
       switch (selectedRole) {
         case 'farmer':
           navigate('/dashboard/farmer');
@@ -88,8 +123,11 @@ export default function RoleSelection() {
         case 'trader':
           navigate('/dashboard/trader');
           break;
-        case 'committee':
+        case 'weight':
           navigate('/dashboard/committee');
+          break;        
+        case 'committee':
+          navigate('/dashboard/admin');
           break;
         default:
           navigate('/dashboard');

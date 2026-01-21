@@ -71,6 +71,12 @@ export default function Footer() {
                     <li><Link to="/about" className="text-gray-400 hover:text-green-400 text-sm transition-colors">About Us</Link></li>
                     <li><Link to="/services" className="text-gray-400 hover:text-green-400 text-sm transition-colors">Services</Link></li>
                     <li><Link to="/contact" className="text-gray-400 hover:text-green-400 text-sm transition-colors">Contact</Link></li>
+                    <li>
+                      <Link to="/status" className="text-gray-400 hover:text-green-400 text-sm transition-colors flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        System Status
+                      </Link>
+                    </li>
                   </ul>
                 </div>
 

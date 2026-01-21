@@ -20,20 +20,20 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Login = lazy(() => import('./pages/Login'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const StatusPage = lazy(() => import('./pages/StatusPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const RoleSelection = lazy(() => import('./pages/RoleSelection'));
-const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
+const WeightUpdatePanel = lazy(() => import('./Dashboards/WeightUpdatePanel'));
 
 const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
 const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
-const PaymentTracker = lazy(() => import('./pages/trader/PaymentTracker'));
-const FarmerDirectory = lazy(() => import('./pages/trader/FarmerDirectory'));
 const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
-const MarketIntelligence = lazy(() => import('./pages/trader/MarketIntelligence'));
+
 const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
 // Admin Dashboard
@@ -85,7 +85,7 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Login (Hidden from navigation) */}
+                {/* Admin Login */}
                 <Route path="/admin/login" element={
                     <Layout hideNav hideFooter>
                       <AdminLogin />
@@ -93,7 +93,7 @@ function App() {
                   } 
                 />
 
-                {/* Role Selection (New Users) */}
+                {/* Role Selection */}
                 <Route path="/role-selection" element={
                     <ProtectedRoute>
                       <Layout hideNav hideFooter>
@@ -113,7 +113,14 @@ function App() {
                   } 
                 />
 
-                {/* Trader Dashboard - Sidebar Layout */}
+                <Route path="/dashboard/weight" element={
+                    <ProtectedRoute> 
+                      <WeightUpdatePanel />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Trader Dashboard */}
                 <Route path="/dashboard/trader" element={
                     <ProtectedRoute requireRole="trader">
                       <TraderLayout />
@@ -121,10 +128,7 @@ function App() {
                   }
                 >
                   <Route index element={<TraderDashboardContent />} />
-                  <Route path="payments" element={<PaymentTracker />} />
-                  <Route path="farmers" element={<FarmerDirectory />} />
                   <Route path="inventory" element={<InventoryManager />} />
-                  <Route path="market" element={<MarketIntelligence />} />
                   <Route path="profile" element={<TraderProfile />} />
                 </Route>
 
@@ -163,6 +167,7 @@ function App() {
                 <Route path="/services" element={<Layout><Services /></Layout>} />
                 <Route path="/contact" element={<Layout><Contact /></Layout>} />
                 <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
+                <Route path="/status" element={<Layout><StatusPage /></Layout>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
