@@ -163,6 +163,7 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   // ✅ FIXED: Robust Sign Out Logic
+  // ✅ FIXED: Robust Sign Out Logic
   const signOut = useCallback(async () => {
     try {
       setLoading(true);
@@ -170,8 +171,17 @@ export function AuthProvider({ children }) {
       if (error) throw error;
     } catch (error) {
       console.error('Sign out error:', error);
-      // We don't return here; we ensure state is cleared in finally
     } finally {
+      // Manually clear Supabase tokens from localStorage
+      // Supabase default key format: sb-<project-ref>-auth-token
+      if (typeof window !== 'undefined') {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+
       // Always clear local state to ensure UI updates
       setUser(null);
       setSession(null);

@@ -7,10 +7,7 @@ import NotificationCenter from './NotificationCenter';
 // Navigation Tabs for Trader Pages
 const navTabs = [
   { label: 'Dashboard', path: '/dashboard/trader' },
-  { label: 'Payments', path: '/dashboard/trader/payments' },
-  { label: 'Farmers', path: '/dashboard/trader/farmers' },
   { label: 'Inventory', path: '/dashboard/trader/inventory' },
-  { label: 'Market Intel', path: '/dashboard/trader/market' },
 ];
 
 export default function TraderNavbar() {
@@ -23,7 +20,7 @@ export default function TraderNavbar() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/login');
+    navigate('/');
   };
 
   useEffect(() => {
@@ -56,30 +53,31 @@ export default function TraderNavbar() {
               </div>
             </Link>
 
-            {/* Desktop Navigation Tabs */}
-            <div className="hidden lg:flex items-center gap-1 bg-[var(--surface)] p-1 rounded-xl">
-              {navTabs.map((tab) => {
-                const isActive = location.pathname === tab.path;
-                return (
-                  <Link
-                    key={tab.path}
-                    to={tab.path}
-                    className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--primary)]'
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeNavTab"
-                        className="absolute inset-0 gradient-bg rounded-lg shadow-md"
-                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative z-10">{tab.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+          </div>
+
+          {/* Centered Desktop Navigation Tabs */}
+          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 bg-slate-100/50 p-1.5 rounded-full border border-slate-200/50 backdrop-blur-sm">
+            {navTabs.map((tab) => {
+              const isActive = location.pathname === tab.path;
+              return (
+                <Link
+                  key={tab.path}
+                  to={tab.path}
+                  className={`relative px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                    isActive ? 'text-white' : 'text-slate-500 hover:text-emerald-600'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNavTab"
+                      className="absolute inset-0 bg-emerald-500 rounded-full shadow-md"
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab.label}</span>
+                </Link>
+              );
+            })}
           </div>
 
           {/* Right Side - Notifications & Profile */}

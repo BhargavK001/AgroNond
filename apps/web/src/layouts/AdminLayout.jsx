@@ -37,7 +37,7 @@ export default function AdminLayout() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/admin/login');
+    navigate('/');
   };
 
   return (
@@ -200,15 +200,12 @@ export default function AdminLayout() {
 
       {/* Main Content Area */}
       <motion.div 
-        initial={false}
-        animate={{ 
-          marginLeft: window.innerWidth >= 1024 ? (sidebarOpen ? 320 : 130) : 0, 
-        }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="min-h-screen"
+        className={`min-h-screen transition-all duration-300 ease-in-out ${
+          sidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[88px]'
+        }`}
       >
         {/* Top Header */}
-        <header className="sticky top-0 z-30 h-20 px-6 sm:px-10 flex items-center justify-between">
+        <header className="sticky top-0 z-30 h-20 px-4 sm:px-8 lg:px-10 flex items-center justify-between">
           
            {/* Mobile Menu Toggle */}
            <div className="flex items-center gap-4 lg:hidden">
@@ -251,7 +248,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Page Content Container */}
-        <main className="px-6 sm:px-10 pb-10">
+        <main className="px-4 sm:px-8 lg:px-10 pb-10">
            <AnimatePresence mode="wait">
              <motion.div
                key={location.pathname}

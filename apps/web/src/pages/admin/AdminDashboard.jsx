@@ -1,17 +1,34 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Package, Loader } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
-import MarketActivityChart from '../../components/admin/MarketActivityChart';
+
 import { marketActivityData, topCommodities } from '../../data/mockData';
 import api from '../../lib/api';
+import { useRealtimeSubscription } from '../../hooks/useRealtime';
+import { toast } from 'react-hot-toast';
 
 export default function AdminDashboard() {
+  const queryClient = useQueryClient();
+
   // 1. Fetch System Metrics (Users)
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['admin-metrics'],
     queryFn: () => api.admin.metrics()
+  });
+
+  // ✅ REALTIME: Listen for changes in 'profiles' table
+  useRealtimeSubscription('dashboard-profiles', { table: 'profiles' }, (payload) => {
+    console.log('Realtime update received:', payload);
+    
+    // Refresh metrics when a user is added, updated, or deleted
+    queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
+    
+    // Optional: Show a toast notification
+    if (payload.eventType === 'INSERT') {
+      toast.success('New user registered!');
+    }
   });
 
   // 2. Fetch Financial Stats (Volume, Revenue)
@@ -88,11 +105,7 @@ export default function AdminDashboard() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Market Activity Chart */}
-        <div className="xl:col-span-2">
-          {/* Note: Connecting to real chart data would require a time-series API endpoint. 
-              Using mock data for visual demonstration for now. */}
-          <MarketActivityChart data={marketActivityData} />
-        </div>
+
 
         {/* Top Commodities */}
         <motion.div 

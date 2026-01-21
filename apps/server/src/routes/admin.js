@@ -26,137 +26,41 @@ const requireAdmin = async (req, res, next) => {
 
 /**
  * GET /api/admin/metrics
- * System-wide metrics for dashboard
+ * Get system-wide metrics (User counts)
  */
 router.get('/metrics', requireAuth, requireAdmin, async (req, res) => {
   try {
     const supabase = getSupabaseAdmin();
     
-    // Parallelize queries for better performance
+    // Get counts for different roles
+    // We can run these in parallel
     const [
-      { count: usersCount }, 
-      { count: farmersCount }, 
-      { count: tradersCount },
-      { data: recentExchanges }
+      { count: totalFarmers, error: farmersError },
+      { count: totalTraders, error: tradersError },
+      { count: totalUsers, error: usersError }
     ] = await Promise.all([
-      supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'farmer'),
       supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'trader'),
-      supabase.from('inventory').select('*').limit(5).order('created_at', { ascending: false })
+      supabase.from('profiles').select('*', { count: 'exact', head: true })
     ]);
 
+    if (farmersError) throw farmersError;
+    if (tradersError) throw tradersError;
+    if (usersError) throw usersError;
+
     res.json({
-      totalUsers: usersCount || 0,
-      totalFarmers: farmersCount || 0,
-      totalTraders: tradersCount || 0,
-      recentActivity: recentExchanges || []
+      totalFarmers: totalFarmers || 0,
+      totalTraders: totalTraders || 0,
+      totalUsers: totalUsers || 0,
+      activeToday: 0 // Placeholder as we don't have login tracking yet
     });
   } catch (error) {
-    console.error('Admin metrics error:', error);
+    console.error('Metrics error:', error);
     res.status(500).json({ error: 'Failed to fetch metrics' });
   }
 });
 
-/**
- * GET /api/admin/configs
- * Get system settings
- */
-router.get('/configs', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('*')
-      .order('key');
-      
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Get configs error:', error);
-    res.status(500).json({ error: 'Failed to fetch settings' });
-  }
-});
 
-/**
- * POST /api/admin/configs
- * Update system settings
- */
-router.post('/configs', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { key, value, description } = req.body;
-    const supabase = getSupabaseAdmin();
-    
-    // Upsert setting
-    const { data, error } = await supabase
-      .from('system_settings')
-      .upsert({ 
-        key, 
-        value, 
-        description,
-        updated_by: req.user.id,
-        updated_at: new Date().toISOString() 
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Update config error:', error);
-    res.status(500).json({ error: 'Failed to update setting' });
-  }
-});
-
-/**
- * GET /api/admin/commission-rules
- * Get commission rules
- */
-router.get('/commission-rules', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from('commission_rules')
-      .select('*')
-      .order('effective_date', { ascending: false });
-      
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Get commission rules error:', error);
-    res.status(500).json({ error: 'Failed to fetch rules' });
-  }
-});
-
-/**
- * POST /api/admin/commission-rules
- * Create new commission rule
- */
-router.post('/commission-rules', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { crop_type, role_type, rate } = req.body;
-    if (!crop_type || !role_type || rate === undefined) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from('commission_rules')
-      .insert({
-        crop_type,
-        role_type,
-        rate,
-        effective_date: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    res.json(data);
-  } catch (error) {
-    console.error('Create commission rule error:', error);
-    res.status(500).json({ error: 'Failed to create rule' });
-  }
-});
 
 /**
  * GET /api/admin/users

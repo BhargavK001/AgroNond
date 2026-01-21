@@ -11,54 +11,32 @@ router.post('/', async (req, res) => {
   try {
     const { name, email, phone, subject, message } = req.body;
 
-    // Validate required fields
+    // Validate input
     if (!name || !email || !subject || !message) {
-      return res.status(400).json({
-        success: false,
+      return res.status(400).json({ 
         error: 'Missing required fields',
-        message: 'Please provide name, email, subject, and message.',
+        required: ['name', 'email', 'subject', 'message'] 
       });
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid email',
-        message: 'Please provide a valid email address.',
-      });
-    }
-
-    // Send email to admin
+    // 1. Send email to Admin
     await sendContactEmailToAdmin({ name, email, phone, subject, message });
-    console.log(`✉️ Contact form email sent to admin from: ${email}`);
 
-    // Send auto-reply to sender
-    try {
-      await sendAutoReply({ email, name });
-      console.log(`✉️ Auto-reply sent to: ${email}`);
-    } catch (autoReplyError) {
-      // Log but don't fail the request if auto-reply fails
-      console.error('Auto-reply failed:', autoReplyError.message);
-    }
+    // 2. Send auto-reply to User (fire and forget to speed up response)
+    sendAutoReply({ email, name }).catch(err => 
+      console.error('Failed to send auto-reply:', err)
+    );
 
-    res.status(200).json({
-      success: true,
-      message: 'Thank you for contacting us! We will get back to you shortly.',
+    res.status(200).json({ 
+      success: true, 
+      message: 'Message sent successfully' 
     });
+
   } catch (error) {
     console.error('Contact form error:', error);
-    
-    // Check for specific Brevo errors
-    if (error.response?.body) {
-      console.error('Brevo API Error:', error.response.body);
-    }
-
-    res.status(500).json({
-      success: false,
+    res.status(500).json({ 
       error: 'Failed to send message',
-      message: 'Something went wrong. Please try again later or contact us directly.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
