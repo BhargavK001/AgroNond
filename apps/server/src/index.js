@@ -11,6 +11,7 @@ import morgan from 'morgan';
 // Import routes (these use env vars, so must come after dotenv.config())
 import usersRouter from './routes/users.js';
 import contactRouter from './routes/contact.js';
+import recordsRouter from './routes/records.js';
 import purchasesRouter from './routes/purchases.js';
 import farmerContactsRouter from './routes/farmer-contacts.js';
 import inventoryRouter from './routes/inventory.js';
@@ -42,6 +43,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/users', usersRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/records', recordsRouter);
 app.use('/api/purchases', purchasesRouter);
 app.use('/api/farmer-contacts', farmerContactsRouter);
 app.use('/api/inventory', inventoryRouter);

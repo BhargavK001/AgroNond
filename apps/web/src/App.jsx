@@ -24,9 +24,9 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const RoleSelection = lazy(() => import('./pages/RoleSelection'));
-const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
+const WeightUpdatePanel = lazy(() => import('./Dashboards/WeightUpdatePanel'));
 
 const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
 const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
@@ -85,7 +85,7 @@ function App() {
                   } 
                 />
                 
-                {/* Admin Login (Hidden from navigation) */}
+                {/* Admin Login */}
                 <Route path="/admin/login" element={
                     <Layout hideNav hideFooter>
                       <AdminLogin />
@@ -93,7 +93,7 @@ function App() {
                   } 
                 />
 
-                {/* Role Selection (New Users) */}
+                {/* Role Selection */}
                 <Route path="/role-selection" element={
                     <ProtectedRoute>
                       <Layout hideNav hideFooter>
@@ -113,7 +113,14 @@ function App() {
                   } 
                 />
 
-                {/* Trader Dashboard - Sidebar Layout */}
+                <Route path="/dashboard/weight" element={
+                    <ProtectedRoute> 
+                      <WeightUpdatePanel />
+                    </ProtectedRoute>
+                  } 
+                />
+
+                {/* Trader Dashboard */}
                 <Route path="/dashboard/trader" element={
                     <ProtectedRoute requireRole="trader">
                       <TraderLayout />
