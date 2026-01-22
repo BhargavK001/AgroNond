@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
@@ -27,6 +27,7 @@ export default function Login() {
   const [step, setStep] = useState('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const firstOtpInputRef = useRef(null);
   
   const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -44,19 +45,26 @@ export default function Login() {
         else if (profile.role === 'trader') navigate('/dashboard/trader');
         else if (profile.role === 'admin') navigate('/dashboard/admin');
         else if (profile.role === 'weight') navigate('/dashboard/weight');
-
+        else if (profile.role === 'committee') navigate('/dashboard/committee');
+        else if (profile.role === 'accounting') navigate('/dashboard/accounting');
         else navigate('/dashboard');
-      } else if (profile) {
-        // Success: Profile loaded but no role -> Role Selection
-        navigate('/role-selection');
       } else {
-        // FALLBACK: User exists but profile failed to load (is null)
-        // Safety mechanism to prevent stuck loading screen
-        console.error("Profile load failed for authenticated user. Signing out.");
-        signOut();
+        // User is authenticated but has no profile or no role -> Role Selection
+        // This handles both: existing profile without role, and new users without profile
+        navigate('/role-selection');
       }
     }
-  }, [user, profile, profileLoading, navigate, signOut]);
+  }, [user, profile, profileLoading, navigate]);
+
+  // Auto-focus first OTP input when step changes to 'otp'
+  useEffect(() => {
+    if (step === 'otp' && firstOtpInputRef.current) {
+      // Small delay to ensure the DOM has updated
+      setTimeout(() => {
+        firstOtpInputRef.current?.focus();
+      }, 100);
+    }
+  }, [step]);
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
@@ -123,6 +131,17 @@ export default function Login() {
 
     if (value && index < 5) {
       document.getElementById(`otp-${index + 1}`)?.focus();
+    }
+    
+    // Auto-submit when all 6 digits are entered
+    if (value && index === 5) {
+      const completeOtp = newOtp.join('');
+      if (completeOtp.length === 6) {
+        // Submit the form automatically
+        setTimeout(() => {
+          document.getElementById('otp-form')?.requestSubmit();
+        }, 150);
+      }
     }
   };
 
@@ -222,13 +241,15 @@ export default function Login() {
                 </p>
               </div>
 
-              <form onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-6">
+              <form id="otp-form" onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-6">
                 <div className="flex justify-center gap-1.5 sm:gap-2">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
                       id={`otp-${index}`}
+                      ref={index === 0 ? firstOtpInputRef : null}
                       type="text"
+                      inputMode="numeric"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}

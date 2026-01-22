@@ -20,7 +20,9 @@ const Contact = lazy(() => import('./pages/Contact'));
 const Login = lazy(() => import('./pages/Login'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const StatusPage = lazy(() => import('./pages/StatusPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const ComingSoon = lazy(() => import('./pages/ComingSoon'));
 
 const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const RoleSelection = lazy(() => import('./pages/RoleSelection'));
@@ -30,10 +32,9 @@ const WeightDashboard = lazy(() => import('./Dashboards/WeightDashboard'));
 
 const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
 const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
-const PaymentTracker = lazy(() => import('./pages/trader/PaymentTracker'));
-const FarmerDirectory = lazy(() => import('./pages/trader/FarmerDirectory'));
 const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
-const MarketIntelligence = lazy(() => import('./pages/trader/MarketIntelligence'));
+const TraderTransactions = lazy(() => import('./pages/trader/TraderTransactions'));
+
 const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
 // Admin Dashboard
@@ -42,6 +43,21 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const CommissionRules = lazy(() => import('./pages/admin/CommissionRules'));
 const TransactionHistory = lazy(() => import('./pages/admin/TransactionHistory'));
+
+// Committee Dashboard
+const CommitteeLayout = lazy(() => import('./layouts/CommitteeLayout'));
+const CommitteeDashboard = lazy(() => import('./Dashboards/CommitteeDashboard'));
+const FarmersList = lazy(() => import('./pages/committee/FarmersList'));
+const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
+const CommissionCalculator = lazy(() => import('./pages/committee/CommissionCalculator'));
+const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
+const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
+const TradersList = lazy(() => import('./pages/committee/TradersList'));
+const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
+
+// Accounting Dashboard (separate role)
+const AccountingLayout = lazy(() => import('./layouts/AccountingLayout'));
+const AccountingDashboard = lazy(() => import('./pages/committee/AccountingDashboard'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -128,10 +144,8 @@ function App() {
                   }
                 >
                   <Route index element={<TraderDashboardContent />} />
-                  <Route path="payments" element={<PaymentTracker />} />
-                  <Route path="farmers" element={<FarmerDirectory />} />
+                  <Route path="transactions" element={<TraderTransactions />} />
                   <Route path="inventory" element={<InventoryManager />} />
-                  <Route path="market" element={<MarketIntelligence />} />
                   <Route path="profile" element={<TraderProfile />} />
                 </Route>
 
@@ -140,8 +154,28 @@ function App() {
                     <ProtectedRoute requireRole="weight">
                     
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  <Route index element={<CommitteeDashboard />} />
+                  <Route path="farmers" element={<FarmersList />} />
+                  <Route path="farmers/:id" element={<FarmerDetail />} />
+                  <Route path="traders" element={<TradersList />} />
+                  <Route path="activity" element={<MarketActivity />} />
+                  <Route path="commission" element={<CommissionCalculator />} />
+                  <Route path="billing" element={<BillingReports />} />
+                  <Route path="cashflow" element={<CashFlow />} />
+                  <Route path="accounting" element={<AccountingDashboard />} />
+                </Route>
+
+                {/* Accounting Dashboard - Separate Role */}
+                <Route path="/dashboard/accounting" element={
+                    <ProtectedRoute requireRole="accounting">
+                      <AccountingLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<AccountingDashboard />} />
+                </Route>
 
                 {/* Admin Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/admin" element={
@@ -170,6 +204,7 @@ function App() {
                 <Route path="/services" element={<Layout><Services /></Layout>} />
                 <Route path="/contact" element={<Layout><Contact /></Layout>} />
                 <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
+                <Route path="/status" element={<Layout><StatusPage /></Layout>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

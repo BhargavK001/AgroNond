@@ -25,9 +25,10 @@ export default function TraderProfile() {
 
   // Mock activity stats (would come from API in real app)
   const activityStats = {
-    farmersConnected: 24,
-    totalTransactions: 156,
+    totalPurchases: 156,
     totalPurchaseValue: 1245000,
+    commissionPaid: 112050, // 9% of total
+    averageOrderValue: 7980,
     memberSince: profile?.created_at || '2025-06-15',
   };
 
@@ -296,20 +297,20 @@ export default function TraderProfile() {
         
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl bg-blue-50 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-blue-700">{activityStats.farmersConnected}</p>
-            <p className="text-xs text-blue-600 mt-1">Farmers Connected</p>
-          </div>
-          <div className="p-4 rounded-2xl bg-violet-50 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-violet-700">{activityStats.totalTransactions}</p>
-            <p className="text-xs text-violet-600 mt-1">Transactions</p>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-700">{activityStats.totalPurchases}</p>
+            <p className="text-xs text-blue-600 mt-1">Total Purchases</p>
           </div>
           <div className="p-4 rounded-2xl bg-emerald-50 text-center">
             <p className="text-2xl sm:text-3xl font-bold text-emerald-700">₹{(activityStats.totalPurchaseValue / 100000).toFixed(1)}L</p>
-            <p className="text-xs text-emerald-600 mt-1">Total Value</p>
+            <p className="text-xs text-emerald-600 mt-1">Purchase Value</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-violet-50 text-center">
+            <p className="text-2xl sm:text-3xl font-bold text-violet-700">₹{(activityStats.commissionPaid / 1000).toFixed(0)}K</p>
+            <p className="text-xs text-violet-600 mt-1">Commission (9%)</p>
           </div>
           <div className="p-4 rounded-2xl bg-amber-50 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-amber-700">{new Date(activityStats.memberSince).getFullYear()}</p>
-            <p className="text-xs text-amber-600 mt-1">Active Since</p>
+            <p className="text-2xl sm:text-3xl font-bold text-amber-700">₹{activityStats.averageOrderValue.toLocaleString('en-IN')}</p>
+            <p className="text-xs text-amber-600 mt-1">Avg Order Value</p>
           </div>
         </div>
       </motion.div>

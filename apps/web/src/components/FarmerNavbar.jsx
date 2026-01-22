@@ -127,11 +127,12 @@ export default function FarmerNavbar() {
       localStorage.removeItem('farmer-profile');
       localStorage.removeItem('farmer-records');
       toast.success('Logged out successfully');
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('Logout failed', error);
       toast.error('Failed to log out');
-      window.location.href = '/login';
+      
+      window.location.href = '/';
     }
   };
 

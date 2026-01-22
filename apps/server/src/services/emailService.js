@@ -131,9 +131,6 @@ export async function sendAutoReply({ email, name }) {
           .header h1 { color: white; margin: 0; font-size: 28px; }
           .header p { color: rgba(255,255,255,0.9); margin: 10px 0 0; }
           .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
-          .greeting { font-size: 18px; margin-bottom: 20px; }
-          .message { color: #4b5563; }
-          .highlight { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0; }
           .cta { text-align: center; margin: 30px 0; }
           .cta a { display: inline-block; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; }
           .footer { background: #f9fafb; padding: 20px; text-align: center; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px; }
@@ -147,25 +144,14 @@ export async function sendAutoReply({ email, name }) {
             <p>Agricultural Market Management System</p>
           </div>
           <div class="content">
-            <p class="greeting">Hello <strong>${name}</strong>,</p>
-            <p class="message">
-              Thank you for reaching out to us! We have received your message and our team will get back to you shortly.
-            </p>
-            <div class="highlight">
-              <strong>⏱️ Expected Response Time:</strong><br>
-              We typically respond within 24-48 hours during business days.
-            </div>
-            <p class="message">
-              In the meantime, feel free to explore our platform and learn more about how AgroNond is revolutionizing agricultural market management.
-            </p>
+            <p>Hello <strong>${name}</strong>,</p>
+            <p>Thank you for reaching out! We have received your message and will get back to you shortly.</p>
             <div class="cta">
               <a href="${WEBSITE_URL}">Visit AgroNond</a>
             </div>
           </div>
           <div class="footer">
-            <p><strong>AgroNond</strong> - Agricultural Market Management System</p>
-            <p>📍 Market Committee Office, Agricultural Market Yard</p>
-            <p>📞 +91 94205 30466</p>
+            <p><strong>AgroNond</strong></p>
             <p><a href="${WEBSITE_URL}" style="color: #22c55e;">${WEBSITE_URL}</a></p>
           </div>
         </div>

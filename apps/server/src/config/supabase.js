@@ -27,8 +27,37 @@ function getSupabaseAdmin() {
 }
 
 // Function to verify JWT and get user
+import jwt from 'jsonwebtoken';
+
+// Function to verify JWT and get user
 export async function verifyToken(token) {
   try {
+    const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+
+    // 1. Try Local Verification (Faster)
+    if (jwtSecret) {
+      try {
+        const decoded = jwt.verify(token, jwtSecret);
+        // Map JWT payload to a standard user object structure
+        return {
+          id: decoded.sub,
+          aud: decoded.aud,
+          role: decoded.role,
+          email: decoded.email,
+          phone: decoded.phone,
+          app_metadata: decoded.app_metadata,
+          user_metadata: decoded.user_metadata,
+          ...decoded
+        };
+      } catch (err) {
+        console.warn('Local JWT verification failed:', err.message);
+        console.log('Falling back to Supabase API verification...');
+        // Fallback to Supabase API
+      }
+    }
+
+    // 2. Fallback to Supabase API (Slower but works without secret)
+    // console.log('SUPABASE_JWT_SECRET not set, falling back to API verification');
     const admin = getSupabaseAdmin();
     const { data: { user }, error } = await admin.auth.getUser(token);
     
