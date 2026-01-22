@@ -52,6 +52,12 @@ const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 const CommissionCalculator = lazy(() => import('./pages/committee/CommissionCalculator'));
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
+const TradersList = lazy(() => import('./pages/committee/TradersList'));
+const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
+
+// Accounting Dashboard (separate role)
+const AccountingLayout = lazy(() => import('./layouts/AccountingLayout'));
+const AccountingDashboard = lazy(() => import('./pages/committee/AccountingDashboard'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -152,10 +158,23 @@ function App() {
                 >
                   <Route index element={<CommitteeDashboard />} />
                   <Route path="farmers" element={<FarmersList />} />
+                  <Route path="farmers/:id" element={<FarmerDetail />} />
+                  <Route path="traders" element={<TradersList />} />
                   <Route path="activity" element={<MarketActivity />} />
                   <Route path="commission" element={<CommissionCalculator />} />
                   <Route path="billing" element={<BillingReports />} />
                   <Route path="cashflow" element={<CashFlow />} />
+                  <Route path="accounting" element={<AccountingDashboard />} />
+                </Route>
+
+                {/* Accounting Dashboard - Separate Role */}
+                <Route path="/dashboard/accounting" element={
+                    <ProtectedRoute requireRole="accounting">
+                      <AccountingLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<AccountingDashboard />} />
                 </Route>
 
                 {/* Admin Dashboard - Sidebar Layout */}

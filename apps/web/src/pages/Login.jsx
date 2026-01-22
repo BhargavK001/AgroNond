@@ -46,6 +46,7 @@ export default function Login() {
         else if (profile.role === 'admin') navigate('/dashboard/admin');
         else if (profile.role === 'weight') navigate('/dashboard/weight');
         else if (profile.role === 'committee') navigate('/dashboard/committee');
+        else if (profile.role === 'accounting') navigate('/dashboard/accounting');
         else navigate('/dashboard');
       } else {
         // User is authenticated but has no profile or no role -> Role Selection

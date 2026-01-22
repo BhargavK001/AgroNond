@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Filter, ChevronRight, Phone, Calendar, TrendingUp } from 'lucide-react';
+import { Search, Filter, ChevronRight, Phone, Plus } from 'lucide-react';
+import AddFarmerModal from '../../components/committee/AddFarmerModal';
 
 // Mock farmer data
-const farmersData = [
+const initialFarmersData = [
   { id: 1, name: 'Ramesh Kumar', phone: '9876543210', village: 'Khajuri', totalSales: 285000, lastActive: '2026-01-21', totalQuantity: 12500 },
   { id: 2, name: 'Suresh Patel', phone: '9876543211', village: 'Mandla', totalSales: 198000, lastActive: '2026-01-20', totalQuantity: 8900 },
   { id: 3, name: 'Mahesh Singh', phone: '9876543212', village: 'Pipariya', totalSales: 342000, lastActive: '2026-01-21', totalQuantity: 15200 },
@@ -15,14 +17,24 @@ const farmersData = [
 ];
 
 export default function FarmersList() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFarmer, setSelectedFarmer] = useState(null);
+  const [farmers, setFarmers] = useState(initialFarmersData);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredFarmers = farmersData.filter(farmer =>
+  const filteredFarmers = farmers.filter(farmer =>
     farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     farmer.village.toLowerCase().includes(searchTerm.toLowerCase()) ||
     farmer.phone.includes(searchTerm)
   );
+
+  const handleAddFarmer = (newFarmer) => {
+    setFarmers(prev => [newFarmer, ...prev]);
+  };
+
+  const handleFarmerClick = (farmerId) => {
+    navigate(`/dashboard/committee/farmers/${farmerId}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -30,9 +42,21 @@ export default function FarmersList() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Registered Farmers</h1>
-        <p className="text-sm sm:text-base text-slate-500 mt-1">View all farmers and their sales records</p>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Registered Farmers</h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">View all farmers and their sales records</p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-medium shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 transition-all"
+        >
+          <Plus className="w-5 h-5" />
+          Add Farmer
+        </motion.button>
       </motion.div>
 
       {/* Search & Filter Bar */}
@@ -67,7 +91,7 @@ export default function FarmersList() {
           className="bg-emerald-50 rounded-xl p-4 border border-emerald-100"
         >
           <p className="text-xs text-emerald-600 font-medium uppercase">Total Farmers</p>
-          <p className="text-2xl font-bold text-emerald-700">{farmersData.length}</p>
+          <p className="text-2xl font-bold text-emerald-700">{farmers.length}</p>
         </motion.div>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
@@ -76,7 +100,7 @@ export default function FarmersList() {
           className="bg-blue-50 rounded-xl p-4 border border-blue-100"
         >
           <p className="text-xs text-blue-600 font-medium uppercase">Total Sales</p>
-          <p className="text-2xl font-bold text-blue-700">₹{(farmersData.reduce((acc, f) => acc + f.totalSales, 0) / 100000).toFixed(1)}L</p>
+          <p className="text-2xl font-bold text-blue-700">₹{(farmers.reduce((acc, f) => acc + f.totalSales, 0) / 100000).toFixed(1)}L</p>
         </motion.div>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
@@ -85,7 +109,7 @@ export default function FarmersList() {
           className="bg-purple-50 rounded-xl p-4 border border-purple-100"
         >
           <p className="text-xs text-purple-600 font-medium uppercase">Total Qty</p>
-          <p className="text-2xl font-bold text-purple-700">{(farmersData.reduce((acc, f) => acc + f.totalQuantity, 0) / 1000).toFixed(1)}T</p>
+          <p className="text-2xl font-bold text-purple-700">{(farmers.reduce((acc, f) => acc + f.totalQuantity, 0) / 1000).toFixed(1)}T</p>
         </motion.div>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
@@ -94,7 +118,7 @@ export default function FarmersList() {
           className="bg-amber-50 rounded-xl p-4 border border-amber-100"
         >
           <p className="text-xs text-amber-600 font-medium uppercase">Active Today</p>
-          <p className="text-2xl font-bold text-amber-700">{farmersData.filter(f => f.lastActive === '2026-01-21').length}</p>
+          <p className="text-2xl font-bold text-amber-700">{farmers.filter(f => f.lastActive === '2026-01-21').length}</p>
         </motion.div>
       </div>
 
@@ -124,6 +148,7 @@ export default function FarmersList() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 + index * 0.03 }}
+                onClick={() => handleFarmerClick(farmer.id)}
                 className="hover:bg-slate-50/50 transition-colors cursor-pointer"
               >
                 <td className="px-6 py-4">
@@ -171,7 +196,8 @@ export default function FarmersList() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 + index * 0.05 }}
-            className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm"
+            onClick={() => handleFarmerClick(farmer.id)}
+            className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -183,9 +209,9 @@ export default function FarmersList() {
                   <p className="text-xs text-slate-500">{farmer.village}</p>
                 </div>
               </div>
-              <button className="p-2 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors">
+              <div className="p-2 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors">
                 <ChevronRight className="w-5 h-5" />
-              </button>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-slate-50 rounded-lg p-2 text-center">
@@ -206,6 +232,13 @@ export default function FarmersList() {
           </motion.div>
         ))}
       </div>
+
+      {/* Add Farmer Modal */}
+      <AddFarmerModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAdd={handleAddFarmer}
+      />
     </div>
   );
 }
