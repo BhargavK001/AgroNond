@@ -45,19 +45,15 @@ export default function Login() {
         else if (profile.role === 'trader') navigate('/dashboard/trader');
         else if (profile.role === 'admin') navigate('/dashboard/admin');
         else if (profile.role === 'weight') navigate('/dashboard/weight');
-
+        else if (profile.role === 'committee') navigate('/dashboard/committee');
         else navigate('/dashboard');
-      } else if (profile) {
-        // Success: Profile loaded but no role -> Role Selection
-        navigate('/role-selection');
       } else {
-        // FALLBACK: User exists but profile failed to load (is null)
-        // Safety mechanism to prevent stuck loading screen
-        console.error("Profile load failed for authenticated user. Signing out.");
-        signOut();
+        // User is authenticated but has no profile or no role -> Role Selection
+        // This handles both: existing profile without role, and new users without profile
+        navigate('/role-selection');
       }
     }
-  }, [user, profile, profileLoading, navigate, signOut]);
+  }, [user, profile, profileLoading, navigate]);
 
   // Auto-focus first OTP input when step changes to 'otp'
   useEffect(() => {

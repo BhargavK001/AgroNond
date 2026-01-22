@@ -50,9 +50,9 @@ export async function verifyToken(token) {
           ...decoded
         };
       } catch (err) {
-        console.error('Local JWT verification failed:', err.message);
-        // If local fails (e.g. invalid signature), don't try remote - it's invalid.
-        return null;
+        console.warn('Local JWT verification failed:', err.message);
+        console.log('Falling back to Supabase API verification...');
+        // Fallback to Supabase API
       }
     }
 

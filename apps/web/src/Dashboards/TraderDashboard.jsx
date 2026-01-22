@@ -1,15 +1,16 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AnimatedCounter from '../components/AnimatedCounter';
-import { Card, CardBody, Button, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
 
 // Mock Data for Purchases
+// Mock Data for Purchases - Note: Trader only sees lot info, not farmer identity
 const purchaseHistory = [
-  { id: 1, date: '2026-01-20', farmer: 'Jay Kisan', crop: 'Tomato (Hybrid)', quantity: 500, rate: 40, status: 'Paid' },
-  { id: 2, date: '2026-01-18', farmer: 'Ramesh Patil', crop: 'Onion (Red)', quantity: 1200, rate: 15, status: 'Pending' },
-  { id: 3, date: '2026-01-15', farmer: 'Suresh Deshmukh', crop: 'Potato', quantity: 800, rate: 22, status: 'Paid' },
-  { id: 4, date: '2026-01-12', farmer: 'Vijay Kumar', crop: 'Okra', quantity: 300, rate: 35, status: 'Paid' },
-  { id: 5, date: '2026-01-10', farmer: 'Anil Jadhav', crop: 'Cabbage', quantity: 600, rate: 12, status: 'Overdue' },
+  { id: 1, date: '2026-01-20', lotId: 'LOT-2026-001', crop: 'Tomato (Hybrid)', quantity: 500, rate: 40, status: 'Paid' },
+  { id: 2, date: '2026-01-18', lotId: 'LOT-2026-002', crop: 'Onion (Red)', quantity: 1200, rate: 15, status: 'Pending' },
+  { id: 3, date: '2026-01-15', lotId: 'LOT-2026-003', crop: 'Potato', quantity: 800, rate: 22, status: 'Paid' },
+  { id: 4, date: '2026-01-12', lotId: 'LOT-2026-004', crop: 'Okra', quantity: 300, rate: 35, status: 'Paid' },
+  { id: 5, date: '2026-01-10', lotId: 'LOT-2026-005', crop: 'Cabbage', quantity: 600, rate: 12, status: 'Overdue' },
 ];
 
 export default function TraderDashboard() {
@@ -27,7 +28,7 @@ export default function TraderDashboard() {
   const stats = [
     { label: 'Total Purchased', value: totalQuantity, unit: 'kg', icon: '🥗', color: 'from-emerald-400 to-emerald-600', bgLight: 'bg-emerald-50' },
     { label: 'Total Spend', value: totalSpent, unit: '₹', icon: '💰', color: 'from-blue-400 to-blue-600', bgLight: 'bg-blue-50', isCurrency: true },
-    { label: 'Commission (9%)', value: totalCommission, unit: '₹', icon: '🧾', color: 'from-violet-400 to-violet-600', bgLight: 'bg-violet-50', isCurrency: true },
+    { label: 'Commission', value: totalCommission, unit: '₹', icon: '🧾', color: 'from-violet-400 to-violet-600', bgLight: 'bg-violet-50', isCurrency: true },
     { label: 'Pending Payments', value: pendingPayments, unit: '₹', icon: '⏳', color: 'from-amber-400 to-amber-600', bgLight: 'bg-amber-50', isCurrency: true },
   ];
 
@@ -107,45 +108,46 @@ export default function TraderDashboard() {
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto p-4">
-          <Table aria-label="Recent purchases table" removeWrapper>
-            <TableHeader>
-              <TableColumn>DATE</TableColumn>
-              <TableColumn>FARMER</TableColumn>
-              <TableColumn>CROP DETAIL</TableColumn>
-              <TableColumn align="end">QTY (KG)</TableColumn>
-              <TableColumn align="end">RATE/KG</TableColumn>
-              <TableColumn align="end">TOTAL (INC. 9%)</TableColumn>
-              <TableColumn align="center">STATUS</TableColumn>
-              <TableColumn align="center">ACTION</TableColumn>
-            </TableHeader>
-            <TableBody>
-              {purchaseHistory.map((item, index) => {
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-y border-slate-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '100px'}}>Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '120px'}}>Lot ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '140px'}}>Crop</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '90px'}}>Qty (kg)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '90px'}}>Rate/kg</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '140px'}}>Total (inc. 9%)</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '90px'}}>Status</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '60px'}}>Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {purchaseHistory.map((item) => {
                 const baseCost = item.quantity * item.rate;
                 const tax = baseCost * 0.09;
                 const total = baseCost + tax;
                 return (
-                  <TableRow key={item.id}>
-                    <TableCell className="text-slate-600 font-medium">
+                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-4 py-4 text-sm text-slate-600 font-medium whitespace-nowrap">
                       {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-slate-800">{item.farmer}</div>
-                      <div className="text-xs text-slate-400">ID: FARM-{1000 + item.id}</div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-medium text-xs">
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="font-semibold text-slate-800">{item.lotId}</span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-xs">
                         {item.crop}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-slate-600">{item.quantity}</TableCell>
-                    <TableCell className="text-right text-slate-600">₹{item.rate}</TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="px-4 py-4 text-right text-sm font-medium text-slate-700">{item.quantity.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-4 text-right text-sm text-slate-600">₹{item.rate}</td>
+                    <td className="px-4 py-4 text-right">
                       <div className="font-bold text-emerald-600">₹{Math.round(total).toLocaleString('en-IN')}</div>
-                      <div className="text-[10px] text-slate-400">Base: ₹{baseCost.toLocaleString()} + 9%</div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold ${
+                      <div className="text-[10px] text-slate-400">Base: ₹{baseCost.toLocaleString('en-IN')} + 9%</div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
                         item.status === 'Paid' 
                           ? 'bg-emerald-100 text-emerald-700' 
                           : item.status === 'Pending'
@@ -157,19 +159,19 @@ export default function TraderDashboard() {
                         }`} />
                         {item.status}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <button className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-emerald-600 transition-colors">
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <button className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-emerald-600 transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                       </button>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 );
               })}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
 
         {/* Mobile Card View */}
@@ -191,7 +193,7 @@ export default function TraderDashboard() {
                     <p className="text-[10px] text-slate-400 font-medium mb-0.5">
                       {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
-                    <h3 className="font-bold text-sm text-slate-800">{item.farmer}</h3>
+                    <h3 className="font-bold text-sm text-slate-800">{item.lotId}</h3>
                     <p className="text-xs text-emerald-600 font-medium">{item.crop}</p>
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -235,9 +237,12 @@ export default function TraderDashboard() {
         </div>
         
         <div className="p-3 sm:p-4 bg-slate-50 text-center border-t border-slate-100">
-          <button className="text-xs sm:text-sm font-medium text-emerald-600 hover:text-emerald-700">
+          <Link 
+            to="/dashboard/trader/transactions" 
+            className="text-xs sm:text-sm font-medium text-emerald-600 hover:text-emerald-700"
+          >
             View All Transactions →
-          </button>
+          </Link>
         </div>
       </motion.div>
     </div>

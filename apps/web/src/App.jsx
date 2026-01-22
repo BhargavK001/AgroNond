@@ -33,6 +33,7 @@ const WeightUpdatePanel = lazy(() => import('./Dashboards/WeightUpdatePanel'));
 const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
 const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
 const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
+const TraderTransactions = lazy(() => import('./pages/trader/TraderTransactions'));
 
 const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
@@ -42,6 +43,15 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const CommissionRules = lazy(() => import('./pages/admin/CommissionRules'));
 const TransactionHistory = lazy(() => import('./pages/admin/TransactionHistory'));
+
+// Committee Dashboard
+const CommitteeLayout = lazy(() => import('./layouts/CommitteeLayout'));
+const CommitteeDashboard = lazy(() => import('./Dashboards/CommitteeDashboard'));
+const FarmersList = lazy(() => import('./pages/committee/FarmersList'));
+const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
+const CommissionCalculator = lazy(() => import('./pages/committee/CommissionCalculator'));
+const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
+const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -128,17 +138,25 @@ function App() {
                   }
                 >
                   <Route index element={<TraderDashboardContent />} />
+                  <Route path="transactions" element={<TraderTransactions />} />
                   <Route path="inventory" element={<InventoryManager />} />
                   <Route path="profile" element={<TraderProfile />} />
                 </Route>
 
-                {/* Committee Dashboard (Coming Soon) */}
+                {/* Committee Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/committee" element={
                     <ProtectedRoute requireRole="committee">
-                      <ComingSoon />
+                      <CommitteeLayout />
                     </ProtectedRoute>
-                  } 
-                />
+                  }
+                >
+                  <Route index element={<CommitteeDashboard />} />
+                  <Route path="farmers" element={<FarmersList />} />
+                  <Route path="activity" element={<MarketActivity />} />
+                  <Route path="commission" element={<CommissionCalculator />} />
+                  <Route path="billing" element={<BillingReports />} />
+                  <Route path="cashflow" element={<CashFlow />} />
+                </Route>
 
                 {/* Admin Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/admin" element={
