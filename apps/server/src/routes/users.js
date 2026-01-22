@@ -78,7 +78,7 @@ router.post('/set-role', requireAuth, async (req, res) => {
     const { role } = req.body;
     const supabase = getSupabaseAdmin();
     
-    const validRoles = ['farmer', 'trader', 'committee', 'admin'];
+    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight_staff', 'accounting'];
     if (!role || !validRoles.includes(role)) {
       return res.status(400).json({ 
         error: 'Invalid role',

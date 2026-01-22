@@ -1,4 +1,4 @@
-import { verifyToken } from '../config/supabase.js';
+import { verifyToken, getSupabaseAdmin } from '../config/supabase.js';
 
 /**
  * Authentication middleware
@@ -69,7 +69,7 @@ export function requireRole(...roles) {
     }
     
     // Get user's role from profile
-    const { data: profile } = await supabaseAdmin
+    const { data: profile } = await getSupabaseAdmin()
       .from('profiles')
       .select('role')
       .eq('id', req.user.id)

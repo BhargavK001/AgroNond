@@ -100,9 +100,9 @@ export default function Navbar() {
             >
               <span className="absolute inset-0 gradient-bg transition-transform duration-300 group-hover:scale-105" />
               <span className="relative flex items-center gap-2 text-white">
-                Get Started
+                Login / Register
                 <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                 </svg>
               </span>
             </Link>
