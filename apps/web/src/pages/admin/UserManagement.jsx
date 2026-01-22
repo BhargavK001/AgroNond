@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Search, 
-  Filter, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  Search,
+  Filter,
+  CheckCircle,
+  XCircle,
+  Clock,
   MoreVertical,
   UserCheck,
   UserX,
@@ -29,7 +29,7 @@ export default function UserManagement() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [actionMenuOpen, setActionMenuOpen] = useState(null);
-  
+
   const queryClient = useQueryClient();
 
   // Fetch users
@@ -56,6 +56,28 @@ export default function UserManagement() {
     }
   });
 
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: (data) => api.admin.users.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['admin-users']);
+      setAddUserModalOpen(false);
+      setNewUser({ phone: '', role: 'farmer', full_name: '' });
+      alert('User created successfully. They can now login with their phone number.');
+    },
+    onError: (err) => {
+      alert(err.response?.data?.error || 'Failed to create user');
+    }
+  });
+
+  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ phone: '', role: 'farmer', full_name: '' });
+
+  const handleCreateUser = (e) => {
+    e.preventDefault();
+    createUserMutation.mutate(newUser);
+  };
+
   const handleRoleChange = (userId, newRole) => {
     updateRoleMutation.mutate({ id: userId, role: newRole });
   };
@@ -72,8 +94,8 @@ export default function UserManagement() {
     return (
       <div className="text-center py-12">
         <p className="text-red-500">Failed to load users: {error.message}</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="mt-4 text-emerald-600 font-medium hover:underline"
         >
           Retry
@@ -85,9 +107,18 @@ export default function UserManagement() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-        <p className="text-gray-500 mt-1">Manage farmers, traders, and staff members</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
+          <p className="text-gray-500 mt-1">Manage farmers, traders, and staff members</p>
+        </div>
+        <button
+          onClick={() => setAddUserModalOpen(true)}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl transition-all shadow-sm"
+        >
+          <span className="text-xl font-bold">+</span>
+          <span>Add User</span>
+        </button>
       </div>
 
       {/* Filters */}
@@ -128,7 +159,7 @@ export default function UserManagement() {
       </div>
 
       {/* Users Table */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
@@ -155,7 +186,7 @@ export default function UserManagement() {
                 users
                   .filter(u => u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || true) // simplified search
                   .map((user) => (
-                    <tr key={user.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <tr key={user.id || user._id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-semibold">
@@ -174,10 +205,10 @@ export default function UserManagement() {
                       </td>
                       <td className="px-6 py-4 text-gray-600">{user.phone}</td>
                       <td className="px-6 py-4 text-gray-600">
-                        {new Date(user.created_at).toLocaleDateString('en-IN', { 
-                          day: '2-digit', 
-                          month: 'short', 
-                          year: 'numeric' 
+                        {new Date(user.created_at).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
                         })}
                       </td>
                       <td className="px-6 py-4">
@@ -196,14 +227,14 @@ export default function UserManagement() {
                               {roleFilters
                                 .filter(r => r.key !== 'all' && r.key !== user.role)
                                 .map(role => (
-                                <button
-                                  key={role.key}
-                                  onClick={() => handleRoleChange(user.id, role.key)}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 capitalize"
-                                >
-                                  Make {role.label}
-                                </button>
-                              ))}
+                                  <button
+                                    key={role.key}
+                                    onClick={() => handleRoleChange(user.id, role.key)}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 capitalize"
+                                  >
+                                    Make {role.label}
+                                  </button>
+                                ))}
                             </div>
                           )}
                         </div>
@@ -221,7 +252,7 @@ export default function UserManagement() {
             Total {totalUsers} users
           </p>
           <div className="flex gap-2">
-            <button 
+            <button
               disabled={page === 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}
               className="px-3 py-1 text-sm border rounded hover:bg-white disabled:opacity-50"
@@ -229,7 +260,7 @@ export default function UserManagement() {
               Prev
             </button>
             <span className="text-sm self-center">Page {page} of {totalPages}</span>
-            <button 
+            <button
               disabled={page >= totalPages}
               onClick={() => setPage(p => p + 1)}
               className="px-3 py-1 text-sm border rounded hover:bg-white disabled:opacity-50"
@@ -239,6 +270,76 @@ export default function UserManagement() {
           </div>
         </div>
       </motion.div>
+
+      {/* Add User Modal */}
+      {addUserModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Add New User</h2>
+              <button onClick={() => setAddUserModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.full_name}
+                  onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                  placeholder="e.g. Rahul Kumar"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  required
+                  value={newUser.phone}
+                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                  placeholder="e.g. 9876543210"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none bg-white"
+                >
+                  {roleFilters.filter(r => r.key !== 'all').map(r => (
+                    <option key={r.key} value={r.key}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setAddUserModalOpen(false)}
+                  className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createUserMutation.isLoading}
+                  className="flex-1 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                >
+                  {createUserMutation.isLoading ? 'Creating...' : 'Create User'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

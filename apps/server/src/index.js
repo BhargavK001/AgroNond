@@ -14,6 +14,7 @@ import usersRouter from './routes/users.js';
 import recordsRouter from './routes/records.js';
 import contactRouter from './routes/contact.js';
 import adminRouter from './routes/admin.js';
+import financeRouter from './routes/finance.js';
 import statusRouter from './routes/status.js';
 import connectDB from './config/db.js';
 
@@ -47,7 +48,10 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/contact', contactRouter);
+app.use('/api/records', recordsRouter);
+app.use('/api/contact', contactRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/finance', financeRouter);
 app.use('/api/status', statusRouter);
 
 // 404 handler

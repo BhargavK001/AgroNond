@@ -129,6 +129,7 @@ export const api = {
         return apiRequest(`/api/admin/users${query ? '?' + query : ''}`, { method: 'GET' });
       },
       updateRole: (id, role) => apiRequest(`/api/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+      create: (data) => apiRequest('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     },
   },
 

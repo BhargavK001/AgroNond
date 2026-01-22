@@ -104,4 +104,55 @@ router.patch('/users/:id/role', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/users
+ * Create a new user (Admin only)
+ */
+router.post('/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { phone, role, full_name } = req.body;
+
+    if (!phone || !role) {
+      return res.status(400).json({ error: 'Phone and role are required' });
+    }
+
+    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this phone number already exists' });
+    }
+
+    const newUser = await User.create({
+      phone,
+      role,
+      full_name: full_name || '',
+    });
+
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// ... existing code ...
+
+/**
+ * GET /api/admin/commission-rules
+ * Get commission rules
+ */
+router.get('/commission-rules', requireAuth, requireAdmin, async (req, res) => {
+  // Return mock rules for now until DB model is ready
+  res.json([
+    { id: '1', cropType: 'Wheat', percentage: 2.5, minAmount: 100 },
+    { id: '2', cropType: 'Rice', percentage: 2.0, minAmount: 0 },
+    { id: '3', cropType: 'Corn', percentage: 1.5, minAmount: 50 }
+  ]);
+});
+
 export default router;

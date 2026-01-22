@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Wallet, IndianRupee } from 'lucide-react';
-import AnimatedCounter from '../components/AnimatedCounter';
+import AnimatedCounter from '../../components/AnimatedCounter';
 
 // Mock data for the committee dashboard
 const mockMetrics = {
@@ -77,7 +77,7 @@ export default function CommitteeDashboard() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Recent Transactions - Spans 2 columns */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
@@ -85,7 +85,7 @@ export default function CommitteeDashboard() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-800">Recent Transactions</h3>
-            <a 
+            <a
               href="/dashboard/committee/billing"
               className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
             >
@@ -121,11 +121,10 @@ export default function CommitteeDashboard() {
                     </td>
                     <td className="py-3 text-right font-medium text-slate-800">₹{txn.amount.toLocaleString()}</td>
                     <td className="py-3 text-right">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${
-                        txn.status === 'Paid' 
-                          ? 'bg-emerald-100 text-emerald-700' 
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${txn.status === 'Paid'
+                          ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-amber-100 text-amber-700'
-                      }`}>
+                        }`}>
                         {txn.status}
                       </span>
                     </td>
@@ -153,11 +152,10 @@ export default function CommitteeDashboard() {
                     <h3 className="font-bold text-sm text-slate-800">{txn.farmer}</h3>
                     <p className="text-xs text-slate-500">{txn.trader}</p>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    txn.status === 'Paid' 
-                      ? 'bg-emerald-100 text-emerald-700' 
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${txn.status === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-700'
-                  }`}>
+                    }`}>
                     {txn.status}
                   </span>
                 </div>
@@ -173,7 +171,7 @@ export default function CommitteeDashboard() {
         </motion.div>
 
         {/* Cash Flow Summary */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -209,7 +207,7 @@ export default function CommitteeDashboard() {
 
       {/* Commission Summary Footer */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
@@ -225,8 +223,8 @@ export default function CommitteeDashboard() {
           <p className="text-2xl sm:text-3xl font-bold text-slate-800">₹{mockMetrics.totalCommission.toLocaleString()}</p>
           <p className="text-xs text-emerald-600 font-medium mt-1">Collected this period</p>
         </motion.div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.55 }}
@@ -242,8 +240,8 @@ export default function CommitteeDashboard() {
           <p className="text-2xl sm:text-3xl font-bold text-slate-800">₹{mockMetrics.farmerCommission.toLocaleString()}</p>
           <p className="text-xs text-sky-600 font-medium mt-1">@ 4% rate</p>
         </motion.div>
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import AnimatedCounter from '../components/AnimatedCounter';
+import AnimatedCounter from '../../components/AnimatedCounter';
 
 // Mock Data for Purchases
 // Mock Data for Purchases - Note: Trader only sees lot info, not farmer identity
@@ -20,7 +20,7 @@ export default function TraderDashboard() {
   const commissionRate = 0.09;
   const totalCommission = totalBaseAmount * commissionRate;
   const totalSpent = totalBaseAmount + totalCommission;
-  
+
   const pendingPayments = purchaseHistory
     .filter(item => item.status === 'Pending' || item.status === 'Overdue')
     .reduce((acc, item) => acc + (item.quantity * item.rate * (1 + commissionRate)), 0);
@@ -35,7 +35,7 @@ export default function TraderDashboard() {
   return (
     <div className="space-y-5 sm:space-y-8">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -84,7 +84,7 @@ export default function TraderDashboard() {
       </div>
 
       {/* Recent Purchases Section */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
@@ -112,14 +112,14 @@ export default function TraderDashboard() {
           <table className="w-full">
             <thead className="bg-slate-50 border-y border-slate-100">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '100px'}}>Date</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '120px'}}>Lot ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '140px'}}>Crop</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '90px'}}>Qty (kg)</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '90px'}}>Rate/kg</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '140px'}}>Total (inc. 9%)</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '90px'}}>Status</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{width: '60px'}}>Action</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '100px' }}>Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '120px' }}>Lot ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '140px' }}>Crop</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '90px' }}>Qty (kg)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '90px' }}>Rate/kg</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '140px' }}>Total (inc. 9%)</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '90px' }}>Status</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '60px' }}>Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -147,16 +147,14 @@ export default function TraderDashboard() {
                       <div className="text-[10px] text-slate-400">Base: ₹{baseCost.toLocaleString('en-IN')} + 9%</div>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                        item.status === 'Paid' 
-                          ? 'bg-emerald-100 text-emerald-700' 
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${item.status === 'Paid'
+                          ? 'bg-emerald-100 text-emerald-700'
                           : item.status === 'Pending'
                             ? 'bg-amber-100 text-amber-700'
                             : 'bg-red-100 text-red-700'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          item.status === 'Paid' ? 'bg-emerald-500' : item.status === 'Pending' ? 'bg-amber-500' : 'bg-red-500'
-                        }`} />
+                        }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'Paid' ? 'bg-emerald-500' : item.status === 'Pending' ? 'bg-amber-500' : 'bg-red-500'
+                          }`} />
                         {item.status}
                       </span>
                     </td>
@@ -196,16 +194,14 @@ export default function TraderDashboard() {
                     <h3 className="font-bold text-sm text-slate-800">{item.lotId}</h3>
                     <p className="text-xs text-emerald-600 font-medium">{item.crop}</p>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    item.status === 'Paid' 
-                      ? 'bg-emerald-100 text-emerald-700' 
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : item.status === 'Pending'
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-red-100 text-red-700'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      item.status === 'Paid' ? 'bg-emerald-500' : item.status === 'Pending' ? 'bg-amber-500' : 'bg-red-500'
-                    }`} />
+                    }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'Paid' ? 'bg-emerald-500' : item.status === 'Pending' ? 'bg-amber-500' : 'bg-red-500'
+                      }`} />
                     {item.status}
                   </span>
                 </div>
@@ -235,10 +231,10 @@ export default function TraderDashboard() {
             );
           })}
         </div>
-        
+
         <div className="p-3 sm:p-4 bg-slate-50 text-center border-t border-slate-100">
-          <Link 
-            to="/dashboard/trader/transactions" 
+          <Link
+            to="/dashboard/trader/transactions"
             className="text-xs sm:text-sm font-medium text-emerald-600 hover:text-emerald-700"
           >
             View All Transactions →
