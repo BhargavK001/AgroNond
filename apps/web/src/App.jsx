@@ -26,7 +26,7 @@ const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const RoleSelection = lazy(() => import('./pages/RoleSelection'));
 
 const FarmerDashboard = lazy(() => import('./Dashboards/FarmerDashboard'));
-const WeightUpdatePanel = lazy(() => import('./Dashboards/WeightUpdatePanel'));
+const WeightDashboard = lazy(() => import('./Dashboards/WeightDashboard'));
 
 const TraderLayout = lazy(() => import('./layouts/TraderLayout'));
 const TraderDashboardContent = lazy(() => import('./Dashboards/TraderDashboard'));
@@ -115,7 +115,7 @@ function App() {
 
                 <Route path="/dashboard/weight" element={
                     <ProtectedRoute> 
-                      <WeightUpdatePanel />
+                      <WeightDashboard />
                     </ProtectedRoute>
                   } 
                 />

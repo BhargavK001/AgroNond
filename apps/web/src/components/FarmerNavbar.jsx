@@ -21,77 +21,81 @@ export default function FarmerNavbar() {
     phone: '',
     location: '',
     photo: '',
-    initials: 'FK'
+    initials: 'FK',
   });
 
   const [editForm, setEditForm] = useState({
     name: '',
     phone: '',
     location: '',
-    photo: ''
+    photo: '',
   });
 
   const [errors, setErrors] = useState({
     name: false,
-    phone:  false,
-    location: false
+    phone: false,
+    location: false,
   });
 
   const getInitials = (name) => {
     if (!name || name === 'Farmer') return 'FK';
-    const words = name.trim().split(' ').filter(w => w.length > 0);
+    const words = name
+      .trim()
+      .split(' ')
+      .filter((w) => w.length > 0);
     if (words.length >= 2) {
       return (words[0][0] + words[1][0]).toUpperCase();
     }
-    return words[0]. substring(0, 2).toUpperCase();
+    return words[0].substring(0, 2).toUpperCase();
   };
 
-  const hasCompleteProfile = farmerProfile.name !== 'Farmer' && farmerProfile.phone && farmerProfile.location;
+  const hasCompleteProfile =
+    farmerProfile.name !== 'Farmer' && farmerProfile.phone && farmerProfile.location;
 
   const [notifications, setNotifications] = useState([
     {
       id: 1,
       type: 'success',
       title: 'Sale Confirmed',
-      message:  '500kg Tomato sold successfully',
+      message: '500kg Tomato sold successfully',
       time: '2 mins ago',
-      unread: true
+      unread: true,
     },
     {
       id: 2,
-      type:  'info',
-      title:  'Market Update',
-      message:  'Onion prices increased by 8%',
+      type: 'info',
+      title: 'Market Update',
+      message: 'Onion prices increased by 8%',
       time: '1 hr ago',
-      unread: true
+      unread: true,
     },
     {
-      id:  3,
+      id: 3,
       type: 'warning',
-      title:  'Payment Reminder',
-      message:  'Commission payment due tomorrow',
-      time:  '3 hrs ago',
-      unread: true
-    }
+      title: 'Payment Reminder',
+      message: 'Commission payment due tomorrow',
+      time: '3 hrs ago',
+      unread: true,
+    },
   ]);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('farmer-profile');
     if (savedProfile) {
       const profile = JSON.parse(savedProfile);
-      profile.initials = getInitials(profile. name);
+      profile.initials = getInitials(profile.name);
       setFarmerProfile(profile);
     }
   }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
-      const savedProfile = localStorage. getItem('farmer-profile');
+      const savedProfile = localStorage.getItem('farmer-profile');
       if (savedProfile) {
         const profile = JSON.parse(savedProfile);
-        profile.initials = getInitials(profile. name);
+        profile.initials = getInitials(profile.name);
         setFarmerProfile(profile);
       }
     };
@@ -111,9 +115,9 @@ export default function FarmerNavbar() {
         name: farmerProfile.name === 'Farmer' ? '' : farmerProfile.name,
         phone: farmerProfile.phone || '',
         location: farmerProfile.location || '',
-        photo:  farmerProfile.photo || ''
+        photo: farmerProfile.photo || '',
       });
-      setErrors({ name: false, phone: false, location:  false });
+      setErrors({ name: false, phone: false, location: false });
     }
   }, [isEditing, farmerProfile]);
 
@@ -125,18 +129,18 @@ export default function FarmerNavbar() {
       toast.success('Logged out successfully');
       navigate('/login', { replace: true });
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error('Logout failed', error);
       toast.error('Failed to log out');
       window.location.href = '/login';
     }
   };
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
   };
 
   const handlePhotoUpload = (e) => {
-    const file = e. target.files[0];
+    const file = e.target.files[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
         toast.error('Image size should be less than 2MB');
@@ -144,9 +148,9 @@ export default function FarmerNavbar() {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setEditForm(prev => ({ ...prev, photo: reader. result }));
+        setEditForm((prev) => ({ ...prev, photo: reader.result }));
       };
-      reader. readAsDataURL(file);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -157,9 +161,9 @@ export default function FarmerNavbar() {
 
   const handleSave = () => {
     const newErrors = {
-      name: ! editForm.name. trim(),
-      phone: !editForm.phone.trim() || ! validatePhone(editForm.phone),
-      location: !editForm.location.trim()
+      name: !editForm.name.trim(),
+      phone: !editForm.phone.trim() || !validatePhone(editForm.phone),
+      location: !editForm.location.trim(),
     };
 
     setErrors(newErrors);
@@ -172,14 +176,14 @@ export default function FarmerNavbar() {
     try {
       const updatedProfile = {
         ...farmerProfile,
-        name:  editForm.name. trim(),
+        name: editForm.name.trim(),
         phone: editForm.phone.trim(),
-        location: editForm. location.trim(),
+        location: editForm.location.trim(),
         photo: editForm.photo,
-        initials: getInitials(editForm.name. trim())
+        initials: getInitials(editForm.name.trim()),
       };
 
-      localStorage.setItem('farmer-profile', JSON. stringify(updatedProfile));
+      localStorage.setItem('farmer-profile', JSON.stringify(updatedProfile));
       setFarmerProfile(updatedProfile);
       window.dispatchEvent(new CustomEvent('farmerProfileUpdated'));
       toast.success('Profile updated successfully! ');
@@ -200,44 +204,43 @@ export default function FarmerNavbar() {
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef. current.contains(event.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
         setIsEditing(false);
       }
-      if (notificationRef. current && !notificationRef.current.contains(event.target)) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownRef, notificationRef]);
 
   const AvatarDisplay = ({ size = 'sm', showBadge = true }) => {
     const sizeClasses = {
       sm: 'w-8 h-8 sm:w-9 sm:h-9 text-sm',
-      md:  'w-14 h-14 text-xl',
-      lg: 'w-20 h-20 text-2xl'
+      md: 'w-14 h-14 text-xl',
+      lg: 'w-20 h-20 text-2xl',
     };
 
     return (
       <div className="relative inline-flex">
-        {farmerProfile.photo ?  (
+        {farmerProfile.photo ? (
           <img
             src={farmerProfile.photo}
             alt="Profile"
             className={`${sizeClasses[size]} rounded-full object-cover shadow-md border-2 border-green-100`}
           />
         ) : (
-          <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold shadow-md`}>
+          <div
+            className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold shadow-md`}
+          >
             {farmerProfile.initials}
           </div>
         )}
         {showBadge && hasCompleteProfile && (
           <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5">
-            <BadgeCheck
-              size={size === 'sm' ?  14 : 20}
-              className="text-green-500"
-            />
+            <BadgeCheck size={size === 'sm' ? 14 : 20} className="text-green-500" />
           </div>
         )}
       </div>
@@ -251,19 +254,22 @@ export default function FarmerNavbar() {
           {/* Left Side - Logo */}
           <div className="flex items-center">
             <Link to="/dashboard/farmer" className="flex items-center gap-2 group shrink-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
                 <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-white"
                   fill="currentColor"
                   viewBox="0 0 24 24"
-                  style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))' }}
                 >
-                  <path d="M17,8C8,10 5.9,16. 17 3.82,21. 34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11. 5 2,13. 5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z" />
+                  <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z" />
                 </svg>
               </div>
               <div className="flex flex-col">
-                <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">AgroNond</span>
-                <span className="text-[9px] sm: text-[10px] text-green-600 font-bold uppercase tracking-wider">Farmer Panel</span>
+                <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+                  AgroNond
+                </span>
+                <span className="text-[9px] sm: text-[10px] text-green-600 font-bold uppercase tracking-wider">
+                  Farmer Panel
+                </span>
               </div>
             </Link>
           </div>
@@ -286,16 +292,20 @@ export default function FarmerNavbar() {
 
               <AnimatePresence>
                 {isNotificationOpen && (
-                  <motion. div
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity:  0, y:  10 }}
+                    exit={{ opacity: 0, y: 10 }}
                     className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900">Notifications</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                        Notifications
+                      </h3>
                       {unreadCount > 0 && (
-                        <span className="text-xs sm:text-sm font-semibold text-green-600">{unreadCount} New</span>
+                        <span className="text-xs sm:text-sm font-semibold text-green-600">
+                          {unreadCount} New
+                        </span>
                       )}
                     </div>
 
@@ -306,11 +316,19 @@ export default function FarmerNavbar() {
                           className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${notification.unread ? 'bg-green-50/50' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${notification.type === 'success' ? 'bg-green-500' :  notification.type === 'info' ? 'bg-blue-500' : 'bg-yellow-500'}`} />
+                            <div
+                              className={`w-2 h-2 rounded-full mt-2 shrink-0 ${notification.type === 'success' ? 'bg-green-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-yellow-500'}`}
+                            />
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 text-sm truncate">{notification. title}</p>
-                              <p className="text-gray-600 text-xs sm:text-sm mt-0.5 line-clamp-2">{notification.message}</p>
-                              <p className="text-gray-400 text-[10px] sm:text-xs mt-1">{notification.time}</p>
+                              <p className="font-semibold text-gray-900 text-sm truncate">
+                                {notification.title}
+                              </p>
+                              <p className="text-gray-600 text-xs sm:text-sm mt-0.5 line-clamp-2">
+                                {notification.message}
+                              </p>
+                              <p className="text-gray-400 text-[10px] sm:text-xs mt-1">
+                                {notification.time}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -342,28 +360,40 @@ export default function FarmerNavbar() {
                 <div className="hidden sm: block text-left ml-1">
                   {hasCompleteProfile ? (
                     <>
-                      <p className="text-sm font-semibold leading-none text-gray-900">{farmerProfile. name}</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">{farmerProfile. farmerId}</p>
+                      <p className="text-sm font-semibold leading-none text-gray-900">
+                        {farmerProfile.name}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{farmerProfile.farmerId}</p>
                     </>
                   ) : (
-                    <p className="text-xs text-gray-500 font-medium">Farmer Default</p>
+                    <p className="text-xs text-gray-500 font-medium">Farmer</p>
                   )}
                 </div>
-                <svg className={`hidden sm:block w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ?  'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg
+                  className={`hidden sm:block w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
 
               <AnimatePresence>
                 {isDropdownOpen && (
-                  <motion. div
+                  <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm: top-full sm: left-auto sm: w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                   >
                     <AnimatePresence mode="wait">
-                      {! isEditing ?  (
+                      {!isEditing ? (
                         <motion.div
                           key="view"
                           initial={{ opacity: 0, x: -20 }}
@@ -376,18 +406,26 @@ export default function FarmerNavbar() {
                             <div className="flex items-center gap-4">
                               <AvatarDisplay size="md" showBadge={true} />
                               <div className="flex-1 min-w-0">
-                                {hasCompleteProfile ?  (
+                                {hasCompleteProfile ? (
                                   <>
-                                    <p className="text-base font-bold text-gray-900 truncate">{farmerProfile.name}</p>
+                                    <p className="text-base font-bold text-gray-900 truncate">
+                                      {farmerProfile.name}
+                                    </p>
                                     <div className="flex items-center gap-1 mt-0.5">
                                       <BadgeCheck size={14} className="text-green-500" />
-                                      <span className="text-xs text-green-600 font-medium">Verified</span>
+                                      <span className="text-xs text-green-600 font-medium">
+                                        Verified
+                                      </span>
                                     </div>
                                   </>
                                 ) : (
                                   <>
-                                    <p className="text-base font-bold text-gray-900">Farmer Default</p>
-                                    <p className="text-xs text-gray-500 mt-0.5">{farmerProfile. farmerId}</p>
+                                    <p className="text-base font-bold text-gray-900">
+                                      Farmer
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      {farmerProfile.farmerId}
+                                    </p>
                                   </>
                                 )}
                               </div>
@@ -410,7 +448,7 @@ export default function FarmerNavbar() {
                           {/* Conditional Profile Options */}
                           <div className="p-3">
                             <AnimatePresence mode="wait">
-                              {!hasCompleteProfile ?  (
+                              {!hasCompleteProfile ? (
                                 <motion.div
                                   key="incomplete"
                                   initial={{ opacity: 0, y: 10 }}
@@ -430,43 +468,17 @@ export default function FarmerNavbar() {
                                 <motion.div
                                   key="complete"
                                   initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity:  1, y:  0 }}
+                                  animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: -10 }}
                                   transition={{ duration: 0.2 }}
                                 >
-                                  <div className="bg-green-50 rounded-lg p-3 mb-2">
-                                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Update Profile</h4>
-                                    <div className="space-y-1">
-                                      <button
-                                        onClick={openEditForm}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-white hover:text-green-600 rounded-lg transition-colors text-left"
-                                      >
-                                        <Edit3 size={16} className="text-green-600" />
-                                        <span>Update Name</span>
-                                      </button>
-                                      <button
-                                        onClick={openEditForm}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-white hover:text-green-600 rounded-lg transition-colors text-left"
-                                      >
-                                        <Phone size={16} className="text-green-600" />
-                                        <span>Update Phone Number</span>
-                                      </button>
-                                      <button
-                                        onClick={openEditForm}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-white hover:text-green-600 rounded-lg transition-colors text-left"
-                                      >
-                                        <MapPin size={16} className="text-green-600" />
-                                        <span>Update Location</span>
-                                      </button>
-                                      <button
-                                        onClick={openEditForm}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-white hover:text-green-600 rounded-lg transition-colors text-left"
-                                      >
-                                        <Camera size={16} className="text-green-600" />
-                                        <span>Change Profile Photo</span>
-                                      </button>
-                                    </div>
-                                  </div>
+                                  <button
+                                    onClick={openEditForm}
+                                    className="w-full flex items-center justify-center gap-3 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl transition-all shadow-md hover:shadow-lg"
+                                  >
+                                    <Edit3 size={18} />
+                                    <span>Update Your Profile</span>
+                                  </button>
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -478,8 +490,18 @@ export default function FarmerNavbar() {
                               onClick={handleLogout}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover: bg-red-50 rounded-lg transition-colors"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                                />
                               </svg>
                               <span>Sign Out</span>
                             </button>
@@ -489,9 +511,9 @@ export default function FarmerNavbar() {
                         <motion.div
                           key="edit"
                           initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity:  1, x:  0 }}
+                          animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
-                          transition={{ duration:  0.2 }}
+                          transition={{ duration: 0.2 }}
                           className="p-4"
                         >
                           <div className="flex items-center justify-between mb-4">
@@ -514,7 +536,7 @@ export default function FarmerNavbar() {
                                 animate={{ scale: 1, opacity: 1 }}
                                 transition={{ duration: 0.3 }}
                               >
-                                {editForm.photo ?  (
+                                {editForm.photo ? (
                                   <img
                                     src={editForm.photo}
                                     alt="Preview"
@@ -528,7 +550,7 @@ export default function FarmerNavbar() {
                               </motion.div>
                               <button
                                 type="button"
-                                onClick={() => fileInputRef.current?. click()}
+                                onClick={() => fileInputRef.current?.click()}
                                 className="absolute bottom-0 right-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition-colors"
                               >
                                 <Camera size={14} />
@@ -548,94 +570,123 @@ export default function FarmerNavbar() {
                             {/* Name */}
                             <div>
                               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                {hasCompleteProfile ? 'Change Name' : 'Full Name'} <span className="text-red-500">*</span>
+                                {hasCompleteProfile ? 'Change Name' : 'Full Name'}{' '}
+                                <span className="text-red-500">*</span>
                               </label>
                               <div className="text">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium"></span>
-                              <input
-                                type="text"
-                                value={editForm.name}
-                                onChange={(e) => {
-                                  setEditForm(prev => ({ ...prev, name: e.target.value }));
-                                  if (e.target.value. trim()) setErrors(prev => ({ ...prev, name: false }));
-                                }}
-                                placeholder="Enter your full name"
-                                className={`w-full px-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus: ring-green-500 focus:border-transparent ${errors.name ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
-                              />
+                                <input
+                                  type="text"
+                                  value={editForm.name}
+                                  onChange={(e) => {
+                                    setEditForm((prev) => ({ ...prev, name: e.target.value }));
+                                    if (e.target.value.trim())
+                                      setErrors((prev) => ({ ...prev, name: false }));
+                                  }}
+                                  placeholder="Enter your full name"
+                                  className={`w-full px-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                />
                               </div>
-                              {errors.name && <p className="text-xs text-red-500 mt-1">Name is required</p>}
+                              {errors.name && (
+                                <p className="text-xs text-red-500 mt-1">Name is required</p>
+                              )}
                             </div>
 
                             {/* Phone Number */}
                             <div>
                               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                {hasCompleteProfile ?  'Change Phone Number' : 'Phone Number'} <span className="text-red-500">*</span>
+                                {hasCompleteProfile ? 'Change Phone Number' : 'Phone Number'}{' '}
+                                <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">+91</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
+                                  +91
+                                </span>
                                 <input
                                   type="tel"
                                   value={editForm.phone}
                                   onChange={(e) => {
-                                    const value = e.target. value.replace(/\D/g, '').slice(0, 10);
-                                    setEditForm(prev => ({ ...prev, phone: value }));
-                                    if (validatePhone(value)) setErrors(prev => ({ ...prev, phone: false }));
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    setEditForm((prev) => ({ ...prev, phone: value }));
+                                    if (validatePhone(value))
+                                      setErrors((prev) => ({ ...prev, phone: false }));
                                   }}
                                   placeholder="9876543210"
-                                  className={`w-full pl-14 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors. phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                  className={`w-full pl-14 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
                                 />
                               </div>
-                              {errors.phone && <p className="text-xs text-red-500 mt-1">Valid 10-digit number required</p>}
+                              {errors.phone && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  Valid 10-digit number required
+                                </p>
+                              )}
                             </div>
 
                             {/* Update Phone Info Box */}
-                            {hasCompleteProfile && editForm.phone !== farmerProfile.phone && editForm.phone. length > 0 && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                className="bg-amber-50 border border-amber-200 rounded-xl p-3"
-                              >
-                                <div className="flex items-start gap-2">
-                                  <Phone size={16} className="text-amber-600 mt-0.5 shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="text-xs font-medium text-amber-800">Changing Phone Number</p>
-                                    <p className="text-[11px] text-amber-600 mt-0.5">
-                                      Current: +91 {farmerProfile.phone} → New: +91 {editForm.phone}
-                                    </p>
+                            {hasCompleteProfile &&
+                              editForm.phone !== farmerProfile.phone &&
+                              editForm.phone.length > 0 && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="bg-amber-50 border border-amber-200 rounded-xl p-3"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <Phone size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="text-xs font-medium text-amber-800">
+                                        Changing Phone Number
+                                      </p>
+                                      <p className="text-[11px] text-amber-600 mt-0.5">
+                                        Current: +91 {farmerProfile.phone} → New: +91{' '}
+                                        {editForm.phone}
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
-                              </motion.div>
-                            )}
+                                </motion.div>
+                              )}
 
                             {/* Location */}
                             <div>
                               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                {hasCompleteProfile ? 'Change Location' : 'Location'} <span className="text-red-500">*</span>
+                                {hasCompleteProfile ? 'Change Location' : 'Location'}{' '}
+                                <span className="text-red-500">*</span>
                               </label>
                               <div className="relative">
-                                <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <MapPin
+                                  size={16}
+                                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                                />
                                 <input
                                   type="text"
                                   value={editForm.location}
                                   onChange={(e) => {
-                                    setEditForm(prev => ({ ...prev, location: e.target.value }));
-                                    if (e.target.value. trim()) setErrors(prev => ({ ...prev, location: false }));
+                                    setEditForm((prev) => ({ ...prev, location: e.target.value }));
+                                    if (e.target.value.trim())
+                                      setErrors((prev) => ({ ...prev, location: false }));
                                   }}
                                   placeholder="Village, District, State"
-                                  className={`w-full pl-11 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors. location ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                  className={`w-full pl-11 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.location ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
                                 />
                               </div>
-                              {errors.location && <p className="text-xs text-red-500 mt-1">Location is required</p>}
+                              {errors.location && (
+                                <p className="text-xs text-red-500 mt-1">Location is required</p>
+                              )}
                             </div>
 
                             {/* Farmer ID (Display Only) */}
                             <div>
                               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Farmer ID <span className="text-green-600 text-[10px] font-normal">(Verified)</span>
+                                Farmer ID{' '}
+                                <span className="text-green-600 text-[10px] font-normal">
+                                  (Verified)
+                                </span>
                               </label>
                               <div className="flex items-center gap-2 px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl">
-                                <span className="text-gray-700 font-medium">{farmerProfile. farmerId}</span>
+                                <span className="text-gray-700 font-medium">
+                                  {farmerProfile.farmerId}
+                                </span>
                                 <BadgeCheck size={16} className="text-green-600 ml-auto" />
                               </div>
                             </div>
@@ -654,7 +705,7 @@ export default function FarmerNavbar() {
                               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg"
                             >
                               <Save size={16} />
-                              Save Changes
+                              Save
                             </button>
                           </div>
                         </motion.div>
