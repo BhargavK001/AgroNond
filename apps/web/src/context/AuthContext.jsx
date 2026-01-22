@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 
 const AuthContext = createContext({});
 
@@ -13,101 +13,49 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
 
-  // Fetch user profile
-  const fetchProfile = useCallback(async (userId) => {
-    setProfileLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return null;
-      }
-      
-      if (data) {
-        setProfile(data);
-      }
-      return data;
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-      return null;
-    } finally {
-      setProfileLoading(false);
-    }
-  }, []);
-
-  // Initialize auth state
+  // Initialize auth state from local storage
   useEffect(() => {
-    let isMounted = true;
-    
     const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        if (initialSession) {
-          setSession(initialSession);
-          setUser(initialSession.user);
-          await fetchProfile(initialSession.user.id);
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+      const token = localStorage.getItem('auth_token');
+      const storedUser = localStorage.getItem('user_data');
+
+      if (token && storedUser) {
+        // Optimistically set user
+        setUser(JSON.parse(storedUser));
+
+        // Validate token and refresh profile in background
+        try {
+          const profileData = await api.users.getProfile();
+          // Merge profile data
+          const updatedUser = { ...profileData.user, ...profileData.profile };
+          setUser(updatedUser);
+          localStorage.setItem('user_data', JSON.stringify(updatedUser));
+        } catch (error) {
+          console.error('Session validation failed:', error);
+          // If 401, clear session
+          if (error.message === 'Unauthorized' || error.message.includes('401')) {
+            logout();
+          }
         }
       }
+      setLoading(false);
     };
 
     initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!isMounted) return;
-        
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        
-        if (newSession?.user) {
-          // Only fetch if we don't have it (or to refresh)
-          fetchProfile(newSession.user.id).catch(err => 
-            console.error('Background profile fetch failed:', err)
-          );
-        } else {
-          setProfile(null);
-        }
-        
-        setLoading(false);
-      }
-    );
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [fetchProfile]);
+  }, []);
 
   // Send OTP
   const signInWithPhone = useCallback(async (phone) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithOtp({
-        phone,
-        options: { shouldCreateUser: true },
+      await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
       });
-
-      if (error) throw error;
-      return { data, error: null };
+      return { error: null };
     } catch (error) {
       console.error('Sign in error:', error);
       return { error };
@@ -120,13 +68,23 @@ export function AuthProvider({ children }) {
   const verifyOtp = useCallback(async (phone, token) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone,
-        token,
-        type: 'sms',
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp: token })
       });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed');
+      }
+
+      // Store session
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('user_data', JSON.stringify(data.user));
+
+      setUser(data.user);
       return { data, error: null };
     } catch (error) {
       console.error('OTP verification error:', error);
@@ -140,68 +98,52 @@ export function AuthProvider({ children }) {
     if (!user) return { error: { message: 'No user logged in' } };
 
     try {
-      const updates = {
-        id: user.id,
-        role: role, 
-        updated_at: new Date().toISOString(),
-      };
+      // Use API wrapper
+      const response = await api.users.setRole(role);
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert(updates)
-        .select()
-        .single();
+      // Update local state
+      const updatedUser = { ...user, role };
+      setUser(updatedUser);
+      localStorage.setItem('user_data', JSON.stringify(updatedUser));
 
-      if (error) throw error;
-
-      setProfile(data);
-      return { data, error: null };
+      return { data: response, error: null };
     } catch (error) {
       console.error('Update role error:', error);
       return { error };
     }
   }, [user]);
 
-  // ✅ FIXED: Robust Sign Out Logic
-  // ✅ FIXED: Robust Sign Out Logic
   const signOut = useCallback(async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Call backend logout (optional, but good practice)
+      await fetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Sign out error:', error);
     } finally {
-      // Manually clear Supabase tokens from localStorage
-      // Supabase default key format: sb-<project-ref>-auth-token
-      if (typeof window !== 'undefined') {
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-            localStorage.removeItem(key);
-          }
-        });
-      }
-
-      // Always clear local state to ensure UI updates
-      setUser(null);
-      setSession(null);
-      setProfile(null);
+      logout();
       setLoading(false);
       return { error: null };
     }
   }, []);
 
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_data');
+    setUser(null);
+  }
+
   const value = useMemo(() => ({
     user,
-    session,
-    profile,
+    session: user, // Backward compatibility
+    profile: user, // Backward compatibility: merged user and profile
     loading,
-    profileLoading,
+    profileLoading: false,
     signInWithPhone,
     verifyOtp,
     updateRole,
     signOut,
-  }), [user, session, profile, loading, profileLoading, signInWithPhone, verifyOtp, updateRole, signOut]);
+  }), [user, loading, signInWithPhone, verifyOtp, updateRole, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

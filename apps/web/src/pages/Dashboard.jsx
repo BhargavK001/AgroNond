@@ -8,6 +8,19 @@ export default function Dashboard() {
   const { user, profile, signOut, loading } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (profile?.role) {
+      switch (profile.role) {
+        case 'farmer': navigate('/dashboard/farmer', { replace: true }); break;
+        case 'trader': navigate('/dashboard/trader', { replace: true }); break;
+        case 'committee': navigate('/dashboard/committee', { replace: true }); break;
+        case 'admin': navigate('/dashboard/admin', { replace: true }); break;
+        case 'weight': navigate('/dashboard/weight', { replace: true }); break;
+        case 'accounting': navigate('/dashboard/accounting', { replace: true }); break;
+      }
+    }
+  }, [profile, navigate]);
+
   // No automatic redirect to prevent loops
   // If role is missing, we show a blocking UI instead
   if (!loading && user && profile && !profile.role) {
@@ -21,7 +34,7 @@ export default function Dashboard() {
           <p className="text-gray-600 mb-6">
             Please select a role to continue accessing the dashboard.
           </p>
-          <Button 
+          <Button
             onClick={() => navigate('/login', { state: { step: 'role' } })}
             className="w-full"
           >
@@ -85,7 +98,7 @@ export default function Dashboard() {
               <span className="text-xs text-[var(--text-muted)]">Digital Mandi Platform</span>
             </div>
           </Link>
-          
+
           <Button variant="outline" onClick={handleSignOut}>
             Sign Out
           </Button>
@@ -136,7 +149,7 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-[var(--border)]">
           <h2 className="text-xl font-bold mb-6">Quick Actions</h2>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <QuickActionCard
               icon="📊"

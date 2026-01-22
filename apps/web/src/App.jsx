@@ -167,7 +167,7 @@ function App() {
                   <Route path="accounting" element={<AccountingDashboard />} />
                 </Route>
 
-                {/* Accounting Dashboard - Separate Role */}
+                Accounting Dashboard - Separate Role
                 <Route path="/dashboard/accounting" element={
                     <ProtectedRoute requireRole="accounting">
                       <AccountingLayout />
@@ -189,7 +189,7 @@ function App() {
                   <Route path="commission" element={<CommissionRules />} />
                   <Route path="transactions" element={<TransactionHistory />} />
                 </Route>
-
+                  
                 {/* Generic Dashboard (Fallback) */}
                 <Route path="/dashboard" element={
                     <ProtectedRoute>

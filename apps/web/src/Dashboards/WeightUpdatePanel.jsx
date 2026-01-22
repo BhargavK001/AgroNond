@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import WeightNavbar from '../components/WeightNavbar';
-import { supabase } from '../lib/supabase'; // ✅ CONNECTED TO SUPABASE
+import { api } from '../lib/api';
+
 import { Search, Scale, Save, CheckCircle, AlertCircle, History } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -12,31 +13,27 @@ const WeightUpdatePanel = () => {
   const [selectedRecordId, setSelectedRecordId] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
 
-  // 1. Search Farmer from Supabase Profiles
+  // 1. Search Farmer from API
   const handleSearch = async () => {
     if (!searchTerm) return toast.error('Enter a phone number');
     setIsSearching(true);
 
     try {
       // Find Farmer Profile by Phone
-      const { data: farmer, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('phone', searchTerm) 
-        .eq('role', 'farmer')
-        .single();
+      const farmer = await api.records.searchFarmer(searchTerm);
 
-      if (error || !farmer) {
+      if (!farmer) {
         toast.error('Farmer not found. Check phone number.');
         setActiveFarmer(null);
         setPendingRecords([]);
       } else {
         setActiveFarmer(farmer);
-        fetchPendingRecords(farmer.id);
+        fetchPendingRecords(farmer._id); // Mongo ID
         toast.success(`Found: ${farmer.full_name || 'Farmer'}`);
       }
     } catch (err) {
       console.error(err);
+      toast.error('Farmer not found or error searching');
     } finally {
       setIsSearching(false);
     }
@@ -44,35 +41,25 @@ const WeightUpdatePanel = () => {
 
   // 2. Fetch Pending Records for that Farmer
   const fetchPendingRecords = async (farmerId) => {
-    const { data, error } = await supabase
-      .from('records')
-      .select('*')
-      .eq('farmer_id', farmerId)
-      .eq('status', 'Pending'); // Only get records needing weighing
-
-    if (!error) setPendingRecords(data || []);
+    try {
+      const data = await api.records.getPending(farmerId);
+      setPendingRecords(data || []);
+    } catch (error) {
+      console.error('Error fetching records:', error);
+    }
   };
 
-  // 3. Update Weight in Supabase
+  // 3. Update Weight
   const handleSubmitWeight = async () => {
     if (!weightInput || !selectedRecordId) return toast.error('Enter weight first');
 
     try {
-      const { error } = await supabase
-        .from('records')
-        .update({
-          official_qty: parseFloat(weightInput),
-          status: 'Weighed', // ✅ This triggers the update in Farmer Dashboard
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedRecordId);
-
-      if (error) throw error;
+      await api.records.updateWeight(selectedRecordId, parseFloat(weightInput));
 
       toast.success('Weight updated & synced!');
       setWeightInput('');
       setSelectedRecordId(null);
-      fetchPendingRecords(activeFarmer.id); // Refresh list
+      fetchPendingRecords(activeFarmer._id); // Refresh list
 
     } catch (err) {
       toast.error('Update failed');
@@ -89,7 +76,7 @@ const WeightUpdatePanel = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Left: Search */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -99,9 +86,9 @@ const WeightUpdatePanel = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">Farmer Mobile</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. +919876543210" 
+                  <input
+                    type="text"
+                    placeholder="e.g. +919876543210"
                     className="w-full p-3 border rounded-xl"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -129,7 +116,7 @@ const WeightUpdatePanel = () => {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 h-full p-6">
               <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h2 className="text-xl font-bold flex items-center gap-2"><Scale className="text-blue-600"/> Weighing Station</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2"><Scale className="text-blue-600" /> Weighing Station</h2>
                 <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">Live</span>
               </div>
 

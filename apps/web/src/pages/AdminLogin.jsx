@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+
 import Button from '../components/Button';
 
 // Icons
@@ -32,11 +32,11 @@ function LeafIcon({ className }) {
 
 export default function AdminLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']); 
-  const [step, setStep] = useState('phone'); 
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [step, setStep] = useState('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { signInWithPhone, verifyOtp, user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -66,13 +66,13 @@ export default function AdminLogin() {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      
+
       const { error } = await signInWithPhone(formattedPhone);
-      
+
       if (error) {
         throw error;
       }
-      
+
       setStep('otp');
     } catch (err) {
       console.error(err);
@@ -101,18 +101,9 @@ export default function AdminLogin() {
       if (error) throw error;
 
       // Manually fetch profile to verify role immediately
-      if (data?.user || data?.session?.user) {
-        const userId = data.user?.id || data.session?.user?.id;
-        
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-          
-        if (profileError) throw profileError;
-        
-        if (profileData?.role === 'admin') {
+      if (data?.user) {
+        // user object from verifyOtp already has role
+        if (data.user.role === 'admin') {
           navigate('/dashboard/admin');
         } else {
           await signOut();
@@ -121,6 +112,7 @@ export default function AdminLogin() {
           setOtp(['', '', '', '', '', '']);
         }
       }
+
     } catch (err) {
       console.error(err);
       setError(err.message || 'Invalid OTP');
@@ -182,9 +174,9 @@ export default function AdminLogin() {
             <span className="text-xs text-[var(--text-muted)]">Admin Portal</span>
           </div>
         </Link>
-      
+
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 border border-[var(--border)] animate-scale-in">
-          
+
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm text-center">
               {error}
@@ -200,7 +192,7 @@ export default function AdminLogin() {
                 </p>
               </div>
 
-               <form onSubmit={handlePhoneSubmit} className="space-y-4 sm:space-y-6">
+              <form onSubmit={handlePhoneSubmit} className="space-y-4 sm:space-y-6">
                 <div>
                   <label className="block text-sm font-medium mb-2">Mobile Number</label>
                   <div className="relative">
@@ -223,16 +215,16 @@ export default function AdminLogin() {
               </form>
             </>
           ) : (
-             <>
-               <div className="text-center mb-5 sm:mb-8">
+            <>
+              <div className="text-center mb-5 sm:mb-8">
                 <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Verify Identity</h1>
                 <p className="text-[var(--text-secondary)] text-sm sm:text-base">
                   Enter the code sent to +91 {phoneNumber}
                 </p>
               </div>
-            
+
               <form onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-6">
-                 <div className="flex justify-center gap-1.5 sm:gap-2">
+                <div className="flex justify-center gap-1.5 sm:gap-2">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
@@ -251,7 +243,7 @@ export default function AdminLogin() {
                 <Button type="submit" loading={loading} disabled={otp.join('').length !== 6} className="w-full bg-gray-900 border-gray-900 hover:bg-gray-800" size="lg">
                   Verify & Access
                 </Button>
-                
+
                 <div className="flex justify-between items-center text-sm">
                   <button type="button" onClick={() => setStep('phone')} className="text-[var(--primary)] hover:underline">
                     Change Number

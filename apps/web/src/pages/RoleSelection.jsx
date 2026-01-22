@@ -57,29 +57,29 @@ function LeafIcon({ className }) {
 
 // Updated Roles Configuration
 const roles = [
-  { 
-    id: 'farmer', 
-    label: 'Farmer', 
-    description: 'Sell your produce & track payments', 
-    icon: FarmerIcon 
+  {
+    id: 'farmer',
+    label: 'Farmer',
+    description: 'Sell your produce & track payments',
+    icon: FarmerIcon
   },
-  { 
-    id: 'trader', 
-    label: 'Trader', 
-    description: 'Buy produce & manage inventory', 
-    icon: TraderIcon 
+  {
+    id: 'trader',
+    label: 'Trader',
+    description: 'Buy produce & manage inventory',
+    icon: TraderIcon
   },
-  { 
-    id: 'weight', 
-    label: 'Weighing Staff', 
-    description: 'Update official weights for lots', 
-    icon: ScaleIcon 
+  {
+    id: 'weight',
+    label: 'Weighing Staff',
+    description: 'Update official weights for lots',
+    icon: ScaleIcon
   },
-  { 
-    id: 'committee', 
-    label: 'Market Committee', 
-    description: 'Admin, Accounting & Oversight', 
-    icon: CommitteeIcon 
+  {
+    id: 'committee',
+    label: 'Market Committee',
+    description: 'Admin, Accounting & Oversight',
+    icon: CommitteeIcon
   },
 ];
 
@@ -93,13 +93,14 @@ export default function RoleSelection() {
   // If user already has a role, redirect them
   useEffect(() => {
     if (profile?.role) {
-       switch (profile.role) {
-         case 'farmer': navigate('/dashboard/farmer'); break;
-         case 'trader': navigate('/dashboard/trader'); break;
-         case 'weight': navigate('/dashboard/committee'); break; 
-         case 'committee': navigate('/dashboard/admin'); break;
-         default: navigate('/dashboard');
-       }
+      switch (profile.role) {
+        case 'farmer': navigate('/dashboard/farmer'); break;
+        case 'trader': navigate('/dashboard/trader'); break;
+        case 'weight': navigate('/dashboard/weight'); break;
+        case 'committee': navigate('/dashboard/committee'); break;
+        case 'admin': navigate('/dashboard/admin'); break;
+        default: navigate('/dashboard');
+      }
     }
   }, [profile, navigate]);
 
@@ -110,7 +111,7 @@ export default function RoleSelection() {
 
     try {
       const { error } = await updateRole(selectedRole);
-      
+
       if (error) {
         throw error;
       }
@@ -124,9 +125,12 @@ export default function RoleSelection() {
           navigate('/dashboard/trader');
           break;
         case 'weight':
-          navigate('/dashboard/committee');
-          break;        
+          navigate('/dashboard/weight');
+          break;
         case 'committee':
+          navigate('/dashboard/committee');
+          break;
+        case 'admin':
           navigate('/dashboard/admin');
           break;
         default:
@@ -167,7 +171,7 @@ export default function RoleSelection() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 border border-[var(--border)] animate-scale-in">
-          
+
           <div className="text-center mb-5 sm:mb-8">
             <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Select Your Role</h1>
             <p className="text-[var(--text-secondary)] text-sm sm:text-base">
@@ -179,15 +183,15 @@ export default function RoleSelection() {
             {roles.map((role) => {
               const Icon = role.icon;
               const isSelected = selectedRole === role.id;
-              
+
               return (
                 <div
                   key={role.id}
                   onClick={() => setSelectedRole(role.id)}
                   className={`
                     relative rounded-xl border p-3 sm:p-4 cursor-pointer flex items-center space-x-3 sm:space-x-4 transition-all duration-200
-                    ${isSelected 
-                      ? 'border-[var(--primary)] ring-2 ring-[var(--primary)] bg-[var(--primary)]/5' 
+                    ${isSelected
+                      ? 'border-[var(--primary)] ring-2 ring-[var(--primary)] bg-[var(--primary)]/5'
                       : 'border-[var(--border)] bg-white hover:border-[var(--primary)]/50 hover:bg-[var(--surface)]'
                     }
                   `}

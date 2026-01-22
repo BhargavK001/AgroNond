@@ -9,10 +9,16 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 // Import routes (these use env vars, so must come after dotenv.config())
+import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
+import recordsRouter from './routes/records.js';
 import contactRouter from './routes/contact.js';
 import adminRouter from './routes/admin.js';
 import statusRouter from './routes/status.js';
+import connectDB from './config/db.js';
+
+// Connect to Database
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,15 +35,17 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     message: 'AgroNond Server is running',
     timestamp: new Date().toISOString()
   });
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/records', recordsRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/status', statusRouter);
@@ -50,7 +58,7 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });

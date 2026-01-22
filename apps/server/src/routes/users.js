@@ -1,5 +1,5 @@
 import express from 'express';
-import { getSupabaseAdmin } from '../config/supabase.js';
+import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -10,25 +10,17 @@ const router = express.Router();
  */
 router.get('/profile', requireAuth, async (req, res) => {
   try {
-    const supabase = getSupabaseAdmin();
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', req.user.id)
-      .single();
-    
-    if (error) {
-      console.error('Profile fetch error:', error);
-      return res.status(404).json({ error: 'Profile not found' });
-    }
-    
+    // req.user is already populated by middleware
+    const user = req.user;
+
+    // Return unified user object
     res.json({
       user: {
-        id: req.user.id,
-        phone: req.user.phone,
-        email: req.user.email,
+        id: user._id,
+        phone: user.phone,
+        email: user.email, // If we have email
       },
-      profile,
+      profile: user, // In Mongo model, user and profile are same document
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -42,30 +34,24 @@ router.get('/profile', requireAuth, async (req, res) => {
  */
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    const { role, full_name } = req.body;
-    const supabase = getSupabaseAdmin();
-    
-    const updateData = {};
-    if (role) updateData.role = role;
-    if (full_name) updateData.full_name = full_name;
-    updateData.updated_at = new Date().toISOString();
-    
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .update(updateData)
-      .eq('id', req.user.id)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Profile update error:', error);
-      return res.status(400).json({ error: 'Failed to update profile' });
-    }
-    
-    res.json({ profile });
+    const { role, full_name, business_name, gst_number, license_number, business_address, operating_locations } = req.body;
+
+    const user = req.user;
+
+    if (role) user.role = role;
+    if (full_name) user.full_name = full_name;
+    if (business_name) user.business_name = business_name;
+    if (gst_number) user.gst_number = gst_number;
+    if (license_number) user.license_number = license_number;
+    if (business_address) user.business_address = business_address;
+    if (operating_locations) user.operating_locations = operating_locations;
+
+    await user.save();
+
+    res.json({ profile: user });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    res.status(400).json({ error: 'Failed to update profile' });
   }
 });
 
@@ -76,49 +62,32 @@ router.patch('/profile', requireAuth, async (req, res) => {
 router.post('/set-role', requireAuth, async (req, res) => {
   try {
     const { role } = req.body;
-    const supabase = getSupabaseAdmin();
-    
-    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight_staff', 'accounting'];
+
+    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'];
     if (!role || !validRoles.includes(role)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid role',
-        validRoles 
+        validRoles
       });
     }
-    
+
     // Check if user already has a role
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', req.user.id)
-      .single();
-    
-    if (existingProfile?.role) {
-      return res.status(400).json({ 
+    const user = req.user;
+
+    if (user.role) {
+      return res.status(400).json({
         error: 'Role already set',
-        currentRole: existingProfile.role
+        currentRole: user.role
       });
     }
-    
+
     // Set the role
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .update({ 
-        role,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', req.user.id)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Set role error:', error);
-      return res.status(400).json({ error: 'Failed to set role' });
-    }
-    
-    res.json({ 
+    user.role = role;
+    await user.save();
+
+    res.json({
       message: 'Role set successfully',
-      profile 
+      profile: user
     });
   } catch (error) {
     console.error('Set role error:', error);

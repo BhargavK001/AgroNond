@@ -1,4 +1,5 @@
-import { verifyToken, getSupabaseAdmin } from '../config/supabase.js';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 /**
  * Authentication middleware
@@ -7,31 +8,34 @@ import { verifyToken, getSupabaseAdmin } from '../config/supabase.js';
 export async function requireAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({ error: 'No authorization header' });
     }
-    
+
     // Extract token from "Bearer <token>"
     const token = authHeader.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
-    
-    // Verify token and get user
-    const user = await verifyToken(token);
-    
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+
+    // Find user in DB
+    const user = await User.findById(decoded.id);
+
     if (!user) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      return res.status(401).json({ error: 'User not found' });
     }
-    
+
     // Attach user to request
     req.user = user;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    console.error('Auth middleware error:', error.message);
+    res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
 
@@ -42,15 +46,20 @@ export async function requireAuth(req, res, next) {
 export async function optionalAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
-      const user = await verifyToken(token);
-      if (user) {
-        req.user = user;
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+        const user = await User.findById(decoded.id);
+        if (user) {
+          req.user = user;
+        }
+      } catch (err) {
+        // Token invalid, ignore
       }
     }
-    
+
     next();
   } catch (error) {
     // Continue without user
@@ -63,23 +72,16 @@ export async function optionalAuth(req, res, next) {
  * Use after requireAuth
  */
 export function requireRole(...roles) {
-  return async (req, res, next) => {
+  return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    
-    // Get user's role from profile
-    const { data: profile } = await getSupabaseAdmin()
-      .from('profiles')
-      .select('role')
-      .eq('id', req.user.id)
-      .single();
-    
-    if (!profile || !roles.includes(profile.role)) {
+
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
-    
-    req.userRole = profile.role;
+
+    req.userRole = req.user.role;
     next();
   };
 }

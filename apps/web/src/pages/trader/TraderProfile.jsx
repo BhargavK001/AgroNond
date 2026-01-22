@@ -2,17 +2,17 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+
 
 export default function TraderProfile() {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || '',
@@ -40,20 +40,38 @@ export default function TraderProfile() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          business_name: formData.business_name,
-          gst_number: formData.gst_number,
-          license_number: formData.license_number,
-          business_address: formData.business_address,
-          operating_locations: formData.operating_locations,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user?.id);
+      // Use API wrapper via AuthContext or direct import
+      // We can use the updateRole from context, or imported api
+      // But for profile updates like address, we need api.users.updateProfile
 
-      if (error) throw error;
+      const { full_name, business_name, gst_number, license_number, business_address, operating_locations } = formData;
+
+      // We can import api here dynamically or at top level, but for now let's use fetch or assume api is available
+      // The cleanest way is to use the api utility we saw in api.js
+      // Let's modify the imports first to include api
+
+      const response = await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        },
+        body: JSON.stringify({
+          full_name,
+          business_name,
+          gst_number,
+          license_number,
+          business_address,
+          operating_locations,
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update profile');
+
+      // Force reload user in context (or we should update context state)
+      // window.location.reload(); // Simple but jarring
+      // Ideally AuthContext exposed a reloadUser method, but it reloads on mount.
+
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -69,21 +87,21 @@ export default function TraderProfile() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
-    return new Date(dateStr).toLocaleDateString('en-IN', { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     });
   };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-500 hover:text-slate-700 mb-4 transition-colors"
         >
@@ -97,7 +115,7 @@ export default function TraderProfile() {
       </motion.div>
 
       {/* Profile Header Card */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -109,7 +127,7 @@ export default function TraderProfile() {
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-2xl sm:text-3xl font-bold shadow-lg">
               {formData.full_name ? formData.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'T'}
             </div>
-            <button 
+            <button
               onClick={() => fileInputRef.current?.click()}
               className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-2xl flex items-center justify-center transition-opacity cursor-pointer"
             >
@@ -140,7 +158,7 @@ export default function TraderProfile() {
             ) : (
               <h2 className="text-xl sm:text-2xl font-bold text-slate-800">{formData.full_name || 'Add Your Name'}</h2>
             )}
-            
+
             <div className="flex flex-wrap items-center gap-3 mt-2">
               <div className="flex items-center gap-1.5 text-slate-500 text-sm">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,21 +171,20 @@ export default function TraderProfile() {
                 Verified Trader
               </span>
             </div>
-            
+
             <p className="text-xs text-slate-400 mt-2">
               Member since {formatDate(activityStats.memberSince)}
             </p>
           </div>
 
           {/* Edit Button */}
-          <button 
+          <button
             onClick={() => isEditing ? handleSave() : setIsEditing(true)}
             disabled={saving}
-            className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
-              isEditing 
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${isEditing
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
           >
             {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit Profile'}
           </button>
@@ -175,7 +192,7 @@ export default function TraderProfile() {
       </motion.div>
 
       {/* Business Information */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
@@ -187,7 +204,7 @@ export default function TraderProfile() {
           </svg>
           Business Information
         </h3>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Business/Shop Name</label>
@@ -204,7 +221,7 @@ export default function TraderProfile() {
               <p className="text-slate-800 font-medium">{formData.business_name || '—'}</p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">APMC/Mandi License No.</label>
             {isEditing ? (
@@ -220,7 +237,7 @@ export default function TraderProfile() {
               <p className="text-slate-800 font-medium">{formData.license_number || '—'}</p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">GST Number (Optional)</label>
             {isEditing ? (
@@ -236,7 +253,7 @@ export default function TraderProfile() {
               <p className="text-slate-800 font-medium">{formData.gst_number || '—'}</p>
             )}
           </div>
-          
+
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Operating Locations</label>
             {isEditing ? (
@@ -244,8 +261,8 @@ export default function TraderProfile() {
                 type="text"
                 name="operating_locations"
                 value={Array.isArray(formData.operating_locations) ? formData.operating_locations.join(', ') : ''}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
                   operating_locations: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                 }))}
                 placeholder="Pune, Nashik, Kolhapur"
@@ -253,16 +270,16 @@ export default function TraderProfile() {
               />
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {formData.operating_locations?.length > 0 
+                {formData.operating_locations?.length > 0
                   ? formData.operating_locations.map((loc, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">{loc}</span>
-                    ))
+                    <span key={i} className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs">{loc}</span>
+                  ))
                   : <p className="text-slate-800 font-medium">—</p>
                 }
               </div>
             )}
           </div>
-          
+
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Business Address</label>
             {isEditing ? (
@@ -282,7 +299,7 @@ export default function TraderProfile() {
       </motion.div>
 
       {/* Activity Stats */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
@@ -294,7 +311,7 @@ export default function TraderProfile() {
           </svg>
           Activity Stats
         </h3>
-        
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl bg-blue-50 text-center">
             <p className="text-2xl sm:text-3xl font-bold text-blue-700">{activityStats.totalPurchases}</p>
@@ -316,7 +333,7 @@ export default function TraderProfile() {
       </motion.div>
 
       {/* Account Actions */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
@@ -329,7 +346,7 @@ export default function TraderProfile() {
           </svg>
           Account Actions
         </h3>
-        
+
         <div className="space-y-3">
           <button className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group">
             <div className="flex items-center gap-3">
@@ -347,7 +364,7 @@ export default function TraderProfile() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          
+
           <button className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
@@ -364,8 +381,8 @@ export default function TraderProfile() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          
-          <button 
+
+          <button
             onClick={handleLogout}
             className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
           >
@@ -384,8 +401,8 @@ export default function TraderProfile() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setShowDeleteModal(true)}
             className="w-full flex items-center justify-between p-4 rounded-xl bg-red-50 hover:bg-red-100 transition-colors group"
           >

@@ -49,8 +49,6 @@ export default function Login() {
         else if (profile.role === 'accounting') navigate('/dashboard/accounting');
         else navigate('/dashboard');
       } else {
-        // User is authenticated but has no profile or no role -> Role Selection
-        // This handles both: existing profile without role, and new users without profile
         navigate('/role-selection');
       }
     }
@@ -111,9 +109,7 @@ export default function Login() {
 
       if (error) throw error;
       
-      // No manual navigation here. 
-      // The useEffect hooks listens to 'user' and 'profileLoading' state 
-      // and will redirect automatically once the profile is ready.
+    
 
     } catch (err) {
       console.error(err);
@@ -162,7 +158,7 @@ export default function Login() {
     setOtp(newOtp);
   };
 
-  // Show loading screen while checking profile to prevent form flash
+
   if (user && profileLoading) {
     return <PageLoading />;
   }
