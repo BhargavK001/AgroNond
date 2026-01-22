@@ -131,7 +131,7 @@ export default function FarmerNavbar() {
     } catch (error) {
       console.error('Logout failed', error);
       toast.error('Failed to log out');
-      
+
       window.location.href = '/';
     }
   };

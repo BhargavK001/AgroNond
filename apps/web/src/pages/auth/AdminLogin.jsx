@@ -53,6 +53,44 @@ export default function AdminLogin() {
     }
   }, [user, profile, navigate, signOut]);
 
+  // Auto-focus first OTP input when step changes to 'otp'
+  useEffect(() => {
+    if (step === 'otp') {
+      setTimeout(() => {
+        document.getElementById('otp-0')?.focus();
+      }, 100);
+    }
+  }, [step]);
+
+  // Combined verification logic
+  const verifyOtpCode = async (otpValue) => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      const { data, error } = await verifyOtp(formattedPhone, otpValue);
+
+      if (error) throw error;
+
+      if (data?.user) {
+        if (data.user.role === 'admin') {
+          navigate('/dashboard/admin');
+        } else {
+          await signOut();
+          setError('Access Denied. This portal is for Admins only.');
+          setStep('phone');
+          setOtp(['', '', '', '', '', '']);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Invalid OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -66,12 +104,9 @@ export default function AdminLogin() {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-
       const { error } = await signInWithPhone(formattedPhone);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setStep('otp');
     } catch (err) {
@@ -84,46 +119,17 @@ export default function AdminLogin() {
 
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
-      setLoading(false);
       return;
     }
-
-    try {
-      // Ensure exact same formatting logic as handlePhoneSubmit
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      const { data, error } = await verifyOtp(formattedPhone, otpValue);
-
-      if (error) throw error;
-
-      // Manually fetch profile to verify role immediately
-      if (data?.user) {
-        // user object from verifyOtp already has role
-        if (data.user.role === 'admin') {
-          navigate('/dashboard/admin');
-        } else {
-          await signOut();
-          setError('Access Denied. This portal is for Admins only.');
-          setStep('phone');
-          setOtp(['', '', '', '', '', '']);
-        }
-      }
-
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Invalid OTP');
-    } finally {
-      setLoading(false);
-    }
+    await verifyOtpCode(otpValue);
   };
 
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
@@ -131,6 +137,11 @@ export default function AdminLogin() {
     // Auto focus next input
     if (value && index < 5) {
       document.getElementById(`otp-${index + 1}`)?.focus();
+    }
+
+    // Auto verify if complete
+    if (newOtp.join('').length === 6) {
+      verifyOtpCode(newOtp.join(''));
     }
   };
 
@@ -144,11 +155,17 @@ export default function AdminLogin() {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (!/^\d+$/.test(pastedData)) return;
+
     const newOtp = [...otp];
     pastedData.split('').forEach((char, i) => {
       if (i < 6) newOtp[i] = char;
     });
     setOtp(newOtp);
+
+    // Auto verify paste
+    if (newOtp.join('').length === 6) {
+      verifyOtpCode(newOtp.join(''));
+    }
   };
 
   return (

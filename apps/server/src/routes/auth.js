@@ -76,15 +76,24 @@ router.post('/verify', async (req, res) => {
     try {
         console.log('[Verify] Checking user for phone:', phone);
 
-        // Flexible lookup: Check for phone as sent (e.g. +91...) OR raw 10 digit
+        // Flexible lookup: Find ALL matching users (to handle duplicates like +91 vs raw)
         const rawPhone = phone.replace(/^\+91/, '');
-        let user = await User.findOne({
+        let users = await User.find({
             $or: [
                 { phone: phone },
                 { phone: rawPhone },
-                { phone: `+91${rawPhone}` } // Just in case
+                { phone: `+91${rawPhone}` }
             ]
         });
+
+        // Smart selection priority: Admin > Committee > Weight > Accounting > Trader > Farmer
+        const rolePriority = { 'admin': 6, 'committee': 5, 'weight': 4, 'accounting': 3, 'trader': 2, 'farmer': 1 };
+
+        let user = null;
+        if (users.length > 0) {
+            // Sort by priority and pick the highest
+            user = users.sort((a, b) => (rolePriority[b.role] || 0) - (rolePriority[a.role] || 0))[0];
+        }
 
         console.log('[Verify] User found:', user ? `Yes (${user._id}, ${user.role})` : 'No');
 

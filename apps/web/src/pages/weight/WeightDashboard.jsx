@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import WeightNavbar from '../components/WeightNavbar';
+import WeightNavbar from '../../components/WeightNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   Plus, CheckCircle, Clock, X, Eye, Edit2,
@@ -397,8 +397,8 @@ const WeightDashboard = () => {
                         </div>
                       </div>
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-orange-100 text-orange-700'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-orange-100 text-orange-700'
                         }`}>
                         {record.status === 'Done' ? <CheckCircle size={10} /> : <Clock size={10} />}
                         {record.status}
@@ -490,8 +490,8 @@ const WeightDashboard = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-orange-100 text-orange-700'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
                           }`}>
                           {record.status === 'Done' ? <CheckCircle size={12} /> : <Clock size={12} />}
                           {record.status}

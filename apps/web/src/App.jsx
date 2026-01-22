@@ -20,7 +20,7 @@ const Contact = lazy(() => import('./pages/public/Contact'));
 const Login = lazy(() => import('./pages/auth/Login'));
 const AdminLogin = lazy(() => import('./pages/auth/AdminLogin'));
 const Privacy = lazy(() => import('./pages/public/Privacy'));
-const Dashboard = lazy(() => import('./pages/common/Dashboard'));
+
 const StatusPage = lazy(() => import('./pages/public/StatusPage'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
 const ComingSoon = lazy(() => import('./pages/public/ComingSoon'));
@@ -53,6 +53,10 @@ const TradersList = lazy(() => import('./pages/committee/TradersList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
 
 const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
+const AccountingTransactions = lazy(() => import('./pages/accounting/TransactionsPage'));
+const AccountingTraders = lazy(() => import('./pages/accounting/TradersPage'));
+const AccountingFarmers = lazy(() => import('./pages/accounting/FarmersPage'));
+const AccountingReports = lazy(() => import('./pages/accounting/ReportsPage'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -163,6 +167,10 @@ function App() {
                 }
                 >
                   <Route index element={<AccountingDashboard />} />
+                  <Route path="transactions" element={<AccountingTransactions />} />
+                  <Route path="traders" element={<AccountingTraders />} />
+                  <Route path="farmers" element={<AccountingFarmers />} />
+                  <Route path="reports" element={<AccountingReports />} />
                 </Route>
 
                 {/* Admin Dashboard - Sidebar Layout */}
@@ -178,13 +186,7 @@ function App() {
                   <Route path="transactions" element={<TransactionHistory />} />
                 </Route>
 
-                {/* Generic Dashboard (Fallback) */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-                />
+
 
                 {/* Public Pages */}
                 <Route path="/" element={<Layout><Home /></Layout>} />

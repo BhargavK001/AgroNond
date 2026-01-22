@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import FarmerNavbar from '../components/FarmerNavbar';
+import FarmerNavbar from '../../components/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   Plus, TrendingUp, Clock, Package, X, Download, Eye, ArrowLeft,
-  Trash2, CheckCircle, Calendar, MapPin, ChevronRight
+  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText
 } from 'lucide-react';
 
 // --- MODAL COMPONENT ---
@@ -136,7 +136,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
   const [selectedMarket, setSelectedMarket] = useState('');
   const [selectedVegetable, setSelectedVegetable] = useState(null);
 
-  // New State for 3-Way Conversion
   const [quantities, setQuantities] = useState({
     kg: '',
     ton: '',
@@ -158,9 +157,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     });
   };
 
-  // --- QUANTITY CONVERSION LOGIC ---
   const handleQuantityChange = (value, type) => {
-    // If input is empty, clear all fields
     if (value === '') {
       setQuantities({ kg: '', ton: '', quintal: '' });
       return;
@@ -173,19 +170,18 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
     if (type === 'kg') {
       newKg = value;
-      newTon = (val / 1000).toFixed(3);    // 1000kg = 1 ton
-      newQuintal = (val / 100).toFixed(2); // 100kg = 1 quintal
+      newTon = (val / 1000).toFixed(3);
+      newQuintal = (val / 100).toFixed(2);
     } else if (type === 'ton') {
       newTon = value;
       newKg = (val * 1000).toFixed(2);
-      newQuintal = (val * 10).toFixed(2);  // 1 ton = 10 quintals
+      newQuintal = (val * 10).toFixed(2);
     } else if (type === 'quintal') {
       newQuintal = value;
       newKg = (val * 100).toFixed(2);
       newTon = (val / 10).toFixed(3);
     }
 
-    // Remove trailing zeros for cleaner display (optional)
     setQuantities({
       kg: type === 'kg' ? value : parseFloat(newKg).toString(),
       ton: type === 'ton' ? value : parseFloat(newTon).toString(),
@@ -194,7 +190,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
   };
 
   const handleAddItem = () => {
-    // Validate: Use quantities.kg as the base truth
     if (!selectedVegetable || !quantities.kg || parseFloat(quantities.kg) <= 0) {
       toast.error('Please select a vegetable and enter valid quantity');
       return;
@@ -209,13 +204,12 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     const newItem = {
       id: Date.now(),
       vegetable: selectedVegetable.display,
-      quantity: parseFloat(quantities.kg) // We store everything in KG internally
+      quantity: parseFloat(quantities.kg)
     };
 
     setAddedItems([...addedItems, newItem]);
     toast.success(`${selectedVegetable.english} added!`);
 
-    // Reset selection
     setSelectedVegetable(null);
     setQuantities({ kg: '', ton: '', quintal: '' });
   };
@@ -241,7 +235,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
       items: addedItems
     });
 
-    // Reset All
     setSelectedMarket('');
     setSelectedVegetable(null);
     setQuantities({ kg: '', ton: '', quintal: '' });
@@ -266,7 +259,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Add New Record</h2>
 
           <div className="space-y-6">
-            {/* Market Selection */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Market Name *</label>
               <select
@@ -283,7 +275,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </select>
             </div>
 
-            {/* Added Items List */}
             {addedItems.length > 0 && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <p className="text-sm font-semibold text-gray-900 mb-3">Added Items ({addedItems.length}):</p>
@@ -307,7 +298,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </div>
             )}
 
-            {/* Vegetable Selector */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Vegetable Name *</label>
 
@@ -320,7 +310,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               )}
 
               <div className="border border-gray-300 rounded-xl overflow-hidden bg-white flex flex-col sm:flex-row h-96">
-                {/* Categories */}
                 <div className="w-full sm:w-64 border-b sm:border-b-0 sm:border-r border-gray-200 overflow-y-auto bg-gray-50">
                   {VEGETABLE_CATEGORIES.map((category) => (
                     <button
@@ -338,7 +327,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                   ))}
                 </div>
 
-                {/* Items */}
                 <div className="flex-1 overflow-y-auto bg-white">
                   {selectedCategoryData ? (
                     <div className="p-2">
@@ -347,8 +335,8 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                           key={idx}
                           onClick={() => handleVegetableSelect(item)}
                           className={`w-full px-4 py-3 text-left hover:bg-green-50 transition rounded-lg mb-1 ${selectedVegetable?.english === item.english
-                              ? 'bg-green-100 border-l-4 border-green-500'
-                              : 'border-l-4 border-transparent'
+                            ? 'bg-green-100 border-l-4 border-green-500'
+                            : 'border-l-4 border-transparent'
                             }`}
                         >
                           <p className="text-base font-bold text-gray-900">{item.english}</p>
@@ -368,12 +356,10 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </div>
             </div>
 
-            {/* --- UPDATED QUANTITY SECTION (Kg, Ton, Quintal) --- */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-                {/* Kg Input */}
                 <div>
                   <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg) *</label>
                   <input
@@ -387,7 +373,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                   />
                 </div>
 
-                {/* Tons Input */}
                 <div>
                   <label className="block text-xs text-gray-500 mb-1 font-medium">Tons (1T = 1000kg)</label>
                   <input
@@ -401,7 +386,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                   />
                 </div>
 
-                {/* Quintal Input */}
                 <div>
                   <label className="block text-xs text-gray-500 mb-1 font-medium">Quintals (1Q = 100kg)</label>
                   <input
@@ -422,7 +406,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               <p><strong>Note:</strong> Enter quantity in any box, others will calculate automatically. Records are saved in Kg.</p>
             </div>
 
-            {/* Buttons Row */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={handleAddItem}
@@ -436,8 +419,8 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                 onClick={handleSaveAll}
                 disabled={addedItems.length === 0}
                 className={`px-4 py-3 font-semibold rounded-xl transition shadow-lg hover:shadow-xl ${addedItems.length === 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700 text-white'
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
                   }`}
               >
                 Save Records ({addedItems.length})
@@ -464,13 +447,22 @@ const FarmerDashboard = () => {
 
   const [modals, setModals] = useState({
     editProfile: false,
-    details: false
+    details: false,
+    editRecord: false
   });
 
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
+
+  // EDIT FORM STATE
+  const [editFormData, setEditFormData] = useState({
+    id: null,
+    market: '',
+    vegetable: '',
+    quantities: { kg: '', ton: '', quintal: '' }
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem('farmer-records');
@@ -485,11 +477,11 @@ const FarmerDashboard = () => {
 
   useEffect(() => {
     const handleOpenEditProfile = () => {
-      setModals({ ...modals, editProfile: true });
+      setModals(prev => ({ ...prev, editProfile: true }));
     };
     window.addEventListener('openEditProfile', handleOpenEditProfile);
     return () => window.removeEventListener('openEditProfile', handleOpenEditProfile);
-  }, [modals]);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('farmer-records', JSON.stringify(records));
@@ -515,6 +507,8 @@ const FarmerDashboard = () => {
     return 0;
   });
 
+  // --- HANDLERS ---
+
   const handleAddRecord = (data) => {
     const newRecords = data.items.map(item => ({
       id: Date.now() + Math.random(),
@@ -522,6 +516,7 @@ const FarmerDashboard = () => {
       market: data.market,
       vegetable: item.vegetable,
       quantity: item.quantity,
+      qtySold: 0, // Initial Qty Sold is 0
       status: 'Pending',
       rate: 0,
       totalAmount: 0,
@@ -533,17 +528,199 @@ const FarmerDashboard = () => {
     toast.success(`${newRecords.length} record(s) added successfully!`);
   };
 
-  const generateInvoice = (record) => {
-    const invoice = `
-FARMER DETAILS:
-  Name: ${profile.name}
-  Farmer ID: ${profile.farmerId}
+  const handleEditClick = (record) => {
+    const qty = record.quantity;
+    setEditFormData({
+      id: record.id,
+      market: record.market,
+      vegetable: record.vegetable,
+      quantities: {
+        kg: qty.toString(),
+        ton: (qty / 1000).toFixed(3),
+        quintal: (qty / 100).toFixed(2)
+      }
+    });
+    setModals({ ...modals, editRecord: true });
+  };
 
-TRANSACTION DETAILS:
-  Item: ${record.vegetable} (${record.quantity}kg)
-  Total Amount: ₹${record.totalAmount.toLocaleString('en-IN')}
+  const handleEditQuantityChange = (value, type) => {
+    if (value === '') {
+      setEditFormData(prev => ({
+        ...prev,
+        quantities: { kg: '', ton: '', quintal: '' }
+      }));
+      return;
+    }
+
+    const val = parseFloat(value);
+    if (isNaN(val)) return;
+
+    let newKg, newTon, newQuintal;
+
+    if (type === 'kg') {
+      newKg = value;
+      newTon = (val / 1000).toFixed(3);
+      newQuintal = (val / 100).toFixed(2);
+    } else if (type === 'ton') {
+      newTon = value;
+      newKg = (val * 1000).toFixed(2);
+      newQuintal = (val * 10).toFixed(2);
+    } else if (type === 'quintal') {
+      newQuintal = value;
+      newKg = (val * 100).toFixed(2);
+      newTon = (val / 10).toFixed(3);
+    }
+
+    setEditFormData(prev => ({
+      ...prev,
+      quantities: {
+        kg: type === 'kg' ? value : parseFloat(newKg).toString(),
+        ton: type === 'ton' ? value : parseFloat(newTon).toString(),
+        quintal: type === 'quintal' ? value : parseFloat(newQuintal).toString()
+      }
+    }));
+  };
+
+  const handleUpdateRecord = () => {
+    const newKg = parseFloat(editFormData.quantities.kg);
+
+    if (isNaN(newKg) || newKg <= 0) {
+      toast.error("Please enter a valid quantity");
+      return;
+    }
+
+    if (!editFormData.market) {
+      toast.error("Please select a market");
+      return;
+    }
+
+    const updatedRecords = records.map(rec => {
+      if (rec.id === editFormData.id) {
+        // Auto-update Qty Sold if status is Sold
+        const updatedQtySold = rec.status === 'Sold' ? newKg : (rec.qtySold || 0);
+        return {
+          ...rec,
+          market: editFormData.market,
+          quantity: newKg,
+          qtySold: updatedQtySold
+        };
+      }
+      return rec;
+    });
+
+    setRecords(updatedRecords);
+    setModals({ ...modals, editRecord: false });
+    toast.success("Record updated successfully!");
+  };
+
+  // --- NEW: GENERATE HTML INVOICE FOR PRINT/DOWNLOAD ---
+  const handleDownloadInvoice = (record) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Please allow popups to download invoice");
+      return;
+    }
+
+    const invoiceContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice #${record.id.toString().slice(-6)}</title>
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; background: #fff; }
+          .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); font-size: 16px; line-height: 24px; color: #555; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #22c55e; padding-bottom: 20px; margin-bottom: 30px; }
+          .company-info h1 { margin: 0; color: #166534; font-size: 28px; }
+          .invoice-details { text-align: right; }
+          .invoice-details h2 { margin: 0; color: #333; }
+          .info-table { width: 100%; margin-bottom: 40px; }
+          .info-table td { padding: 5px; vertical-align: top; }
+          .item-table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; }
+          .item-table th { background: #f0fdf4; color: #166534; font-weight: bold; padding: 12px; border-bottom: 2px solid #bbf7d0; }
+          .item-table td { padding: 12px; border-bottom: 1px solid #eee; }
+          .total-section { margin-top: 30px; text-align: right; }
+          .total-amount { font-size: 24px; font-weight: bold; color: #166534; }
+          .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #888; }
+          .badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+          .badge-sold { background: #dcfce7; color: #166534; }
+          .badge-pending { background: #fef9c3; color: #854d0e; }
+          @media print { .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-box">
+          <div class="header">
+            <div class="company-info">
+              <h1>AgroNond</h1>
+              <p>Farmer Panel Transaction</p>
+            </div>
+            <div class="invoice-details">
+              <h2>INVOICE</h2>
+              <p>#${record.id.toString().slice(-6)}</p>
+              <p>Date: ${record.date}</p>
+            </div>
+          </div>
+
+          <table class="info-table">
+            <tr>
+              <td>
+                <strong>Farmer Details:</strong><br>
+                ${profile.name}<br>
+                ${profile.farmerId}<br>
+                ${profile.location}
+              </td>
+              <td style="text-align: right;">
+                <strong>Market Details:</strong><br>
+                ${record.market}<br>
+                Trader: ${record.trader}
+              </td>
+            </tr>
+          </table>
+
+          <table class="item-table">
+            <thead>
+              <tr>
+                <th>Item Description</th>
+                <th style="text-align: center;">Total Qty</th>
+                <th style="text-align: center;">Qty Sold</th>
+                <th style="text-align: right;">Rate</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${record.vegetable}</td>
+                <td style="text-align: center;">${record.quantity} kg</td>
+                <td style="text-align: center;">${record.status === 'Sold' ? record.quantity : 0} kg</td>
+                <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.rate : '-'}</td>
+                <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.totalAmount.toLocaleString('en-IN') : '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="total-section">
+            <p>Status: <span class="badge ${record.status === 'Sold' ? 'badge-sold' : 'badge-pending'}">${record.status}</span></p>
+            <p class="total-amount">Total: ${record.status === 'Sold' ? '₹' + record.totalAmount.toLocaleString('en-IN') : '---'}</p>
+          </div>
+
+          <div class="footer">
+            <p>This is a computer generated invoice from AgroNond.</p>
+          </div>
+        </div>
+        <script>
+          window.print();
+        </script>
+      </body>
+      </html>
     `;
-    alert(invoice);
+
+    printWindow.document.write(invoiceContent);
+    printWindow.document.close();
+  };
+
+  const generateInvoice = (record) => {
+    // Keeping this simple alert for quick view if needed, but primary is now handleDownloadInvoice
+    alert(`Quick View:\nItem: ${record.vegetable}\nAmount: ₹${record.totalAmount}`);
   };
 
   const handleDelete = (id) => {
@@ -585,6 +762,7 @@ TRANSACTION DETAILS:
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
 
+        {/* Header */}
         <div className="mb-8 sm:mb-12">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
@@ -605,6 +783,7 @@ TRANSACTION DETAILS:
           </div>
         </div>
 
+        {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
           <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-green-200 hover:shadow-lg transition-all duration-300">
             <div className="flex justify-between items-start mb-4 sm:mb-6">
@@ -655,6 +834,7 @@ TRANSACTION DETAILS:
           </div>
         </div>
 
+        {/* Records Table */}
         <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
           <div className="p-4 sm:px-8 sm:py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50">
             <div>
@@ -683,6 +863,7 @@ TRANSACTION DETAILS:
             </div>
           </div>
 
+          {/* Mobile View */}
           <div className="block sm:hidden">
             {sortedRecords.length === 0 ? (
               <div className="p-8 text-center">
@@ -695,8 +876,8 @@ TRANSACTION DETAILS:
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs font-semibold text-gray-500">{record.date}</span>
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${record.status === 'Sold'
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                        ? 'bg-green-100 text-green-700 border border-green-200'
+                        : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                         }`}>
                         {record.status === 'Sold' ? <CheckCircle size={10} /> : <Clock size={10} />}
                         {record.status}
@@ -712,36 +893,44 @@ TRANSACTION DETAILS:
                         </div>
                       </div>
                       <div className="text-right">
+                        {/* CHANGED QTY TO TOTAL QTY */}
                         <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
-                        {record.status === 'Sold' ? (
-                          <p className="text-sm font-bold text-green-600">₹{record.totalAmount.toLocaleString('en-IN')}</p>
-                        ) : (
-                          <p className="text-xs text-gray-400">---</p>
-                        )}
+                        <p className="text-xs text-gray-500">Total</p>
                       </div>
                     </div>
 
                     <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
-                      {record.status !== 'Pending' && (
-                        <button
-                          onClick={() => generateInvoice(record)}
-                          className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1"
-                        >
-                          <Download size={14} /> Invoice
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleDownloadInvoice(record)}
+                        className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
+                        title="Download Data / Invoice"
+                      >
+                        <FileText size={16} />
+                      </button>
+
                       <button
                         onClick={() => {
                           setSelectedRecord(record);
                           setModals({ ...modals, details: true });
                         }}
                         className="p-2 bg-gray-100 text-gray-600 rounded-lg"
+                        title="View"
                       >
                         <Eye size={16} />
                       </button>
+
+                      <button
+                        onClick={() => handleEditClick(record)}
+                        className="p-2 bg-green-100 text-green-600 rounded-lg"
+                        title="Edit"
+                      >
+                        <Edit size={16} />
+                      </button>
+
                       <button
                         onClick={() => handleDelete(record.id)}
                         className="p-2 bg-red-50 text-red-600 rounded-lg"
+                        title="Delete"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -752,6 +941,7 @@ TRANSACTION DETAILS:
             )}
           </div>
 
+          {/* Desktop View */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -759,7 +949,8 @@ TRANSACTION DETAILS:
                   <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
                   <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
                   <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Qty</th>
+                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
+                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Qty Sold</th>
                   <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
                   <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
                   <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
@@ -769,7 +960,7 @@ TRANSACTION DETAILS:
               <tbody className="divide-y divide-gray-100">
                 {sortedRecords.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-8 py-16 text-center">
+                    <td colSpan="9" className="px-8 py-16 text-center">
                       <Clock size={48} className="mx-auto text-gray-300 mb-3" />
                       <p className="text-gray-600 font-medium">No records found</p>
                       <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
@@ -782,10 +973,14 @@ TRANSACTION DETAILS:
                       <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
                       <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
                       <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
+                      {/* QTY SOLD LOGIC */}
+                      <td className="px-8 py-4 font-bold text-gray-800">
+                        {record.status === 'Sold' ? record.quantity : (record.qtySold || 0)} kg
+                      </td>
                       <td className="px-8 py-4">
                         <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${record.status === 'Sold'
-                            ? 'bg-green-100 text-green-700 border border-green-200'
-                            : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                           }`}>
                           {record.status === 'Sold' ? <CheckCircle size={14} /> : <Clock size={14} />}
                           {record.status}
@@ -795,15 +990,15 @@ TRANSACTION DETAILS:
                       <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
                       <td className="px-8 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          {record.status !== 'Pending' && (
-                            <button
-                              onClick={() => generateInvoice(record)}
-                              className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
-                              title="Download Invoice"
-                            >
-                              <Download size={18} />
-                            </button>
-                          )}
+
+                          <button
+                            onClick={() => handleDownloadInvoice(record)}
+                            className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
+                            title="Download Data / Invoice"
+                          >
+                            <FileText size={18} />
+                          </button>
+
                           <button
                             onClick={() => {
                               setSelectedRecord(record);
@@ -814,6 +1009,15 @@ TRANSACTION DETAILS:
                           >
                             <Eye size={18} />
                           </button>
+
+                          <button
+                            onClick={() => handleEditClick(record)}
+                            className="p-2.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition border border-green-200"
+                            title="Edit"
+                          >
+                            <Edit size={18} />
+                          </button>
+
                           <button
                             onClick={() => handleDelete(record.id)}
                             className="p-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition border border-red-200"
@@ -832,6 +1036,7 @@ TRANSACTION DETAILS:
         </div>
       </main>
 
+      {/* Details Modal */}
       <Modal
         isOpen={modals.details}
         onClose={() => setModals({ ...modals, details: false })}
@@ -858,14 +1063,12 @@ TRANSACTION DETAILS:
 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-xs text-gray-600 font-semibold mb-1">QUANTITY</p>
+                <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL QTY</p>
                 <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-xs text-gray-600 font-semibold mb-1">STATUS</p>
-                <p className={`font-bold ${selectedRecord.status === 'Sold' ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {selectedRecord.status}
-                </p>
+                <p className="text-xs text-gray-600 font-semibold mb-1">QTY SOLD</p>
+                <p className="font-bold text-gray-900">{selectedRecord.status === 'Sold' ? selectedRecord.quantity : (selectedRecord.qtySold || 0)} kg</p>
               </div>
             </div>
 
@@ -889,10 +1092,10 @@ TRANSACTION DETAILS:
 
                 <div className="pt-2 border-t border-gray-200">
                   <button
-                    onClick={() => generateInvoice(selectedRecord)}
+                    onClick={() => handleDownloadInvoice(selectedRecord)}
                     className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
                   >
-                    <Download size={18} />
+                    <FileText size={18} />
                     Download Invoice
                   </button>
                 </div>
@@ -902,6 +1105,91 @@ TRANSACTION DETAILS:
         )}
       </Modal>
 
+      {/* Edit Record Modal */}
+      <Modal
+        isOpen={modals.editRecord}
+        onClose={() => setModals({ ...modals, editRecord: false })}
+        title="Edit Record"
+        size="md"
+      >
+        <div className="space-y-6">
+          {/* Read Only Info */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <p className="text-sm text-gray-500 mb-1">Editing Item:</p>
+            <p className="font-bold text-gray-900 text-lg">{editFormData.vegetable}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Market Name</label>
+            <select
+              value={editFormData.market}
+              onChange={(e) => setEditFormData({ ...editFormData, market: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
+            >
+              <option value="">Select Market</option>
+              <option>Pune APMC</option>
+              <option>Mumbai Market</option>
+              <option>Nashik Mandi</option>
+              <option>Nagpur Market</option>
+              <option>Aurangabad Market</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Update Total Quantity</label>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
+                <input
+                  type="number"
+                  value={editFormData.quantities.kg}
+                  onChange={(e) => handleEditQuantityChange(e.target.value, 'kg')}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1 font-medium">Tons</label>
+                  <input
+                    type="number"
+                    value={editFormData.quantities.ton}
+                    onChange={(e) => handleEditQuantityChange(e.target.value, 'ton')}
+                    placeholder="0.00"
+                    step="0.001"
+                    min="0"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1 font-medium">Quintals</label>
+                  <input
+                    type="number"
+                    value={editFormData.quantities.quintal}
+                    onChange={(e) => handleEditQuantityChange(e.target.value, 'quintal')}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleUpdateRecord}
+            className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-lg"
+          >
+            Update Record
+          </button>
+        </div>
+      </Modal>
+
+      {/* Profile Edit Modal */}
       <Modal
         isOpen={modals.editProfile}
         onClose={() => setModals({ ...modals, editProfile: false })}

@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import User from './models/User.js';
+import Record from './models/Record.js';
 
 // Setup dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -23,7 +24,16 @@ const seedUsers = async () => {
 
         console.log('Clearing Users collection...');
         await User.deleteMany({});
-        console.log('Cleared.');
+        console.log('Cleared Users.');
+
+        console.log('Clearing Records collection...');
+        try {
+            // Dynamic import to avoid error if model issues exist, or just import at top if confident. 
+            // Using top import is better. 
+        } catch (e) { }
+        // actually I will just add the import at the top and use it here.
+        await Record.deleteMany({});
+        console.log('Cleared Records.');
 
         const usersToSeed = [
             {

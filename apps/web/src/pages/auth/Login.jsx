@@ -43,7 +43,13 @@ export default function Login() {
         // Success: Redirect to specific dashboard
         if (profile.role === 'farmer') navigate('/dashboard/farmer');
         else if (profile.role === 'trader') navigate('/dashboard/trader');
-        else if (profile.role === 'admin') navigate('/dashboard/admin');
+        else if (profile.role === 'admin') {
+          // Block admin from this login page
+          signOut();
+          setError('Access Denied. Admins must login via the Admin Portal.');
+          navigate('/login'); // Stay/refresh on login to show error (or maybe just set error and return early)
+          return;
+        }
         else if (profile.role === 'weight') navigate('/dashboard/weight');
         else if (profile.role === 'committee') navigate('/dashboard/committee');
         else if (profile.role === 'accounting') navigate('/dashboard/accounting');

@@ -52,9 +52,9 @@ export default function UnifiedLayout({ role }) {
             case 'committee':
                 return 'from-slate-50 via-white to-emerald-50/40';
             case 'accounting':
-                return 'from-slate-50 via-white to-purple-50/40';
+                return 'from-slate-50 via-white to-emerald-50/40';
             case 'admin':
-                return 'from-slate-50 via-white to-orange-50/40';
+                return 'from-slate-50 via-white to-emerald-50/40';
             default:
                 return 'bg-white';
         }
