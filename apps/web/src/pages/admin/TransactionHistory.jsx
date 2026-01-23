@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Calendar, 
-  Download, 
+import {
+  Search,
+  Calendar,
+  Download,
   Filter,
   Package,
   ChevronDown,
@@ -26,7 +26,7 @@ export default function TransactionHistory() {
     // Search filter (by trader or farmer name)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(txn => 
+      result = result.filter(txn =>
         txn.farmerName.toLowerCase().includes(query) ||
         txn.traderName.toLowerCase().includes(query) ||
         txn.lotId.toLowerCase().includes(query) ||
@@ -50,7 +50,7 @@ export default function TransactionHistory() {
     // Sorting
     result.sort((a, b) => {
       let aVal, bVal;
-      
+
       switch (sortField) {
         case 'date':
           aVal = new Date(a.date);
@@ -140,21 +140,21 @@ export default function TransactionHistory() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
-          <p className="text-sm text-gray-500">Total Transactions</p>
-          <p className="text-2xl font-bold text-gray-800">{stats.totalTransactions}</p>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+          <p className="text-sm text-slate-500 font-medium">Total Transactions</p>
+          <p className="text-2xl font-bold text-slate-800">{stats.totalTransactions}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
-          <p className="text-sm text-gray-500">Total Volume</p>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+          <p className="text-sm text-slate-500 font-medium">Total Volume</p>
           <p className="text-2xl font-bold text-emerald-600">{stats.totalVolume.toLocaleString()} kg</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
-          <p className="text-sm text-gray-500">Total Amount</p>
-          <p className="text-2xl font-bold text-blue-600">₹{stats.totalAmount.toLocaleString()}</p>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+          <p className="text-sm text-slate-500 font-medium">Total Amount</p>
+          <p className="text-2xl font-bold text-slate-800">₹{stats.totalAmount.toLocaleString()}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-100">
-          <p className="text-sm text-gray-500">Commission Earned</p>
-          <p className="text-2xl font-bold text-purple-600">₹{stats.totalCommission.toLocaleString()}</p>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+          <p className="text-sm text-slate-500 font-medium">Commission Earned</p>
+          <p className="text-2xl font-bold text-emerald-700">₹{stats.totalCommission.toLocaleString()}</p>
         </div>
       </div>
 
@@ -212,98 +212,98 @@ export default function TransactionHistory() {
       </div>
 
       {/* Transactions Table */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+        className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
       >
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-50/50">
               <tr>
-                <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Lot ID</th>
-                <th 
-                  className="text-left text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer hover:text-gray-800"
+                <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Lot ID</th>
+                <th
+                  className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4 cursor-pointer hover:text-slate-700 transition-colors"
                   onClick={() => handleSort('date')}
                 >
                   <div className="flex items-center gap-1">
                     Date
-                    <ArrowUpDown className="w-4 h-4" />
+                    <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Farmer</th>
-                <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Trader</th>
-                <th className="text-left text-sm font-medium text-gray-600 px-6 py-4">Crop</th>
-                <th 
-                  className="text-right text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer hover:text-gray-800"
+                <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Farmer</th>
+                <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Trader</th>
+                <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Crop</th>
+                <th
+                  className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4 cursor-pointer hover:text-slate-700 transition-colors"
                   onClick={() => handleSort('quantity')}
                 >
                   <div className="flex items-center justify-end gap-1">
                     Qty (kg)
-                    <ArrowUpDown className="w-4 h-4" />
+                    <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="text-right text-sm font-medium text-gray-600 px-6 py-4">Rate</th>
-                <th 
-                  className="text-right text-sm font-medium text-gray-600 px-6 py-4 cursor-pointer hover:text-gray-800"
+                <th className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Rate</th>
+                <th
+                  className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4 cursor-pointer hover:text-slate-700 transition-colors"
                   onClick={() => handleSort('amount')}
                 >
                   <div className="flex items-center justify-end gap-1">
                     Amount
-                    <ArrowUpDown className="w-4 h-4" />
+                    <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
-                <th className="text-right text-sm font-medium text-gray-600 px-6 py-4">Commission</th>
-                <th className="text-center text-sm font-medium text-gray-600 px-6 py-4">Status</th>
+                <th className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Commission</th>
+                <th className="text-center text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
                     No transactions found matching your filters.
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((txn) => (
-                  <tr key={txn.id} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                  <tr key={txn.id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium text-gray-800">{txn.lotId}</span>
+                        <Package className="w-4 h-4 text-slate-400" />
+                        <span className="font-medium text-slate-800 text-sm">{txn.lotId}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
+                    <td className="px-6 py-4 text-slate-600 text-sm">
                       {new Date(txn.date).toLocaleDateString('en-IN', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric'
                       })}
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{txn.farmerName}</td>
-                    <td className="px-6 py-4 text-gray-600">{txn.traderName}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{txn.farmerName}</td>
+                    <td className="px-6 py-4 text-slate-600 text-sm">{txn.traderName}</td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-sm">
+                      <span className="inline-flex px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">
                         {txn.crop}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right text-gray-800 font-medium">
+                    <td className="px-6 py-4 text-right text-slate-800 font-medium text-sm">
                       {txn.quantity.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-right text-gray-600">
+                    <td className="px-6 py-4 text-right text-slate-600 text-sm">
                       ₹{txn.rate}
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold text-gray-800">
+                    <td className="px-6 py-4 text-right font-semibold text-slate-800 text-sm">
                       ₹{txn.grossAmount.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-right text-purple-600 font-medium">
+                    <td className="px-6 py-4 text-right text-emerald-600 font-medium text-sm">
                       ₹{(txn.farmerCommission + txn.traderCommission).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium
-                        ${txn.paymentStatus === 'paid' 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-amber-100 text-amber-700'}`}
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border
+                        ${txn.paymentStatus === 'paid'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                          : 'bg-slate-100 text-slate-600 border-slate-200'}`}
                       >
                         {txn.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
                       </span>
@@ -316,8 +316,8 @@ export default function TransactionHistory() {
         </div>
 
         {/* Table Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
-          <p className="text-sm text-gray-500">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+          <p className="text-sm text-slate-500">
             Showing {filteredTransactions.length} of {mockTransactions.length} transactions
           </p>
         </div>

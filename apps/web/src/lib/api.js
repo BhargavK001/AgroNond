@@ -1,17 +1,16 @@
-import { supabase } from './supabase';
+
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Get current access token
 async function getAccessToken() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
+  return localStorage.getItem('auth_token');
 }
 
 // Authenticated API request wrapper
 async function apiRequest(endpoint, options = {}) {
   const token = await getAccessToken();
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -22,7 +21,7 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   const url = `${API_URL}${endpoint}`;
-  
+
   try {
     const response = await fetch(url, { ...options, headers });
 
@@ -70,11 +69,21 @@ export const api = {
     get: (id) => apiRequest(`/api/farmer-contacts/${id}`, { method: 'GET' }),
     create: (data) => apiRequest('/api/farmer-contacts', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => apiRequest(`/api/farmer-contacts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    updateStats: (id, transactionValue) => apiRequest(`/api/farmer-contacts/${id}/stats`, { 
-      method: 'PATCH', 
-      body: JSON.stringify({ transaction_value: transactionValue }) 
+    updateStats: (id, transactionValue) => apiRequest(`/api/farmer-contacts/${id}/stats`, {
+      method: 'PATCH',
+      body: JSON.stringify({ transaction_value: transactionValue })
     }),
     delete: (id) => apiRequest(`/api/farmer-contacts/${id}`, { method: 'DELETE' }),
+  },
+
+  // Records (Weighing)
+  records: {
+    searchFarmer: (phone) => apiRequest(`/api/records/search-farmer?phone=${phone}`, { method: 'GET' }),
+    getPending: (farmerId) => apiRequest(`/api/records/pending/${farmerId}`, { method: 'GET' }),
+    updateWeight: (id, weight) => apiRequest(`/api/records/${id}/weight`, {
+      method: 'PATCH',
+      body: JSON.stringify({ official_qty: weight })
+    }),
   },
 
   // Inventory
@@ -86,9 +95,9 @@ export const api = {
     get: (id) => apiRequest(`/api/inventory/${id}`, { method: 'GET' }),
     create: (data) => apiRequest('/api/inventory', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => apiRequest(`/api/inventory/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    adjust: (id, adjustment, reason) => apiRequest(`/api/inventory/${id}/adjust`, { 
-      method: 'PATCH', 
-      body: JSON.stringify({ adjustment, reason }) 
+    adjust: (id, adjustment, reason) => apiRequest(`/api/inventory/${id}/adjust`, {
+      method: 'PATCH',
+      body: JSON.stringify({ adjustment, reason })
     }),
     delete: (id) => apiRequest(`/api/inventory/${id}`, { method: 'DELETE' }),
   },
@@ -120,6 +129,7 @@ export const api = {
         return apiRequest(`/api/admin/users${query ? '?' + query : ''}`, { method: 'GET' });
       },
       updateRole: (id, role) => apiRequest(`/api/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+      create: (data) => apiRequest('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
     },
   },
 

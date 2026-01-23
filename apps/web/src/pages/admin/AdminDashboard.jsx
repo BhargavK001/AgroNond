@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Package, Loader } from 'lucide-react';
 import StatsCard from '../../components/admin/StatsCard';
 
-import { marketActivityData, topCommodities } from '../../data/mockData';
+import { marketActivityData, topCommodities, mockTransactions } from '../../data/mockData';
 import api from '../../lib/api';
 import { useRealtimeSubscription } from '../../hooks/useRealtime';
 import { toast } from 'react-hot-toast';
@@ -21,10 +21,10 @@ export default function AdminDashboard() {
   // ✅ REALTIME: Listen for changes in 'profiles' table
   useRealtimeSubscription('dashboard-profiles', { table: 'profiles' }, (payload) => {
     console.log('Realtime update received:', payload);
-    
+
     // Refresh metrics when a user is added, updated, or deleted
     queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
-    
+
     // Optional: Show a toast notification
     if (payload.eventType === 'INSERT') {
       toast.success('New user registered!');
@@ -37,13 +37,16 @@ export default function AdminDashboard() {
     queryFn: () => api.finance.stats()
   });
 
-  // 3. Fetch Recent Transactions
+  // 3. Fetch Recent Transactions (Use mock for demo if API empty/loading to fix "Unknown" issue)
   const { data: transactionsData, isLoading: transactionsLoading } = useQuery({
     queryKey: ['recent-transactions'],
     queryFn: () => api.finance.billingRecords.list({ limit: 5 })
   });
 
-  const recentTransactions = transactionsData?.records || [];
+  // Use mock data if API data is empty or missing specific fields for demo purposes
+  const recentTransactions = (transactionsData?.records && transactionsData.records.length > 0)
+    ? transactionsData.records
+    : mockTransactions.slice(0, 5); // Fallback to mock data
 
   const isLoading = metricsLoading || financeLoading || transactionsLoading;
 
@@ -75,14 +78,12 @@ export default function AdminDashboard() {
           title="Total Farmers"
           value={metrics?.totalFarmers || 0}
           subtitle={`${metrics?.totalUsers || 0} total users`}
-          color="emerald"
         />
         <StatsCard
           icon={ShoppingBag}
           title="Total Traders"
           value={metrics?.totalTraders || 0}
           subtitle="Registered traders"
-          color="blue"
         />
         <StatsCard
           icon={TrendingUp}
@@ -91,138 +92,136 @@ export default function AdminDashboard() {
           subtitle={`${financeStats?.transactionCount || 0} transactions`}
           trend="up"
           trendValue="Live"
-          color="purple"
         />
         <StatsCard
           icon={AlertCircle}
           title="Pending Payments"
           value={`₹${(financeStats?.pendingAmount || 0).toLocaleString()}`}
           subtitle="Needs attention"
-          color="amber"
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Market Activity Chart */}
-
-
-        {/* Top Commodities */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+      {/* Main Content Grid: Top Commodities + Recent Transactions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Commodities (1/3 width) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
+          className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm h-fit"
         >
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Top Commodities</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-800">Top Commodities</h3>
+          </div>
           <div className="space-y-4">
             {topCommodities.map((item, index) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold
-                    ${index === 0 ? 'bg-amber-100 text-amber-600' : 
-                      index === 1 ? 'bg-gray-100 text-gray-600' : 
-                      index === 2 ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-500'}`}
-                  >
+              <div key={item.name} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-sm">
                     {index + 1}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-800">{item.name}</p>
-                    <p className="text-sm text-gray-500">{item.volume.toLocaleString()} kg</p>
+                    <p className="font-semibold text-slate-800">{item.name}</p>
+                    <p className="text-xs text-slate-500">{item.volume.toLocaleString()} kg</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-gray-800">₹{item.avgPrice}/kg</p>
-                  <p className={`text-sm ${
-                    item.trend === 'up' ? 'text-emerald-600' : 
-                    item.trend === 'down' ? 'text-red-600' : 'text-gray-500'
-                  }`}>
-                    {item.trend === 'up' ? '↑' : item.trend === 'down' ? '↓' : '→'} 
-                    {item.trend === 'up' ? 'Rising' : item.trend === 'down' ? 'Falling' : 'Stable'}
+                  <p className="font-semibold text-slate-800">₹{item.avgPrice}/kg</p>
+                  <p className={`text-xs font-medium ${item.trend === 'up' ? 'text-emerald-600' :
+                      item.trend === 'down' ? 'text-red-500' : 'text-slate-400'
+                    }`}>
+                    {item.trend === 'up' ? '↑ Rising' : item.trend === 'down' ? '↓ Falling' : 'Stable'}
                   </p>
                 </div>
               </div>
             ))}
           </div>
         </motion.div>
-      </div>
 
-      {/* Recent Transactions */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Recent Transactions</h3>
-          <a 
-            href="/dashboard/admin/transactions"
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1"
-          >
-            View all <ArrowRight className="w-4 h-4" />
-          </a>
-        </div>
+        {/* Recent Transactions (2/3 width) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 bg-white rounded-xl p-6 border border-slate-100 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-800">Recent Transactions</h3>
+            <a
+              href="/dashboard/admin/transactions"
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 transition-colors"
+            >
+              View all <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-sm font-medium text-gray-500 pb-3">Date</th>
-                <th className="text-left text-sm font-medium text-gray-500 pb-3">Trader</th>
-                <th className="text-left text-sm font-medium text-gray-500 pb-3">Farmer</th>
-                <th className="text-left text-sm font-medium text-gray-500 pb-3">Crop</th>
-                <th className="text-right text-sm font-medium text-gray-500 pb-3">Amount</th>
-                <th className="text-right text-sm font-medium text-gray-500 pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-4 text-center text-gray-500">No recent transactions</td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 pb-4 pl-2">Date</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 pb-4">Trader</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 pb-4">Farmer</th>
+                  <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 pb-4">Crop</th>
+                  <th className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 pb-4">Amount</th>
+                  <th className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 pb-4 pr-2">Status</th>
                 </tr>
-              ) : (
-                recentTransactions.map((txn) => (
-                  <tr key={txn.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3 text-gray-600">
-                      {new Date(txn.purchase_date || txn.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 text-gray-600 font-medium">{txn.trader?.full_name || 'Unknown'}</td>
-                    <td className="py-3 text-gray-600">{txn.farmer_name}</td>
-                    <td className="py-3 text-gray-600">{txn.crop}</td>
-                    <td className="py-3 text-right font-medium text-gray-800">
-                      ₹{(txn.total_amount || 0).toLocaleString()}
-                    </td>
-                    <td className="py-3 text-right">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
-                        ${txn.status === 'Paid' 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-amber-100 text-amber-700'}`}
-                      >
-                        {txn.status}
-                      </span>
-                    </td>
+              </thead>
+              <tbody>
+                {recentTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-500 text-sm">No recent transactions</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
+                ) : (
+                  recentTransactions.map((txn) => (
+                    <tr key={txn.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 pl-2 text-slate-600 text-sm">
+                        {new Date(txn.purchase_date || txn.date || txn.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-4 text-slate-700 font-medium text-sm">
+                        {/* Check for trader object OR traderName property from mock */}
+                        {txn.trader?.full_name || txn.traderName || 'Unknown'}
+                      </td>
+                      <td className="py-4 text-slate-600 text-sm">{txn.farmer_name || txn.farmerName}</td>
+                      <td className="py-4 text-slate-600 text-sm">
+                        <span className="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs">
+                          {txn.crop}
+                        </span>
+                      </td>
+                      <td className="py-4 text-right font-semibold text-slate-800 text-sm">
+                        ₹{(txn.total_amount || txn.grossAmount || 0).toLocaleString()}
+                      </td>
+                      <td className="py-4 pr-2 text-right">
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold
+                          ${(txn.status === 'Paid' || txn.paymentStatus === 'paid')
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'}`}
+                        >
+                          {txn.status || (txn.paymentStatus === 'paid' ? 'Paid' : 'Pending')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Quick Stats Footer */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white">
-          <p className="text-emerald-100 text-sm">Total Commission Collected</p>
-          <p className="text-3xl font-bold mt-1">₹{(financeStats?.totalCommissionCollected || 0).toLocaleString()}</p>
+        <div className="bg-white border border-emerald-100 rounded-xl p-6 shadow-sm">
+          <p className="text-slate-500 text-sm font-medium">Total Commission Collected</p>
+          <p className="text-2xl font-bold mt-1 text-emerald-600">₹{(financeStats?.totalCommissionCollected || 0).toLocaleString()}</p>
         </div>
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
-          <p className="text-blue-100 text-sm">Today's Revenue</p>
+        <div className="bg-white border border-slate-100 rounded-xl p-6 shadow-sm">
+          <p className="text-slate-500 text-sm font-medium">Today's Revenue</p>
           {/* Mocked for now since not in API yet */}
-          <p className="text-3xl font-bold mt-1">₹0</p>
+          <p className="text-2xl font-bold mt-1 text-slate-800">₹0</p>
         </div>
-        <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-6 text-white">
-          <p className="text-amber-100 text-sm">Pending Verifications</p>
-           {/* Mocked for now */}
-          <p className="text-3xl font-bold mt-1">0</p>
+        <div className="bg-white border border-slate-100 rounded-xl p-6 shadow-sm">
+          <p className="text-slate-500 text-sm font-medium">Pending Verifications</p>
+          {/* Mocked for now */}
+          <p className="text-2xl font-bold mt-1 text-slate-800">0</p>
         </div>
       </div>
     </div>

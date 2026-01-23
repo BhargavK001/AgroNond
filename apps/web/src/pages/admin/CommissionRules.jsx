@@ -44,7 +44,7 @@ export default function CommissionRules() {
     // Allow only valid numbers between 0 and 100
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue < 0 || numValue > 100) return;
-    
+
     setConfig(prev => ({ ...prev, [field]: numValue }));
     setSaveSuccess(false);
   };
@@ -55,16 +55,16 @@ export default function CommissionRules() {
       await Promise.all([
         createRuleMutation.mutateAsync({
           crop_type: 'All',
-          role_type: 'farmer', 
+          role_type: 'farmer',
           rate: config.farmerRate / 100
         }),
         createRuleMutation.mutateAsync({
           crop_type: 'All',
-          role_type: 'trader', 
+          role_type: 'trader',
           rate: config.traderRate / 100
         })
       ]);
-      
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
@@ -81,7 +81,7 @@ export default function CommissionRules() {
   };
 
   if (isLoading) {
-     return (
+    return (
       <div className="flex justify-center items-center h-96">
         <Loader className="w-8 h-8 text-emerald-500 animate-spin" />
       </div>
@@ -95,7 +95,7 @@ export default function CommissionRules() {
   const totalCommission = farmerCommission + traderCommission;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Commission Rules</h1>
@@ -103,16 +103,16 @@ export default function CommissionRules() {
       </div>
 
       {/* Info Banner */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-3"
+        className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex gap-3"
       >
-        <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-blue-700">
-          <p className="font-medium">How Commission Works</p>
+        <Info className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-slate-600">
+          <p className="font-medium text-slate-800">How Commission Works</p>
           <p className="mt-1">
-            Commission is deducted from every transaction. Farmers pay a lower rate as they are the primary producers, 
+            Commission is deducted from every transaction. Farmers pay a lower rate as they are the primary producers,
             while traders pay a higher rate for market access and services.
           </p>
         </div>
@@ -120,7 +120,7 @@ export default function CommissionRules() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Commission Settings Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
@@ -209,7 +209,7 @@ export default function CommissionRules() {
 
             {/* Success Message */}
             {saveSuccess && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl"
@@ -227,7 +227,7 @@ export default function CommissionRules() {
         </motion.div>
 
         {/* Preview Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -246,7 +246,7 @@ export default function CommissionRules() {
                 <span className="text-lg font-bold text-emerald-600">₹{farmerCommission.toLocaleString()}</span>
               </div>
               <div className="mt-2 h-2 bg-emerald-100 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(config.farmerRate * 5, 100)}%` }}
                 />
@@ -254,14 +254,14 @@ export default function CommissionRules() {
             </div>
 
             {/* Trader Commission */}
-            <div className="p-4 bg-blue-50 rounded-xl">
+            <div className="p-4 bg-slate-50 rounded-xl">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Trader Commission ({config.traderRate}%)</span>
-                <span className="text-lg font-bold text-blue-600">₹{traderCommission.toLocaleString()}</span>
+                <span className="text-sm text-slate-600">Trader Commission ({config.traderRate}%)</span>
+                <span className="text-lg font-bold text-slate-700">₹{traderCommission.toLocaleString()}</span>
               </div>
-              <div className="mt-2 h-2 bg-blue-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+              <div className="mt-2 h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-slate-500 rounded-full transition-all duration-300"
                   style={{ width: `${Math.min(config.traderRate * 5, 100)}%` }}
                 />
               </div>
@@ -281,7 +281,7 @@ export default function CommissionRules() {
 
           {/* Warning for high rates */}
           {(config.farmerRate > 10 || config.traderRate > 15) && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="mt-4 flex items-start gap-2 p-3 bg-amber-50 text-amber-700 rounded-xl"
@@ -296,25 +296,25 @@ export default function CommissionRules() {
       </div>
 
       {/* Rate Comparison */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl p-6 text-white"
+        className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm"
       >
-        <h3 className="text-lg font-semibold mb-4">Rate Summary</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white/20 backdrop-blur rounded-xl p-4">
-            <p className="text-emerald-100 text-sm">Farmer Rate</p>
-            <p className="text-3xl font-bold">{config.farmerRate}%</p>
+        <h3 className="text-lg font-bold text-slate-800 mb-6">Rate Summary</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-100">
+            <p className="text-emerald-600 text-sm font-medium">Farmer Rate</p>
+            <p className="text-3xl font-bold text-emerald-700 mt-1">{config.farmerRate}%</p>
           </div>
-          <div className="bg-white/20 backdrop-blur rounded-xl p-4">
-            <p className="text-blue-100 text-sm">Trader Rate</p>
-            <p className="text-3xl font-bold">{config.traderRate}%</p>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-slate-500 text-sm font-medium">Trader Rate</p>
+            <p className="text-3xl font-bold text-slate-700 mt-1">{config.traderRate}%</p>
           </div>
-          <div className="bg-white/20 backdrop-blur rounded-xl p-4">
-            <p className="text-white/80 text-sm">Combined Rate</p>
-            <p className="text-3xl font-bold">{(config.farmerRate + config.traderRate).toFixed(1)}%</p>
+          <div className="p-4 rounded-xl bg-white border-2 border-slate-100">
+            <p className="text-slate-400 text-sm font-medium">Combined Rate</p>
+            <p className="text-3xl font-bold text-slate-800 mt-1">{(config.farmerRate + config.traderRate).toFixed(1)}%</p>
           </div>
         </div>
       </motion.div>
