@@ -51,6 +51,7 @@ const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
+const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
 
 const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 const AccountingTransactions = lazy(() => import('./pages/accounting/TransactionsPage'));
@@ -152,6 +153,7 @@ function App() {
                   <Route path="farmers" element={<FarmersList />} />
                   <Route path="farmers/:id" element={<FarmerDetail />} />
                   <Route path="traders" element={<TradersList />} />
+                  <Route path="traders/:id" element={<TraderDetail />} />
                   <Route path="activity" element={<MarketActivity />} />
                   <Route path="commission" element={<CommissionCalculator />} />
                   <Route path="billing" element={<BillingReports />} />

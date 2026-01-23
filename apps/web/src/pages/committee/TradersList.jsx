@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, ChevronRight, Phone, Calendar, Store, Plus } from 'lucide-react';
 import AddTraderModal from '../../components/committee/AddTraderModal';
@@ -14,15 +15,24 @@ const initialTradersData = [
 ];
 
 export default function TradersList() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [traders, setTraders] = useState(initialTradersData);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const filteredTraders = traders.filter(trader =>
-    trader.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trader.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trader.phone.includes(searchTerm)
-  );
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const filteredTraders = traders.filter(trader => {
+    const matchesSearch =
+      trader.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      trader.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      trader.phone.toString().includes(searchTerm);
+
+    const matchesStatus = statusFilter === 'All' || trader.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
 
   const handleAddTrader = (newTrader) => {
     setTraders(prev => [newTrader, ...prev]);
@@ -57,29 +67,65 @@ export default function TradersList() {
             className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm"
           />
         </div>
-        <button className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-700 font-medium transition-colors">
-          <Filter className="w-4 h-4" />
-          <span>Filters</span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className={`flex items-center justify-center gap-2 px-4 py-3 border rounded-xl font-medium transition-colors ${statusFilter !== 'All'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+          >
+            <Filter className="w-4 h-4" />
+            <span>{statusFilter === 'All' ? 'Filters' : statusFilter}</span>
+          </button>
+
+          {isFilterOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setIsFilterOpen(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-20 overflow-hidden">
+                <div className="p-1">
+                  {['All', 'Active', 'Inactive'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setIsFilterOpen(false);
+                      }}
+                      className={`flex items-center w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === status
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Stats Summary - Monotone + Status Colors only where necessary */}
+      {/* Stats Summary - Colorful Widgets */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Total Traders</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{traders.length}</p>
+        <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+          <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Total Traders</p>
+          <p className="text-2xl font-bold text-emerald-700 mt-1">{traders.length}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Total Purchases</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">₹{(traders.reduce((acc, t) => acc + t.totalPurchases, 0) / 100000).toFixed(1)}L</p>
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+          <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Total Purchases</p>
+          <p className="text-2xl font-bold text-blue-700 mt-1">₹{(traders.reduce((acc, t) => acc + t.totalPurchases, 0) / 100000).toFixed(1)}L</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Active</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{traders.filter(t => t.status === 'Active').length}</p>
+        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+          <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">Total Active</p>
+          <p className="text-2xl font-bold text-purple-700 mt-1">{traders.filter(t => t.status === 'Active').length}</p>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-          <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Active Today</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{traders.filter(t => t.lastActive === '2026-01-21').length}</p>
+        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+          <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Total Inactive</p>
+          <p className="text-2xl font-bold text-amber-700 mt-1">{traders.filter(t => t.status !== 'Active').length}</p>
         </div>
       </div>
 
@@ -93,7 +139,6 @@ export default function TradersList() {
               <th className="text-left text-xs font-semibold text-slate-600 uppercase tracking-wider px-6 py-4">Contact</th>
               <th className="text-right text-xs font-semibold text-slate-600 uppercase tracking-wider px-6 py-4">Total Purchases</th>
               <th className="text-right text-xs font-semibold text-slate-600 uppercase tracking-wider px-6 py-4">Status</th>
-              <th className="text-right text-xs font-semibold text-slate-600 uppercase tracking-wider px-6 py-4">Last Active</th>
               <th className="px-6 py-4"></th>
             </tr>
           </thead>
@@ -101,6 +146,7 @@ export default function TradersList() {
             {filteredTraders.map((trader) => (
               <tr
                 key={trader.id}
+                onClick={() => navigate(`/dashboard/committee/traders/${trader.id}`)}
                 className="hover:bg-slate-50/50 transition-colors cursor-pointer"
               >
                 <td className="px-6 py-4">
@@ -128,15 +174,10 @@ export default function TradersList() {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${trader.status === 'Active'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                      : 'bg-slate-100 text-slate-500 border border-slate-200'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                    : 'bg-slate-100 text-slate-500 border border-slate-200'
                     }`}>
                     {trader.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <span className="text-sm text-slate-500">
-                    {new Date(trader.lastActive).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                   </span>
                 </td>
                 <td className="px-6 py-4">
@@ -155,7 +196,8 @@ export default function TradersList() {
         {filteredTraders.map((trader) => (
           <div
             key={trader.id}
-            className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm"
+            onClick={() => navigate(`/dashboard/committee/traders/${trader.id}`)}
+            className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm cursor-pointer hover:border-emerald-200 transition-colors"
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
@@ -168,8 +210,8 @@ export default function TradersList() {
                 </div>
               </div>
               <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${trader.status === 'Active'
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                : 'bg-slate-100 text-slate-500 border border-slate-200'
                 }`}>
                 {trader.status}
               </span>
@@ -184,9 +226,9 @@ export default function TradersList() {
                 <p className="font-bold text-sm text-slate-700 truncate">{trader.phone.slice(-4)}</p>
               </div>
               <div className="bg-slate-50 rounded-lg p-2 text-center border border-slate-100">
-                <p className="text-[10px] text-slate-400 uppercase">Last</p>
-                <p className="font-bold text-sm text-slate-700">
-                  {new Date(trader.lastActive).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                <p className="text-[10px] text-slate-400 uppercase">Status</p>
+                <p className={`font-bold text-sm ${trader.status === 'Active' ? 'text-emerald-600' : 'text-slate-500'}`}>
+                  {trader.status}
                 </p>
               </div>
             </div>

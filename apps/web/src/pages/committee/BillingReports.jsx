@@ -23,9 +23,38 @@ export default function BillingReports() {
   const [activeTab, setActiveTab] = useState('farmers');
   const [dateFilter, setDateFilter] = useState('all');
 
-  const currentData = activeTab === 'farmers' ? farmerBillingData : traderBillingData;
+  const rawData = activeTab === 'farmers' ? farmerBillingData : traderBillingData;
   const commissionLabel = activeTab === 'farmers' ? '4%' : '9%';
   const commissionColor = activeTab === 'farmers' ? 'blue' : 'purple';
+
+  const getFilteredData = () => {
+    if (dateFilter === 'all') return rawData;
+
+    const today = new Date('2026-01-21'); // Using fixed date for mock data context
+
+    return rawData.filter(item => {
+      const itemDate = new Date(item.date);
+
+      if (dateFilter === 'today') {
+        return itemDate.toDateString() === today.toDateString();
+      }
+
+      if (dateFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        return itemDate >= weekAgo && itemDate <= today;
+      }
+
+      if (dateFilter === 'month') {
+        return itemDate.getMonth() === today.getMonth() &&
+          itemDate.getFullYear() === today.getFullYear();
+      }
+
+      return true;
+    });
+  };
+
+  const currentData = getFilteredData();
 
   const totalBase = currentData.reduce((acc, item) => acc + item.baseAmount, 0);
   const totalCommission = currentData.reduce((acc, item) => acc + item.commission, 0);
@@ -43,7 +72,7 @@ export default function BillingReports() {
       </motion.div>
 
       {/* Tab Switcher */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -51,22 +80,20 @@ export default function BillingReports() {
       >
         <button
           onClick={() => setActiveTab('farmers')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-            activeTab === 'farmers'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${activeTab === 'farmers'
               ? 'bg-white shadow-sm text-emerald-700'
               : 'text-slate-600 hover:text-slate-800'
-          }`}
+            }`}
         >
           <Users className="w-4 h-4" />
           Farmer Reports
         </button>
         <button
           onClick={() => setActiveTab('traders')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-            activeTab === 'traders'
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${activeTab === 'traders'
               ? 'bg-white shadow-sm text-emerald-700'
               : 'text-slate-600 hover:text-slate-800'
-          }`}
+            }`}
         >
           <ShoppingBag className="w-4 h-4" />
           Trader Reports
@@ -75,7 +102,7 @@ export default function BillingReports() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15 }}
@@ -84,7 +111,7 @@ export default function BillingReports() {
           <p className="text-xs text-slate-500 font-medium uppercase mb-1">Base Amount</p>
           <p className="text-2xl font-bold text-slate-800">₹{totalBase.toLocaleString()}</p>
         </motion.div>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
@@ -93,7 +120,7 @@ export default function BillingReports() {
           <p className={`text-xs text-${commissionColor}-600 font-medium uppercase mb-1`}>Commission ({commissionLabel})</p>
           <p className={`text-2xl font-bold text-${commissionColor}-700`}>₹{totalCommission.toLocaleString()}</p>
         </motion.div>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.25 }}
@@ -107,7 +134,7 @@ export default function BillingReports() {
       </div>
 
       {/* Filter & Export */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
@@ -132,7 +159,7 @@ export default function BillingReports() {
       </motion.div>
 
       {/* Billing Table - Desktop */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
@@ -155,7 +182,7 @@ export default function BillingReports() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {currentData.map((item, index) => (
-              <motion.tr 
+              <motion.tr
                 key={item.id}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -179,11 +206,10 @@ export default function BillingReports() {
                 </td>
                 <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{item.finalAmount.toLocaleString()}</td>
                 <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${
-                    item.status === 'Paid' 
-                      ? 'bg-emerald-100 text-emerald-700' 
+                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${item.status === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-700'
-                  }`}>
+                    }`}>
                     {item.status}
                   </span>
                 </td>
@@ -218,11 +244,10 @@ export default function BillingReports() {
                   {item.crop} • {item.qty}kg
                 </span>
               </div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                item.status === 'Paid' 
-                  ? 'bg-emerald-100 text-emerald-700' 
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid'
+                  ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-amber-100 text-amber-700'
-              }`}>
+                }`}>
                 {item.status}
               </span>
             </div>

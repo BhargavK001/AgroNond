@@ -219,7 +219,7 @@ export default function FarmerNavbar() {
 
   const AvatarDisplay = ({ size = 'sm', showBadge = true }) => {
     const sizeClasses = {
-      sm: 'w-8 h-8 sm:w-9 sm:h-9 text-sm',
+      sm: 'w-10 h-10 text-sm',
       md: 'w-14 h-14 text-xl',
       lg: 'w-20 h-20 text-2xl',
     };
@@ -230,11 +230,11 @@ export default function FarmerNavbar() {
           <img
             src={farmerProfile.photo}
             alt="Profile"
-            className={`${sizeClasses[size]} rounded-full object-cover shadow-md border-2 border-green-100`}
+            className={`${sizeClasses[size]} rounded-full object-cover shadow-sm border border-emerald-100`}
           />
         ) : (
           <div
-            className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold shadow-md`}
+            className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white flex items-center justify-center font-bold shadow-sm`}
           >
             {farmerProfile.initials}
           </div>
@@ -391,191 +391,145 @@ export default function FarmerNavbar() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm: top-full sm: left-auto sm: w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50"
                   >
                     <AnimatePresence mode="wait">
                       {!isEditing ? (
                         <motion.div
                           key="view"
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.2 }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
                         >
-                          {/* Profile Header */}
-                          <div className="p-5 border-b border-gray-100">
-                            <div className="flex items-center gap-4">
-                              <AvatarDisplay size="md" showBadge={true} />
-                              <div className="flex-1 min-w-0">
-                                {hasCompleteProfile ? (
-                                  <>
-                                    <p className="text-base font-bold text-gray-900 truncate">
-                                      {farmerProfile.name}
-                                    </p>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <BadgeCheck size={14} className="text-green-500" />
-                                      <span className="text-xs text-green-600 font-medium">
-                                        Verified
-                                      </span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <p className="text-base font-bold text-gray-900">
-                                      Farmer
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                      {farmerProfile.farmerId}
-                                    </p>
-                                  </>
-                                )}
+                          <div className="p-6 bg-slate-50 border-b border-slate-100 text-center">
+                            <div className="relative inline-block mb-3">
+                              {farmerProfile.photo ? (
+                                <img
+                                  src={farmerProfile.photo}
+                                  alt="Profile"
+                                  className="w-20 h-20 rounded-full object-cover shadow-md border-4 border-white"
+                                />
+                              ) : (
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-2xl font-bold text-white shadow-md border-4 border-white">
+                                  {farmerProfile.initials}
+                                </div>
+                              )}
+                              {hasCompleteProfile && (
+                                <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-sm">
+                                  <BadgeCheck className="w-5 h-5 text-emerald-500 fill-emerald-50" />
+                                </div>
+                              )}
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900">
+                              {hasCompleteProfile ? farmerProfile.name : 'Farmer'}
+                            </h3>
+                            <p className="text-sm text-slate-500">Farmer</p>
+                            <div className="flex items-center justify-center gap-1 mt-2 bg-emerald-50 py-1 px-3 rounded-full mx-auto w-fit border border-emerald-100">
+                              <span className="text-xs font-bold text-emerald-700">
+                                {farmerProfile.farmerId}
+                              </span>
+                              <BadgeCheck className="w-3 h-3 text-emerald-500 fill-emerald-100" />
+                            </div>
+                          </div>
+
+                          <div className="p-4 space-y-3">
+                            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                              <Phone className="w-4 h-4 text-emerald-600" />
+                              <div>
+                                <p className="text-xs text-slate-500">Phone</p>
+                                <p className="text-sm font-medium text-slate-900">
+                                  {farmerProfile.phone || 'Not Set'}
+                                </p>
                               </div>
                             </div>
-
-                            {hasCompleteProfile && (
-                              <div className="mt-4 space-y-2">
-                                <div className="flex items-center gap-3 text-sm text-gray-600">
-                                  <Phone size={16} className="text-green-600 shrink-0" />
-                                  <span>+91 {farmerProfile.phone}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-gray-600">
-                                  <MapPin size={16} className="text-green-600 shrink-0" />
-                                  <span className="truncate">{farmerProfile.location}</span>
-                                </div>
+                            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                              <MapPin className="w-4 h-4 text-emerald-600" />
+                              <div>
+                                <p className="text-xs text-slate-500">Location</p>
+                                <p className="text-sm font-medium text-slate-900">
+                                  {farmerProfile.location || 'Not Set'}
+                                </p>
                               </div>
-                            )}
+                            </div>
                           </div>
 
-                          {/* Conditional Profile Options */}
-                          <div className="p-3">
-                            <AnimatePresence mode="wait">
-                              {!hasCompleteProfile ? (
-                                <motion.div
-                                  key="incomplete"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -10 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  <button
-                                    onClick={openEditForm}
-                                    className="w-full flex items-center justify-center gap-3 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl transition-all shadow-md hover:shadow-lg"
-                                  >
-                                    <Edit3 size={18} />
-                                    <span>Create Your Profile</span>
-                                  </button>
-                                </motion.div>
-                              ) : (
-                                <motion.div
-                                  key="complete"
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -10 }}
-                                  transition={{ duration: 0.2 }}
-                                >
-                                  <button
-                                    onClick={openEditForm}
-                                    className="w-full flex items-center justify-center gap-3 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl transition-all shadow-md hover:shadow-lg"
-                                  >
-                                    <Edit3 size={18} />
-                                    <span>Update Your Profile</span>
-                                  </button>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-
-                          {/* Sign Out */}
-                          <div className="p-3 border-t border-gray-100">
+                          <div className="p-4 border-t border-slate-100 grid grid-cols-2 gap-3">
+                            <button
+                              onClick={openEditForm}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                            >
+                              <Edit3 size={16} /> Edit Profile
+                            </button>
                             <button
                               onClick={handleLogout}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover: bg-red-50 rounded-lg transition-colors"
+                              className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
                             >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
-                                />
-                              </svg>
-                              <span>Sign Out</span>
+                              Sign Out
                             </button>
                           </div>
                         </motion.div>
                       ) : (
                         <motion.div
                           key="edit"
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ duration: 0.2 }}
-                          className="p-4"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex flex-col h-full bg-white"
                         >
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">
-                              {hasCompleteProfile ? 'Update Profile' : 'Create Profile'}
+                          {/* Header */}
+                          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                            <h3 className="font-bold text-slate-900">
+                              {hasCompleteProfile ? 'Edit Profile' : 'Create Profile'}
                             </h3>
                             <button
                               onClick={handleCancel}
-                              className="p-1. 5 hover:bg-gray-100 rounded-full transition-colors"
+                              className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
                             >
-                              <X size={18} className="text-gray-500" />
+                              <X size={18} />
                             </button>
                           </div>
 
-                          {/* Photo Upload */}
-                          <div className="flex justify-center mb-5">
-                            <div className="relative">
-                              <motion.div
-                                initial={{ scale: 0.9, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                {editForm.photo ? (
-                                  <img
-                                    src={editForm.photo}
-                                    alt="Preview"
-                                    className="w-20 h-20 rounded-full object-cover shadow-md border-2 border-green-200"
-                                  />
-                                ) : (
-                                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold text-2xl shadow-md">
-                                    {getInitials(editForm.name) || 'FK'}
-                                  </div>
-                                )}
-                              </motion.div>
-                              <button
-                                type="button"
+                          {/* Scrollable Content */}
+                          <div className="p-6 space-y-5 overflow-y-auto max-h-[400px]">
+                            {/* Photo Upload */}
+                            <div className="flex justify-center">
+                              <div
+                                className="relative group cursor-pointer"
                                 onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-0 right-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition-colors"
                               >
-                                <Camera size={14} />
-                              </button>
-                              <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handlePhotoUpload}
-                                className="hidden"
-                              />
+                                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 shadow-sm">
+                                  {editForm.photo ? (
+                                    <img
+                                      src={editForm.photo}
+                                      alt="Preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-2xl">
+                                      {getInitials(editForm.name) || 'FK'}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Camera size={24} className="text-white" />
+                                </div>
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handlePhotoUpload}
+                                  className="hidden"
+                                />
+                              </div>
                             </div>
-                          </div>
 
-                          {/* Form Fields */}
-                          <div className="space-y-4">
-                            {/* Name */}
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                {hasCompleteProfile ? 'Change Name' : 'Full Name'}{' '}
-                                <span className="text-red-500">*</span>
-                              </label>
-                              <div className="text">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium"></span>
+                            {/* Form Fields */}
+                            <div className="space-y-4">
+                              {/* Name */}
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                  Full Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                   type="text"
                                   value={editForm.name}
@@ -585,128 +539,112 @@ export default function FarmerNavbar() {
                                       setErrors((prev) => ({ ...prev, name: false }));
                                   }}
                                   placeholder="Enter your full name"
-                                  className={`w-full px-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                  className={`w-full px-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.name
+                                    ? 'border-red-300 bg-red-50'
+                                    : 'border-slate-200 hover:border-slate-300'
+                                    }`}
                                 />
+                                {errors.name && (
+                                  <p className="text-xs text-red-500 mt-1">Name is required</p>
+                                )}
                               </div>
-                              {errors.name && (
-                                <p className="text-xs text-red-500 mt-1">Name is required</p>
-                              )}
-                            </div>
 
-                            {/* Phone Number */}
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                {hasCompleteProfile ? 'Change Phone Number' : 'Phone Number'}{' '}
-                                <span className="text-red-500">*</span>
-                              </label>
-                              <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
-                                  +91
-                                </span>
-                                <input
-                                  type="tel"
-                                  value={editForm.phone}
-                                  onChange={(e) => {
-                                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                    setEditForm((prev) => ({ ...prev, phone: value }));
-                                    if (validatePhone(value))
-                                      setErrors((prev) => ({ ...prev, phone: false }));
-                                  }}
-                                  placeholder="9876543210"
-                                  className={`w-full pl-14 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
-                                />
+                              {/* Phone */}
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                  Phone Number <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                                    +91
+                                  </span>
+                                  <input
+                                    type="tel"
+                                    value={editForm.phone}
+                                    onChange={(e) => {
+                                      const value = e.target.value
+                                        .replace(/\D/g, '')
+                                        .slice(0, 10);
+                                      setEditForm((prev) => ({ ...prev, phone: value }));
+                                      if (validatePhone(value))
+                                        setErrors((prev) => ({ ...prev, phone: false }));
+                                    }}
+                                    placeholder="9876543210"
+                                    className={`w-full pl-10 pr-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.phone
+                                      ? 'border-red-300 bg-red-50'
+                                      : 'border-slate-200 hover:border-slate-300'
+                                      }`}
+                                  />
+                                </div>
+                                {errors.phone && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    Valid 10-digit number required
+                                  </p>
+                                )}
                               </div>
-                              {errors.phone && (
-                                <p className="text-xs text-red-500 mt-1">
-                                  Valid 10-digit number required
-                                </p>
-                              )}
-                            </div>
 
-                            {/* Update Phone Info Box */}
-                            {hasCompleteProfile &&
-                              editForm.phone !== farmerProfile.phone &&
-                              editForm.phone.length > 0 && (
-                                <motion.div
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="bg-amber-50 border border-amber-200 rounded-xl p-3"
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <Phone size={16} className="text-amber-600 mt-0.5 shrink-0" />
-                                    <div className="flex-1">
-                                      <p className="text-xs font-medium text-amber-800">
-                                        Changing Phone Number
-                                      </p>
-                                      <p className="text-[11px] text-amber-600 mt-0.5">
-                                        Current: +91 {farmerProfile.phone} → New: +91{' '}
-                                        {editForm.phone}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              )}
-
-                            {/* Location */}
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                {hasCompleteProfile ? 'Change Location' : 'Location'}{' '}
-                                <span className="text-red-500">*</span>
-                              </label>
-                              <div className="relative">
-                                <MapPin
-                                  size={16}
-                                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                                />
-                                <input
-                                  type="text"
-                                  value={editForm.location}
-                                  onChange={(e) => {
-                                    setEditForm((prev) => ({ ...prev, location: e.target.value }));
-                                    if (e.target.value.trim())
-                                      setErrors((prev) => ({ ...prev, location: false }));
-                                  }}
-                                  placeholder="Village, District, State"
-                                  className={`w-full pl-11 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.location ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
-                                />
+                              {/* Location */}
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                  Location <span className="text-red-500">*</span>
+                                </label>
+                                <div className="relative">
+                                  <MapPin
+                                    size={16}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={editForm.location}
+                                    onChange={(e) => {
+                                      setEditForm((prev) => ({
+                                        ...prev,
+                                        location: e.target.value,
+                                      }));
+                                      if (e.target.value.trim())
+                                        setErrors((prev) => ({ ...prev, location: false }));
+                                    }}
+                                    placeholder="Village, District"
+                                    className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.location
+                                      ? 'border-red-300 bg-red-50'
+                                      : 'border-slate-200 hover:border-slate-300'
+                                      }`}
+                                  />
+                                </div>
+                                {errors.location && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    Location is required
+                                  </p>
+                                )}
                               </div>
-                              {errors.location && (
-                                <p className="text-xs text-red-500 mt-1">Location is required</p>
-                              )}
-                            </div>
 
-                            {/* Farmer ID (Display Only) */}
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                                Farmer ID{' '}
-                                <span className="text-green-600 text-[10px] font-normal">
-                                  (Verified)
-                                </span>
-                              </label>
-                              <div className="flex items-center gap-2 px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl">
-                                <span className="text-gray-700 font-medium">
+                              {/* Farmer ID (Read Only) */}
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                  Farmer ID
+                                </label>
+                                <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 font-medium flex justify-between items-center">
                                   {farmerProfile.farmerId}
-                                </span>
-                                <BadgeCheck size={16} className="text-green-600 ml-auto" />
+                                  <BadgeCheck className="w-4 h-4 text-emerald-500" />
+                                </div>
                               </div>
                             </div>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex gap-3 mt-6">
+                          {/* Footer Actions */}
+                          <div className="p-4 border-t border-slate-100 flex gap-3 bg-white">
                             <button
                               onClick={handleCancel}
-                              className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                              className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={handleSave}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg"
+                              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all"
                             >
                               <Save size={16} />
-                              Save
+                              Save Changes
                             </button>
                           </div>
                         </motion.div>
