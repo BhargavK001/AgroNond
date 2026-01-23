@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, Phone, MapPin, BadgeCheck } from 'lucide-react';
+import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function FarmerNavbar() {
@@ -10,19 +10,48 @@ export default function FarmerNavbar() {
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  // Get farmer profile from localStorage
   const [farmerProfile, setFarmerProfile] = useState({
     name: 'Farmer',
     farmerId: 'AGR-XXXX',
     phone: '',
     location: '',
-    initials: 'FK'
+    photo: '',
+    initials: 'FK',
   });
 
-  // Farmer notifications
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    location: '',
+    photo: '',
+  });
+
+  const [errors, setErrors] = useState({
+    name: false,
+    phone: false,
+    location: false,
+  });
+
+  const getInitials = (name) => {
+    if (!name || name === 'Farmer') return 'FK';
+    const words = name
+      .trim()
+      .split(' ')
+      .filter((w) => w.length > 0);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return words[0].substring(0, 2).toUpperCase();
+  };
+
+  const hasCompleteProfile =
+    farmerProfile.name !== 'Farmer' && farmerProfile.phone && farmerProfile.location;
+
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -30,7 +59,7 @@ export default function FarmerNavbar() {
       title: 'Sale Confirmed',
       message: '500kg Tomato sold successfully',
       time: '2 mins ago',
-      unread: true
+      unread: true,
     },
     {
       id: 2,
@@ -38,7 +67,7 @@ export default function FarmerNavbar() {
       title: 'Market Update',
       message: 'Onion prices increased by 8%',
       time: '1 hr ago',
-      unread: true
+      unread: true,
     },
     {
       id: 3,
@@ -46,16 +75,17 @@ export default function FarmerNavbar() {
       title: 'Payment Reminder',
       message: 'Commission payment due tomorrow',
       time: '3 hrs ago',
-      unread: true
-    }
+      unread: true,
+    },
   ]);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   useEffect(() => {
     const savedProfile = localStorage.getItem('farmer-profile');
     if (savedProfile) {
       const profile = JSON.parse(savedProfile);
+      profile.initials = getInitials(profile.name);
       setFarmerProfile(profile);
     }
   }, []);
@@ -65,79 +95,191 @@ export default function FarmerNavbar() {
       const savedProfile = localStorage.getItem('farmer-profile');
       if (savedProfile) {
         const profile = JSON.parse(savedProfile);
+        profile.initials = getInitials(profile.name);
         setFarmerProfile(profile);
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('farmerProfileUpdated', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('farmerProfileUpdated', handleStorageChange);
     };
   }, []);
 
+  useEffect(() => {
+    if (isEditing) {
+      setEditForm({
+        name: farmerProfile.name === 'Farmer' ? '' : farmerProfile.name,
+        phone: farmerProfile.phone || '',
+        location: farmerProfile.location || '',
+        photo: farmerProfile.photo || '',
+      });
+      setErrors({ name: false, phone: false, location: false });
+    }
+  }, [isEditing, farmerProfile]);
+
   const handleLogout = async () => {
     try {
       await signOut();
-      localStorage.removeItem('farmer-profile'); 
+      localStorage.removeItem('farmer-profile');
       localStorage.removeItem('farmer-records');
       toast.success('Logged out successfully');
       navigate('/', { replace: true });
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error('Logout failed', error);
       toast.error('Failed to log out');
-      
+
       window.location.href = '/';
     }
   };
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, unread: false })));
+    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image size should be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditForm((prev) => ({ ...prev, photo: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const validatePhone = (phone) => {
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length === 10;
+  };
+
+  const handleSave = () => {
+    const newErrors = {
+      name: !editForm.name.trim(),
+      phone: !editForm.phone.trim() || !validatePhone(editForm.phone),
+      location: !editForm.location.trim(),
+    };
+
+    setErrors(newErrors);
+
+    if (newErrors.name || newErrors.phone || newErrors.location) {
+      toast.error('Please fill all required fields correctly');
+      return;
+    }
+
+    try {
+      const updatedProfile = {
+        ...farmerProfile,
+        name: editForm.name.trim(),
+        phone: editForm.phone.trim(),
+        location: editForm.location.trim(),
+        photo: editForm.photo,
+        initials: getInitials(editForm.name.trim()),
+      };
+
+      localStorage.setItem('farmer-profile', JSON.stringify(updatedProfile));
+      setFarmerProfile(updatedProfile);
+      window.dispatchEvent(new CustomEvent('farmerProfileUpdated'));
+      toast.success('Profile updated successfully! ');
+      setIsEditing(false);
+    } catch (error) {
+      toast.error('Failed to save profile');
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setErrors({ name: false, phone: false, location: false });
+  };
+
+  const openEditForm = () => {
+    setIsEditing(true);
   };
 
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+        setIsEditing(false);
       }
       if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownRef, notificationRef]);
+
+  const AvatarDisplay = ({ size = 'sm', showBadge = true }) => {
+    const sizeClasses = {
+      sm: 'w-8 h-8 sm:w-9 sm:h-9 text-sm',
+      md: 'w-14 h-14 text-xl',
+      lg: 'w-20 h-20 text-2xl',
+    };
+
+    return (
+      <div className="relative inline-flex">
+        {farmerProfile.photo ? (
+          <img
+            src={farmerProfile.photo}
+            alt="Profile"
+            className={`${sizeClasses[size]} rounded-full object-cover shadow-md border-2 border-green-100`}
+          />
+        ) : (
+          <div
+            className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold shadow-md`}
+          >
+            {farmerProfile.initials}
+          </div>
+        )}
+        {showBadge && hasCompleteProfile && (
+          <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5">
+            <BadgeCheck size={size === 'sm' ? 14 : 20} className="text-green-500" />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Main Navbar Row */}
         <div className="flex items-center justify-between h-16">
           {/* Left Side - Logo */}
           <div className="flex items-center">
-            {/* Logo */}
             <Link to="/dashboard/farmer" className="flex items-center gap-2 group shrink-0">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z" />
                 </svg>
               </div>
-              {/* ✅ UPDATED: Responsive Text (Visible on mobile now) */}
-              <div className="block">
-                <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight block">AgroNond</span>
-                <span className="block text-[9px] sm:text-[10px] text-green-600 font-bold uppercase tracking-wider">Farmer Panel</span>
+              <div className="flex flex-col">
+                <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+                  AgroNond
+                </span>
+                <span className="text-[9px] sm: text-[10px] text-green-600 font-bold uppercase tracking-wider">
+                  Farmer Panel
+                </span>
               </div>
             </Link>
           </div>
 
           {/* Right Side - Notifications & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
-              <button 
+              <button
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                 className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
               >
@@ -155,34 +297,39 @@ export default function FarmerNavbar() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    // ✅ UPDATED: Fixed on mobile, Absolute on desktop
                     className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900">Notifications</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                        Notifications
+                      </h3>
                       {unreadCount > 0 && (
-                        <span className="text-xs sm:text-sm font-semibold text-green-600">{unreadCount} New</span>
+                        <span className="text-xs sm:text-sm font-semibold text-green-600">
+                          {unreadCount} New
+                        </span>
                       )}
                     </div>
-                    
+
                     <div className="max-h-64 sm:max-h-96 overflow-y-auto">
                       {notifications.map((notification) => (
-                        <div 
+                        <div
                           key={notification.id}
-                          className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                            notification.unread ? 'bg-green-50/50' : ''
-                          }`}
+                          className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${notification.unread ? 'bg-green-50/50' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                              notification.type === 'success' ? 'bg-green-500' :
-                              notification.type === 'info' ? 'bg-blue-500' :
-                              'bg-yellow-500'
-                            }`} />
+                            <div
+                              className={`w-2 h-2 rounded-full mt-2 shrink-0 ${notification.type === 'success' ? 'bg-green-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-yellow-500'}`}
+                            />
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 text-sm truncate">{notification.title}</p>
-                              <p className="text-gray-600 text-xs sm:text-sm mt-0.5 line-clamp-2">{notification.message}</p>
-                              <p className="text-gray-400 text-[10px] sm:text-xs mt-1">{notification.time}</p>
+                              <p className="font-semibold text-gray-900 text-sm truncate">
+                                {notification.title}
+                              </p>
+                              <p className="text-gray-600 text-xs sm:text-sm mt-0.5 line-clamp-2">
+                                {notification.message}
+                              </p>
+                              <p className="text-gray-400 text-[10px] sm:text-xs mt-1">
+                                {notification.time}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -191,9 +338,9 @@ export default function FarmerNavbar() {
 
                     {notifications.length > 0 && (
                       <div className="p-3 bg-gray-50 border-t border-gray-100">
-                        <button 
+                        <button
                           onClick={markAllAsRead}
-                          className="w-full text-center text-sm font-semibold text-green-600 hover:text-green-700"
+                          className="w-full text-center text-sm font-semibold text-green-600 hover: text-green-700"
                         >
                           Mark all as read
                         </button>
@@ -203,23 +350,38 @@ export default function FarmerNavbar() {
                 )}
               </AnimatePresence>
             </div>
-              
+
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
-              <button 
+              <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 p-1 sm:p-1.5 sm:pr-3 rounded-full hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-1 p-1 pr-2 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-                  {farmerProfile.initials}
+                <AvatarDisplay size="sm" showBadge={true} />
+                <div className="hidden sm: block text-left ml-1">
+                  {hasCompleteProfile ? (
+                    <>
+                      <p className="text-sm font-semibold leading-none text-gray-900">
+                        {farmerProfile.name}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{farmerProfile.farmerId}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 font-medium">Farmer</p>
+                  )}
                 </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-semibold leading-none text-gray-900">{farmerProfile.name}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">{farmerProfile.farmerId}</p>
-                </div>
-                {/* Hidden arrow on mobile to save space */}
-                <svg className={`hidden sm:block w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg
+                  className={`hidden sm:block w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
 
@@ -229,66 +391,327 @@ export default function FarmerNavbar() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    // ✅ UPDATED: Fixed on mobile, Absolute on desktop
-                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-72 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm: top-full sm: left-auto sm: w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                   >
-                    {/* Profile Header */}
-                    <div className="p-4 border-b border-gray-100 bg-gradient-to-br from-green-50 to-white">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
-                          {farmerProfile.initials}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">{farmerProfile.name}</p>
-                          <p className="text-xs text-gray-600 flex items-center gap-1">
-                            <BadgeCheck size={12} className="text-green-600 shrink-0" />
-                            {farmerProfile.farmerId}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {/* Profile Details */}
-                      <div className="space-y-2">
-                        {farmerProfile.phone && (
-                          <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <Phone size={14} className="text-green-600 shrink-0" />
-                            <span className="truncate">{farmerProfile.phone}</span>
-                          </div>
-                        )}
-                        {farmerProfile.location && (
-                          <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <MapPin size={14} className="text-green-600 shrink-0" />
-                            <span className="truncate">{farmerProfile.location}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Links */}
-                    <div className="p-1">
-                      <button 
-                        onClick={() => {
-                          setIsDropdownOpen(false);
-                          window.dispatchEvent(new CustomEvent('openEditProfile'));
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-3 sm:py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-lg transition-colors"
-                      >
-                        <User size={16} />
-                        My Profile
-                      </button>
-                    </div>
+                    <AnimatePresence mode="wait">
+                      {!isEditing ? (
+                        <motion.div
+                          key="view"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {/* Profile Header */}
+                          <div className="p-5 border-b border-gray-100">
+                            <div className="flex items-center gap-4">
+                              <AvatarDisplay size="md" showBadge={true} />
+                              <div className="flex-1 min-w-0">
+                                {hasCompleteProfile ? (
+                                  <>
+                                    <p className="text-base font-bold text-gray-900 truncate">
+                                      {farmerProfile.name}
+                                    </p>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <BadgeCheck size={14} className="text-green-500" />
+                                      <span className="text-xs text-green-600 font-medium">
+                                        Verified
+                                      </span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-base font-bold text-gray-900">
+                                      Farmer
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      {farmerProfile.farmerId}
+                                    </p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
 
-                    <div className="p-1 border-t border-gray-100">
-                      <button 
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-3 py-3 sm:py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                        </svg>
-                        Sign Out
-                      </button>
-                    </div>
+                            {hasCompleteProfile && (
+                              <div className="mt-4 space-y-2">
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                  <Phone size={16} className="text-green-600 shrink-0" />
+                                  <span>+91 {farmerProfile.phone}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                  <MapPin size={16} className="text-green-600 shrink-0" />
+                                  <span className="truncate">{farmerProfile.location}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Conditional Profile Options */}
+                          <div className="p-3">
+                            <AnimatePresence mode="wait">
+                              {!hasCompleteProfile ? (
+                                <motion.div
+                                  key="incomplete"
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <button
+                                    onClick={openEditForm}
+                                    className="w-full flex items-center justify-center gap-3 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl transition-all shadow-md hover:shadow-lg"
+                                  >
+                                    <Edit3 size={18} />
+                                    <span>Create Your Profile</span>
+                                  </button>
+                                </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="complete"
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <button
+                                    onClick={openEditForm}
+                                    className="w-full flex items-center justify-center gap-3 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-xl transition-all shadow-md hover:shadow-lg"
+                                  >
+                                    <Edit3 size={18} />
+                                    <span>Update Your Profile</span>
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          {/* Sign Out */}
+                          <div className="p-3 border-t border-gray-100">
+                            <button
+                              onClick={handleLogout}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover: bg-red-50 rounded-lg transition-colors"
+                            >
+                              <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                                />
+                              </svg>
+                              <span>Sign Out</span>
+                            </button>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="edit"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          transition={{ duration: 0.2 }}
+                          className="p-4"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">
+                              {hasCompleteProfile ? 'Update Profile' : 'Create Profile'}
+                            </h3>
+                            <button
+                              onClick={handleCancel}
+                              className="p-1. 5 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                              <X size={18} className="text-gray-500" />
+                            </button>
+                          </div>
+
+                          {/* Photo Upload */}
+                          <div className="flex justify-center mb-5">
+                            <div className="relative">
+                              <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                {editForm.photo ? (
+                                  <img
+                                    src={editForm.photo}
+                                    alt="Preview"
+                                    className="w-20 h-20 rounded-full object-cover shadow-md border-2 border-green-200"
+                                  />
+                                ) : (
+                                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 text-white flex items-center justify-center font-bold text-2xl shadow-md">
+                                    {getInitials(editForm.name) || 'FK'}
+                                  </div>
+                                )}
+                              </motion.div>
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="absolute bottom-0 right-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 transition-colors"
+                              >
+                                <Camera size={14} />
+                              </button>
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoUpload}
+                                className="hidden"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Form Fields */}
+                          <div className="space-y-4">
+                            {/* Name */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                {hasCompleteProfile ? 'Change Name' : 'Full Name'}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <div className="text">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium"></span>
+                                <input
+                                  type="text"
+                                  value={editForm.name}
+                                  onChange={(e) => {
+                                    setEditForm((prev) => ({ ...prev, name: e.target.value }));
+                                    if (e.target.value.trim())
+                                      setErrors((prev) => ({ ...prev, name: false }));
+                                  }}
+                                  placeholder="Enter your full name"
+                                  className={`w-full px-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                />
+                              </div>
+                              {errors.name && (
+                                <p className="text-xs text-red-500 mt-1">Name is required</p>
+                              )}
+                            </div>
+
+                            {/* Phone Number */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                {hasCompleteProfile ? 'Change Phone Number' : 'Phone Number'}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium">
+                                  +91
+                                </span>
+                                <input
+                                  type="tel"
+                                  value={editForm.phone}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                    setEditForm((prev) => ({ ...prev, phone: value }));
+                                    if (validatePhone(value))
+                                      setErrors((prev) => ({ ...prev, phone: false }));
+                                  }}
+                                  placeholder="9876543210"
+                                  className={`w-full pl-14 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                />
+                              </div>
+                              {errors.phone && (
+                                <p className="text-xs text-red-500 mt-1">
+                                  Valid 10-digit number required
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Update Phone Info Box */}
+                            {hasCompleteProfile &&
+                              editForm.phone !== farmerProfile.phone &&
+                              editForm.phone.length > 0 && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="bg-amber-50 border border-amber-200 rounded-xl p-3"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <Phone size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="text-xs font-medium text-amber-800">
+                                        Changing Phone Number
+                                      </p>
+                                      <p className="text-[11px] text-amber-600 mt-0.5">
+                                        Current: +91 {farmerProfile.phone} → New: +91{' '}
+                                        {editForm.phone}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+
+                            {/* Location */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                {hasCompleteProfile ? 'Change Location' : 'Location'}{' '}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <MapPin
+                                  size={16}
+                                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                                />
+                                <input
+                                  type="text"
+                                  value={editForm.location}
+                                  onChange={(e) => {
+                                    setEditForm((prev) => ({ ...prev, location: e.target.value }));
+                                    if (e.target.value.trim())
+                                      setErrors((prev) => ({ ...prev, location: false }));
+                                  }}
+                                  placeholder="Village, District, State"
+                                  className={`w-full pl-11 pr-4 py-3 text-sm border rounded-xl transition-all duration-200 focus: outline-none focus: ring-2 focus:ring-green-500 focus:border-transparent ${errors.location ? 'border-red-400 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                />
+                              </div>
+                              {errors.location && (
+                                <p className="text-xs text-red-500 mt-1">Location is required</p>
+                              )}
+                            </div>
+
+                            {/* Farmer ID (Display Only) */}
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                                Farmer ID{' '}
+                                <span className="text-green-600 text-[10px] font-normal">
+                                  (Verified)
+                                </span>
+                              </label>
+                              <div className="flex items-center gap-2 px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl">
+                                <span className="text-gray-700 font-medium">
+                                  {farmerProfile.farmerId}
+                                </span>
+                                <BadgeCheck size={16} className="text-green-600 ml-auto" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-3 mt-6">
+                            <button
+                              onClick={handleCancel}
+                              className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleSave}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg"
+                            >
+                              <Save size={16} />
+                              Save
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
               </AnimatePresence>

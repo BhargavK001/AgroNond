@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
-import ScrollReveal, { StaggerContainer, StaggerItem } from '../components/ScrollReveal';
-import AnimatedCounter from '../components/AnimatedCounter';
-import { FeatureGlowCard } from '../components/GlowCard';
-import { FloatingElement } from '../components/ParallaxImage';
-import ShimmerButton from '../components/ShimmerButton';
+import ScrollReveal, { StaggerContainer, StaggerItem } from '../../components/ScrollReveal';
+import Hero from '../../components/Hero';
+import AnimatedCounter from '../../components/AnimatedCounter';
+import { FeatureGlowCard } from '../../components/GlowCard';
+import { FloatingElement } from '../../components/ParallaxImage';
+import ShimmerButton from '../../components/ShimmerButton';
 
 // CTA Background Image
-import ctaBackground from '../assets/hero-farmer.jpg';
+import ctaBackground from '../../assets/hero-farmer.jpg';
 
 // Feature icons
 const features = [
@@ -80,7 +81,7 @@ export default function Home() {
       <section className="relative min-h-screen flex items-center overflow-hidden">
         {/* Mesh Gradient Background */}
         <div className="mesh-gradient-bg" />
-        
+
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-pattern opacity-50" />
 
@@ -102,7 +103,7 @@ export default function Home() {
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <ScrollReveal variant="fadeDown" delay={0}>
-              <motion.div 
+              <motion.div
                 className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/90 border border-[var(--primary-200)] shadow-lg mb-6 sm:mb-8 backdrop-blur-sm"
                 whileHover={{ scale: 1.05 }}
               >
@@ -131,7 +132,7 @@ export default function Home() {
             {/* Subheading */}
             <ScrollReveal variant="fadeUp" delay={0.2}>
               <p className="text-base sm:text-lg md:text-xl text-[var(--text-secondary)] mb-6 sm:mb-8 max-w-xl mx-auto leading-relaxed px-2">
-                Empowering <strong className="text-[var(--primary)]">5000+ farmers</strong> with 
+                Empowering <strong className="text-[var(--primary)]">5000+ farmers</strong> with
                 transparent billing, real-time tracking, and secure digital invoicing.
               </p>
             </ScrollReveal>
@@ -161,7 +162,7 @@ export default function Home() {
                   { icon: '✓', text: 'OTP Based Login' },
                   { icon: '✓', text: 'Govt Approved' },
                 ].map((badge, i) => (
-                  <motion.div 
+                  <motion.div
                     key={i}
                     className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]"
                     whileHover={{ scale: 1.05, color: 'var(--primary)' }}
@@ -178,7 +179,7 @@ export default function Home() {
         </div>
 
         {/* Scroll Indicator */}
-        <motion.div 
+        <motion.div
           className="absolute bottom-10 left-1/2 -translate-x-1/2"
           animate={{ y: [0, 10, 0] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -230,7 +231,7 @@ export default function Home() {
           <StaggerContainer staggerDelay={0.1} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {stats.map((stat, index) => (
               <StaggerItem key={index}>
-                <motion.div 
+                <motion.div
                   className="stat-card-enhanced text-center"
                   whileHover={{ scale: 1.02 }}
                 >
@@ -274,7 +275,7 @@ export default function Home() {
                   <div className="absolute top-4 right-4 sm:right-6 text-4xl sm:text-6xl font-bold text-[var(--primary)]/10">
                     {item.step}
                   </div>
-                  
+
                   <div className="relative z-10">
                     <div className="step-number-badge mb-4 sm:mb-6">
                       {index + 1}
@@ -296,7 +297,7 @@ export default function Home() {
             <div className="cta-section-image text-center" style={{ backgroundImage: `url(${ctaBackground})` }}>
               {/* Dark overlay for text readability */}
               <div className="cta-overlay" />
-              <motion.div 
+              <motion.div
                 className="relative z-10"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}

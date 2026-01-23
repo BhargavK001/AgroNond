@@ -75,15 +75,33 @@ router.post('/verify', async (req, res) => {
 
     try {
         console.log('[Verify] Checking user for phone:', phone);
-        // Check if user exists
-        let user = await User.findOne({ phone });
-        console.log('[Verify] User found:', user ? user._id : 'No');
+
+        // Flexible lookup: Find ALL matching users (to handle duplicates like +91 vs raw)
+        const rawPhone = phone.replace(/^\+91/, '');
+        let users = await User.find({
+            $or: [
+                { phone: phone },
+                { phone: rawPhone },
+                { phone: `+91${rawPhone}` }
+            ]
+        });
+
+        // Smart selection priority: Admin > Committee > Weight > Accounting > Trader > Farmer
+        const rolePriority = { 'admin': 6, 'committee': 5, 'weight': 4, 'accounting': 3, 'trader': 2, 'farmer': 1 };
+
+        let user = null;
+        if (users.length > 0) {
+            // Sort by priority and pick the highest
+            user = users.sort((a, b) => (rolePriority[b.role] || 0) - (rolePriority[a.role] || 0))[0];
+        }
+
+        console.log('[Verify] User found:', user ? `Yes (${user._id}, ${user.role})` : 'No');
 
         // If not, create new user
         if (!user) {
             console.log('[Verify] Creating new user...');
             user = await User.create({
-                phone,
+                phone, // Save with the format used during login
             });
             console.log('[Verify] User created:', user._id);
         }

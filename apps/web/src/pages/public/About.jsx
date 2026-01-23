@@ -1,4 +1,4 @@
-import Button from '../components/Button';
+import Button from '../../components/Button';
 
 const userTypes = [
   {
@@ -133,9 +133,8 @@ export default function About() {
             {timeline.map((item, index) => (
               <div
                 key={index}
-                className={`relative flex items-center gap-8 mb-12 last:mb-0 animate-fade-in-up ${
-                  index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
-                }`}
+                className={`relative flex items-center gap-8 mb-12 last:mb-0 animate-fade-in-up ${index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
+                  }`}
                 style={{ animationDelay: `${index * 150}ms` }}
               >
                 {/* Timeline Dot */}

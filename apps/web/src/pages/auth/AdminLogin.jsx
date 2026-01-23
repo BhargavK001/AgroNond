@@ -1,10 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Button from '../components/Button';
-import { PageLoading } from '../components/Loading';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
+import Button from '../../components/Button';
 
 // Icons
+function AdminIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  );
+}
+
+// Background Icons
 function WheatIcon({ className }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -21,48 +30,66 @@ function LeafIcon({ className }) {
   );
 }
 
-export default function Login() {
+export default function AdminLogin() {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']); 
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [step, setStep] = useState('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const firstOtpInputRef = useRef(null);
-  
-  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut } = useAuth();
+
+  const { signInWithPhone, verifyOtp, user, profile, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // Handle Redirection based on Auth State
+  // If already logged in and admin
   useEffect(() => {
-    // 1. If we are still loading the profile, do NOTHING (wait).
-    if (profileLoading) return;
-
-    // 2. If user is logged in and profile load is done:
-    if (user) {
-      if (profile?.role) {
-        // Success: Redirect to specific dashboard
-        if (profile.role === 'farmer') navigate('/dashboard/farmer');
-        else if (profile.role === 'trader') navigate('/dashboard/trader');
-        else if (profile.role === 'admin') navigate('/dashboard/admin');
-        else if (profile.role === 'weight') navigate('/dashboard/weight');
-        else if (profile.role === 'committee') navigate('/dashboard/committee');
-        else if (profile.role === 'accounting') navigate('/dashboard/accounting');
-        else navigate('/dashboard');
+    if (user && profile) {
+      if (profile.role === 'admin') {
+        navigate('/dashboard/admin');
       } else {
-        navigate('/role-selection');
+        // Logged in but not admin - force logout or show error
+        setError('Access Denied. Admins only.');
+        signOut();
       }
     }
-  }, [user, profile, profileLoading, navigate]);
+  }, [user, profile, navigate, signOut]);
 
   // Auto-focus first OTP input when step changes to 'otp'
   useEffect(() => {
-    if (step === 'otp' && firstOtpInputRef.current) {
-      // Small delay to ensure the DOM has updated
+    if (step === 'otp') {
       setTimeout(() => {
-        firstOtpInputRef.current?.focus();
+        document.getElementById('otp-0')?.focus();
       }, 100);
     }
   }, [step]);
+
+  // Combined verification logic
+  const verifyOtpCode = async (otpValue) => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      const { data, error } = await verifyOtp(formattedPhone, otpValue);
+
+      if (error) throw error;
+
+      if (data?.user) {
+        if (data.user.role === 'admin') {
+          navigate('/dashboard/admin');
+        } else {
+          await signOut();
+          setError('Access Denied. This portal is for Admins only.');
+          setStep('phone');
+          setOtp(['', '', '', '', '', '']);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Invalid OTP');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
@@ -78,9 +105,9 @@ export default function Login() {
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
       const { error } = await signInWithPhone(formattedPhone);
-      
+
       if (error) throw error;
-      
+
       setStep('otp');
     } catch (err) {
       console.error(err);
@@ -92,52 +119,29 @@ export default function Login() {
 
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
     const otpValue = otp.join('');
     if (otpValue.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
-      setLoading(false);
       return;
     }
-
-    try {
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-      
-      const { error } = await verifyOtp(formattedPhone, otpValue);
-
-      if (error) throw error;
-      
-    
-
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Invalid OTP');
-    } finally {
-      setLoading(false);
-    }
+    await verifyOtpCode(otpValue);
   };
 
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
 
+    // Auto focus next input
     if (value && index < 5) {
       document.getElementById(`otp-${index + 1}`)?.focus();
     }
-    
-    // Auto-submit when all 6 digits are entered
-    if (value && index === 5) {
-      const completeOtp = newOtp.join('');
-      if (completeOtp.length === 6) {
-        // Submit the form automatically
-        setTimeout(() => {
-          document.getElementById('otp-form')?.requestSubmit();
-        }, 150);
-      }
+
+    // Auto verify if complete
+    if (newOtp.join('').length === 6) {
+      verifyOtpCode(newOtp.join(''));
     }
   };
 
@@ -151,17 +155,18 @@ export default function Login() {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (!/^\d+$/.test(pastedData)) return;
+
     const newOtp = [...otp];
     pastedData.split('').forEach((char, i) => {
       if (i < 6) newOtp[i] = char;
     });
     setOtp(newOtp);
+
+    // Auto verify paste
+    if (newOtp.join('').length === 6) {
+      verifyOtpCode(newOtp.join(''));
+    }
   };
-
-
-  if (user && profileLoading) {
-    return <PageLoading />;
-  }
 
   return (
     <main className="min-h-screen flex items-center justify-center gradient-bg-subtle py-16 sm:py-24 px-4 relative overflow-hidden bg-pattern">
@@ -184,13 +189,12 @@ export default function Login() {
           </div>
           <div>
             <span className="text-xl sm:text-2xl font-bold block">AgroNond</span>
-            <span className="text-xs text-[var(--text-muted)]">Digital Mandi Platform</span>
+            <span className="text-xs text-[var(--text-muted)]">Admin Portal</span>
           </div>
         </Link>
 
-        {/* Card */}
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 border border-[var(--border)] animate-scale-in">
-          
+
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm text-center">
               {error}
@@ -198,11 +202,11 @@ export default function Login() {
           )}
 
           {step === 'phone' ? (
-             <>
+            <>
               <div className="text-center mb-5 sm:mb-8">
-                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Welcome Back</h1>
+                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Admin Login</h1>
                 <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                  Enter your mobile number to continue
+                  Authorized personnel only
                 </p>
               </div>
 
@@ -223,7 +227,7 @@ export default function Login() {
                   </div>
                 </div>
 
-                <Button type="submit" loading={loading} disabled={phoneNumber.length !== 10} className="w-full" size="lg">
+                <Button type="submit" loading={loading} disabled={phoneNumber.length !== 10} className="w-full bg-gray-900 border-gray-900 hover:bg-gray-800" size="lg">
                   Send OTP
                 </Button>
               </form>
@@ -231,21 +235,19 @@ export default function Login() {
           ) : (
             <>
               <div className="text-center mb-5 sm:mb-8">
-                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Verify OTP</h1>
+                <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Verify Identity</h1>
                 <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                  Enter the 6-digit code sent to +91 {phoneNumber}
+                  Enter the code sent to +91 {phoneNumber}
                 </p>
               </div>
 
-              <form id="otp-form" onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-6">
+              <form onSubmit={handleOtpSubmit} className="space-y-4 sm:space-y-6">
                 <div className="flex justify-center gap-1.5 sm:gap-2">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
                       id={`otp-${index}`}
-                      ref={index === 0 ? firstOtpInputRef : null}
                       type="text"
-                      inputMode="numeric"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
@@ -256,16 +258,13 @@ export default function Login() {
                   ))}
                 </div>
 
-                <Button type="submit" loading={loading} disabled={otp.join('').length !== 6} className="w-full" size="lg">
-                  Verify & Continue
+                <Button type="submit" loading={loading} disabled={otp.join('').length !== 6} className="w-full bg-gray-900 border-gray-900 hover:bg-gray-800" size="lg">
+                  Verify & Access
                 </Button>
-                
+
                 <div className="flex justify-between items-center text-sm">
                   <button type="button" onClick={() => setStep('phone')} className="text-[var(--primary)] hover:underline">
                     Change Number
-                  </button>
-                  <button type="button" onClick={handlePhoneSubmit} className="text-[var(--text-secondary)] hover:text-[var(--primary)]">
-                    Resend OTP
                   </button>
                 </div>
               </form>
