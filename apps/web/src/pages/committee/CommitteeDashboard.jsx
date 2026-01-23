@@ -16,19 +16,19 @@ const mockMetrics = {
 };
 
 const recentTransactions = [
-  { id: 1, date: '2026-01-21', farmer: 'Ramesh Kumar', trader: 'Sharma Traders', crop: 'Tomato', qty: 500, amount: 20000, status: 'Paid' },
-  { id: 2, date: '2026-01-20', farmer: 'Suresh Patel', trader: 'Gupta & Sons', crop: 'Onion', qty: 1200, amount: 18000, status: 'Pending' },
-  { id: 3, date: '2026-01-19', farmer: 'Mahesh Singh', trader: 'Fresh Mart', crop: 'Potato', qty: 800, amount: 17600, status: 'Paid' },
-  { id: 4, date: '2026-01-18', farmer: 'Dinesh Yadav', trader: 'Sharma Traders', crop: 'Cabbage', qty: 600, amount: 7200, status: 'Paid' },
-  { id: 5, date: '2026-01-17', farmer: 'Ganesh Thakur', trader: 'City Grocers', crop: 'Cauliflower', qty: 400, amount: 12000, status: 'Pending' },
+  { id: 1, date: '2026-01-21', farmer: 'Ramesh Kumar', trader: 'Sharma Traders', crop: 'Tomato', qty: 500, rate: 40, amount: 20000, status: 'Paid' },
+  { id: 2, date: '2026-01-20', farmer: 'Suresh Patel', trader: 'Gupta & Sons', crop: 'Onion', qty: 1200, rate: 15, amount: 18000, status: 'Pending' },
+  { id: 3, date: '2026-01-19', farmer: 'Mahesh Singh', trader: 'Fresh Mart', crop: 'Potato', qty: 800, rate: 22, amount: 17600, status: 'Paid' },
+  { id: 4, date: '2026-01-18', farmer: 'Dinesh Yadav', trader: 'Sharma Traders', crop: 'Cabbage', qty: 600, rate: 12, amount: 7200, status: 'Paid' },
+  { id: 5, date: '2026-01-17', farmer: 'Ganesh Thakur', trader: 'City Grocers', crop: 'Cauliflower', qty: 400, rate: 30, amount: 12000, status: 'Pending' },
 ];
 
 // Unified Theme - All Stats use consistent Emerald/Slate styling
 const stats = [
   { label: 'Total Farmers', value: mockMetrics.totalFarmers, icon: Users, isCurrency: false },
   { label: 'Total Traders', value: mockMetrics.totalTraders, icon: ShoppingBag, isCurrency: false },
-  { label: 'Total Volume (Kg)', value: mockMetrics.totalVolume, icon: TrendingUp, isCurrency: false },
-  { label: 'Pending Payments', value: mockMetrics.pendingPayments, icon: AlertCircle, isCurrency: true },
+  { label: 'Received Payments', value: mockMetrics.receivedPayments, icon: Wallet, isCurrency: true },
+  { label: 'Pending Due', value: mockMetrics.pendingPayments, icon: AlertCircle, isCurrency: true },
 ];
 
 export default function CommitteeDashboard() {
@@ -89,6 +89,7 @@ export default function CommitteeDashboard() {
                   <th className="px-5 py-3 text-left font-semibold text-slate-600">Farmer</th>
                   <th className="px-5 py-3 text-left font-semibold text-slate-600">Trader</th>
                   <th className="px-5 py-3 text-left font-semibold text-slate-600">Details</th>
+                  <th className="px-5 py-3 text-right font-semibold text-slate-600">Rate</th>
                   <th className="px-5 py-3 text-right font-semibold text-slate-600">Amount</th>
                   <th className="px-5 py-3 text-right font-semibold text-slate-600">Status</th>
                 </tr>
@@ -100,6 +101,7 @@ export default function CommitteeDashboard() {
                     <td className="px-5 py-3.5 font-medium text-slate-900">{txn.farmer}</td>
                     <td className="px-5 py-3.5 text-slate-600">{txn.trader}</td>
                     <td className="px-5 py-3.5 text-slate-500">{txn.crop} ({txn.qty}kg)</td>
+                    <td className="px-5 py-3.5 text-right text-slate-600">₹{txn.rate}/kg</td>
                     <td className="px-5 py-3.5 text-right font-bold text-slate-900">₹{txn.amount.toLocaleString()}</td>
                     <td className="px-5 py-3.5 text-right">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${txn.status === 'Paid'
@@ -118,34 +120,7 @@ export default function CommitteeDashboard() {
 
         {/* Financial Summary Column */}
         <div className="space-y-6">
-          {/* Cash Flow */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-            <h3 className="font-bold text-slate-900 mb-4">Cash Flow Overview</h3>
-            <div className="space-y-3">
-              <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-emerald-600 shadow-sm">
-                    <Wallet size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-emerald-800 uppercase">Received Payments</p>
-                    <p className="text-lg font-bold text-emerald-900">₹{mockMetrics.receivedPayments.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-4 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-500 shadow-sm">
-                    <AlertCircle size={18} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-600 uppercase">Pending Due</p>
-                    <p className="text-lg font-bold text-slate-900">₹{mockMetrics.pendingPayments.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+
 
           {/* Commission Breakdown */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">

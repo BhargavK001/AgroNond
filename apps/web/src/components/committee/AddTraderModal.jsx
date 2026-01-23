@@ -31,7 +31,7 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
 
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 800));
-    
+
     const newTrader = {
       id: Date.now(),
       businessName: formData.businessName,
@@ -42,7 +42,7 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
       lastActive: new Date().toISOString().split('T')[0],
       status: 'Active',
     };
-    
+
     onAdd(newTrader);
     setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
     setIsSubmitting(false);
@@ -69,7 +69,7 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
             onClick={onClose}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50"
           />
-          
+
           {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -83,8 +83,8 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
               <div className="px-6 pt-6 pb-4 border-b border-slate-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center">
-                      <Store className="w-5 h-5 text-blue-600" />
+                    <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <Store className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-slate-800">Add New Trader</h2>
@@ -115,11 +115,10 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       value={formData.businessName}
                       onChange={handleChange}
                       placeholder="Enter business/shop name"
-                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${
-                        errors.businessName 
-                          ? 'border-red-300 focus:border-red-500 bg-red-50/50' 
-                          : 'border-slate-200 focus:border-blue-500 hover:border-slate-300'
-                      } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
+                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.businessName
+                          ? 'border-red-300 focus:border-red-500 bg-red-50/50'
+                          : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
+                        } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                     />
                   </div>
                   {errors.businessName && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-500" />{errors.businessName}</p>}
@@ -138,11 +137,10 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       value={formData.ownerName}
                       onChange={handleChange}
                       placeholder="Enter owner's full name"
-                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${
-                        errors.ownerName 
-                          ? 'border-red-300 focus:border-red-500 bg-red-50/50' 
-                          : 'border-slate-200 focus:border-blue-500 hover:border-slate-300'
-                      } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
+                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.ownerName
+                          ? 'border-red-300 focus:border-red-500 bg-red-50/50'
+                          : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
+                        } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                     />
                   </div>
                   {errors.ownerName && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-500" />{errors.ownerName}</p>}
@@ -162,11 +160,10 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       onChange={handleChange}
                       placeholder="10-digit mobile number"
                       maxLength={10}
-                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${
-                        errors.phone 
-                          ? 'border-red-300 focus:border-red-500 bg-red-50/50' 
-                          : 'border-slate-200 focus:border-blue-500 hover:border-slate-300'
-                      } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
+                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.phone
+                          ? 'border-red-300 focus:border-red-500 bg-red-50/50'
+                          : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
+                        } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                     />
                   </div>
                   {errors.phone && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-500" />{errors.phone}</p>}
@@ -185,7 +182,7 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       value={formData.licenseNo}
                       onChange={handleChange}
                       placeholder="Trade license number"
-                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-blue-500 hover:border-slate-300 focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-slate-200 focus:border-emerald-500 hover:border-slate-300 focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white"
                     />
                   </div>
                 </div>
@@ -202,7 +199,7 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 px-5 py-3.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                    className="flex-1 px-5 py-3.5 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
                   >
                     {isSubmitting ? (
                       <>
