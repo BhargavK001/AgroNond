@@ -128,6 +128,10 @@ export default function Login() {
       } else {
         navigate('/dashboard/farmer');
       }
+
+      // ✅ FIX 4: Redirect to appropriate dashboard
+      const targetRoute = roleRoutes[user.role] || '/dashboard/farmer';
+      navigate(targetRoute, { replace: true });
     }
   }, [user, profile, profileLoading, navigate, signOut]);
 
@@ -284,8 +288,8 @@ export default function Login() {
     setOtp(newOtp);
   };
 
-
-  if (user && profileLoading) {
+  // Show loading screen while checking auth state
+  if ((user && profileLoading) || (user && authLoading)) {
     return <PageLoading />;
   }
 

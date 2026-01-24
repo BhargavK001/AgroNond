@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import FarmerNavbar from '../../components/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
+import api from '../../lib/api';
 import {
-  Plus, TrendingUp, Clock, Package, X, Download, Eye, ArrowLeft,
-  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText
+  Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
+  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
 
 // --- MODAL COMPONENT ---
@@ -32,11 +33,11 @@ const VEGETABLE_CATEGORIES = [
     name: 'Onion-Potato',
     marathi: 'कांदा-बटाटा',
     items: [
-      { english: 'Onion', marathi: 'कांदा (Kanda)' },
-      { english: 'Potato', marathi: 'बटाटा (Batata)' },
-      { english: 'Garlic', marathi: 'लसूण (Lasun)' },
-      { english: 'Ginger', marathi: 'आले / अद्रक (Ale / Adrak)' },
-      { english: 'Sweet Potato', marathi: 'रताळे (Ratale)' }
+      { english: 'Onion', marathi: 'कांदा ' },
+      { english: 'Potato', marathi: 'बटाटा ' },
+      { english: 'Garlic', marathi: 'लसूण ' },
+      { english: 'Ginger', marathi: 'आले / अद्रक ' },
+      { english: 'Sweet Potato', marathi: 'रताळे ' }
     ]
   },
   {
@@ -44,14 +45,14 @@ const VEGETABLE_CATEGORIES = [
     name: 'Daily Veg',
     marathi: 'फळ भाज्या',
     items: [
-      { english: 'Tomato', marathi: 'टोमॅटो (Tomato)' },
-      { english: 'Brinjal / Eggplant', marathi: 'वांगी (Vangi)' },
-      { english: 'Lady Finger / Okra', marathi: 'भेंडी (Bhendi)' },
-      { english: 'Green Chili', marathi: 'हिरवी मिरची (Hirvi Mirchi)' },
-      { english: 'Capsicum', marathi: 'ढोबळी मिरची (Dhobli Mirchi)' },
-      { english: 'Drumstick', marathi: 'शेवगा (Shevga)' },
-      { english: 'Cucumber', marathi: 'काकडी (Kakdi)' },
-      { english: 'Lemon', marathi: 'लिंबू (Limbu)' }
+      { english: 'Tomato', marathi: 'टोमॅटो ' },
+      { english: 'Brinjal / Eggplant', marathi: 'वांगी ' },
+      { english: 'Lady Finger / Okra', marathi: 'भेंडी ' },
+      { english: 'Green Chili', marathi: 'हिरवी मिरची' },
+      { english: 'Capsicum', marathi: 'ढोबळी मिरची' },
+      { english: 'Drumstick', marathi: 'शेवगा ' },
+      { english: 'Cucumber', marathi: 'काकडी ' },
+      { english: 'Lemon', marathi: 'लिंबू' }
     ]
   },
   {
@@ -59,14 +60,14 @@ const VEGETABLE_CATEGORIES = [
     name: 'Leafy Veg',
     marathi: 'पाला भाज्या',
     items: [
-      { english: 'Coriander', marathi: 'कोथिंबीर (Kothimbir)' },
-      { english: 'Fenugreek', marathi: 'मेथी (Methi)' },
-      { english: 'Spinach', marathi: 'पालक (Palak)' },
-      { english: 'Dill Leaves', marathi: 'शेपू (Shepu)' },
-      { english: 'Amaranth', marathi: 'लाल माठ (Lal Math)' },
-      { english: 'Mint', marathi: 'पुदिना (Pudina)' },
-      { english: 'Curry Leaves', marathi: 'कढीपत्ता (Kadhipatta)' },
-      { english: 'Spring Onion', marathi: 'कांद्याची पात (Kandyachi Paat)' }
+      { english: 'Coriander', marathi: 'कोथिंबीर ' },
+      { english: 'Fenugreek', marathi: 'मेथी ' },
+      { english: 'Spinach', marathi: 'पालक ' },
+      { english: 'Dill Leaves', marathi: 'शेपू ' },
+      { english: 'Amaranth', marathi: 'लाल माठ' },
+      { english: 'Mint', marathi: 'पुदिना ' },
+      { english: 'Curry Leaves', marathi: 'कढीपत्ता ' },
+      { english: 'Spring Onion', marathi: 'कांद्याची पात' }
     ]
   },
   {
@@ -74,13 +75,13 @@ const VEGETABLE_CATEGORIES = [
     name: 'Vine Veg / Gourds',
     marathi: 'वेलवर्गीय',
     items: [
-      { english: 'Bottle Gourd', marathi: 'दुधी भोपळा (Dudhi Bhopla)' },
-      { english: 'Bitter Gourd', marathi: 'कारले (Karle)' },
-      { english: 'Ridge Gourd', marathi: 'डोडका (Dodka)' },
-      { english: 'Sponge Gourd', marathi: 'घोसाळे (Ghosale)' },
-      { english: 'Snake Gourd', marathi: 'पडवळ (Padwal)' },
-      { english: 'Pumpkin', marathi: 'लाल भोपळा / डांगर (Lal Bhopla)' },
-      { english: 'Ash Gourd', marathi: 'कोहळा (Kohala)' }
+      { english: 'Bottle Gourd', marathi: 'दुधी भोपळा ' },
+      { english: 'Bitter Gourd', marathi: 'कारले' },
+      { english: 'Ridge Gourd', marathi: 'डोडका ' },
+      { english: 'Sponge Gourd', marathi: 'घोसाळे' },
+      { english: 'Snake Gourd', marathi: 'पडवळ ' },
+      { english: 'Pumpkin', marathi: 'लाल भोपळा / डांगर ' },
+      { english: 'Ash Gourd', marathi: 'कोहळा' }
     ]
   },
   {
@@ -88,12 +89,12 @@ const VEGETABLE_CATEGORIES = [
     name: 'Beans / Pods',
     marathi: 'शेंगा भाज्या',
     items: [
-      { english: 'Cluster Beans', marathi: 'गवार (Gavar)' },
-      { english: 'French Beans', marathi: 'फरसबी (Farasbi)' },
-      { english: 'Green Peas', marathi: 'मटार / ओला वाटाणा (Matar)' },
-      { english: 'Flat Beans', marathi: 'घेवडा / वाल (Ghevda)' },
-      { english: 'Double Beans', marathi: 'डबल बी (Double Bee)' },
-      { english: 'Cowpea', marathi: 'चवळी (Chavali)' }
+      { english: 'Cluster Beans', marathi: 'गवार' },
+      { english: 'French Beans', marathi: 'फरसबी' },
+      { english: 'Green Peas', marathi: 'मटार / ओला वाटाणा' },
+      { english: 'Flat Beans', marathi: 'घेवडा / वाल ' },
+      { english: 'Double Beans', marathi: 'डबल बी ' },
+      { english: 'Cowpea', marathi: 'चवळी ' }
     ]
   },
   {
@@ -101,12 +102,12 @@ const VEGETABLE_CATEGORIES = [
     name: 'Roots & Salad',
     marathi: 'कंदमुळं / कोबी',
     items: [
-      { english: 'Cabbage', marathi: 'कोबी (Kobi)' },
-      { english: 'Cauliflower', marathi: 'फ्लॉवर (Flower)' },
-      { english: 'Carrot', marathi: 'गाजर (Gajar)' },
-      { english: 'Radish', marathi: 'मुळा (Mula)' },
-      { english: 'Beetroot', marathi: 'बीट (Beet)' },
-      { english: 'Elephant Foot Yam', marathi: 'सुरण (Suran)' }
+      { english: 'Cabbage', marathi: 'कोबी ' },
+      { english: 'Cauliflower', marathi: 'फ्लॉवर ' },
+      { english: 'Carrot', marathi: 'गाजर ' },
+      { english: 'Radish', marathi: 'मुळा ' },
+      { english: 'Beetroot', marathi: 'बीट ' },
+      { english: 'Elephant Foot Yam', marathi: 'सुरण' }
     ]
   },
   {
@@ -114,27 +115,40 @@ const VEGETABLE_CATEGORIES = [
     name: 'Fruits',
     marathi: 'फळे',
     items: [
-      { english: 'Banana', marathi: 'केळी (Keli)' },
-      { english: 'Apple', marathi: 'सफरचंद (Safarchand)' },
-      { english: 'Pomegranate', marathi: 'डाळिंब (Dalimb)' },
-      { english: 'Guava', marathi: 'पेरू (Peru)' },
-      { english: 'Orange', marathi: 'संत्री (Santri)' },
-      { english: 'Sweet Lime', marathi: 'मोसंबी (Mosambi)' },
-      { english: 'Papaya', marathi: 'पपई (Papai)' },
-      { english: 'Watermelon', marathi: 'कलिंगड (Kalingad)' },
-      { english: 'Grapes', marathi: 'द्राक्षे (Draksh)' },
-      { english: 'Custard Apple', marathi: 'सीताफळ (Sitaphal)' },
-      { english: 'Mango', marathi: 'आंबा (Amba)' },
-      { english: 'Sapodilla', marathi: 'चिकू (Chiku)' },
-      { english: 'Pineapple', marathi: 'अननस (Ananas)' }
+      { english: 'Banana', marathi: 'केळी' },
+      { english: 'Apple', marathi: 'सफरचंद' },
+      { english: 'Pomegranate', marathi: 'डाळिंब' },
+      { english: 'Guava', marathi: 'पेरू' },
+      { english: 'Orange', marathi: 'संत्री' },
+      { english: 'Sweet Lime', marathi: 'मोसंबी' },
+      { english: 'Papaya', marathi: 'पपई ' },
+      { english: 'Watermelon', marathi: 'कलिंगड' },
+      { english: 'Grapes', marathi: 'द्राक्षे' },
+      { english: 'Custard Apple', marathi: 'सीताफळ ' },
+      { english: 'Mango', marathi: 'आंबा' },
+      { english: 'Sapodilla', marathi: 'चिकू ' },
+      { english: 'Pineapple', marathi: 'अननस' }
     ]
   }
 ];
 
+// Helper to flatten data for search, but UI will use categories
+const ALL_VEGETABLES = VEGETABLE_CATEGORIES.flatMap(category => 
+  category.items.map(item => ({
+    ...item,
+    category: category.name,
+    categoryId: category.id,
+    display: `${item.english} (${item.marathi})`
+  }))
+);
+
 // --- ADD NEW RECORD SECTION ---
 const AddNewRecordSection = ({ onBack, onSave }) => {
   const [selectedMarket, setSelectedMarket] = useState('');
-  const [selectedVegetable, setSelectedVegetable] = useState(null);
+  const [selectedVegetable, setSelectedVegetable] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState([]); // Track which categories are open
 
   const [quantities, setQuantities] = useState({
     kg: '',
@@ -142,19 +156,54 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     quintal: ''
   });
 
-  const [selectedCategory, setSelectedCategory] = useState(null);
   const [addedItems, setAddedItems] = useState([]);
 
-  const handleCategoryClick = (categoryId) => {
-    setSelectedCategory(categoryId);
+  // Filter logic
+  const isSearching = searchTerm.length > 0 && selectedVegetable !== searchTerm;
+  
+  const filteredCategories = VEGETABLE_CATEGORIES.map(cat => {
+    // If searching, filter items inside. If not searching, keep all items.
+    const matchingItems = isSearching 
+      ? cat.items.filter(item => 
+          item.english.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          item.marathi.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : cat.items;
+      
+    return { ...cat, items: matchingItems };
+  }).filter(cat => cat.items.length > 0 || !isSearching); // Hide empty categories only when searching
+
+  // Toggle Category Accordion
+  const toggleCategory = (categoryId) => {
+    setExpandedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId) 
+        : [...prev, categoryId]
+    );
   };
 
-  const handleVegetableSelect = (item) => {
-    setSelectedVegetable({
-      english: item.english,
-      marathi: item.marathi,
-      display: `${item.english} (${item.marathi})`
-    });
+  // Auto-expand categories when searching
+  useEffect(() => {
+    if (isSearching) {
+      const allCategoryIds = filteredCategories.map(c => c.id);
+      setExpandedCategories(allCategoryIds);
+    } else {
+      setExpandedCategories([]); // Collapse all when clearing search
+    }
+  }, [searchTerm]);
+
+  const handleVegetableSelect = (item, categoryName) => {
+    const display = `${item.english} (${item.marathi})`;
+    setSelectedVegetable(display);
+    setSearchTerm(display);
+    setIsDropdownOpen(false);
+  };
+
+  const clearSelection = () => {
+    setSelectedVegetable('');
+    setSearchTerm('');
+    setQuantities({ kg: '', ton: '', quintal: '' });
+    setIsDropdownOpen(false);
   };
 
   const handleQuantityChange = (value, type) => {
@@ -195,7 +244,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
       return;
     }
 
-    const isDuplicate = addedItems.some(item => item.vegetable === selectedVegetable.display);
+    const isDuplicate = addedItems.some(item => item.vegetable === selectedVegetable);
     if (isDuplicate) {
       toast.error('This vegetable is already added. Remove it first to change quantity.');
       return;
@@ -203,15 +252,15 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
     const newItem = {
       id: Date.now(),
-      vegetable: selectedVegetable.display,
+      vegetable: selectedVegetable,
       quantity: parseFloat(quantities.kg)
     };
 
     setAddedItems([...addedItems, newItem]);
-    toast.success(`${selectedVegetable.english} added!`);
+    toast.success('Item added to list');
 
-    setSelectedVegetable(null);
-    setQuantities({ kg: '', ton: '', quintal: '' });
+    // Reset fields for next entry
+    clearSelection();
   };
 
   const handleRemoveItem = (id) => {
@@ -236,13 +285,9 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     });
 
     setSelectedMarket('');
-    setSelectedVegetable(null);
-    setQuantities({ kg: '', ton: '', quintal: '' });
-    setSelectedCategory(null);
+    clearSelection();
     setAddedItems([]);
   };
-
-  const selectedCategoryData = VEGETABLE_CATEGORIES.find(cat => cat.id === selectedCategory);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
@@ -259,6 +304,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Add New Record</h2>
 
           <div className="space-y-6">
+            {/* Market Selection */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Market Name *</label>
               <select
@@ -275,22 +321,31 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </select>
             </div>
 
+            {/* Added Items List (Top Green Section) */}
             {addedItems.length > 0 && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-gray-900 mb-3">Added Items ({addedItems.length}):</p>
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-sm font-semibold text-gray-900">Added Items ({addedItems.length}):</p>
+                  <button 
+                    onClick={() => setAddedItems([])}
+                    className="text-xs text-red-600 hover:underline font-medium"
+                  >
+                    Clear All
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {addedItems.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200">
+                    <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 shadow-sm">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{item.vegetable}</p>
                         <p className="text-xs text-gray-600">{item.quantity} kg</p>
                       </div>
                       <button
                         onClick={() => handleRemoveItem(item.id)}
-                        className="p-1.5 ml-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition flex-shrink-0"
-                        title="Remove"
+                        className="p-2 ml-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition flex-shrink-0"
+                        title="Delete Item"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   ))}
@@ -298,68 +353,120 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </div>
             )}
 
+            {/* Vegetable Dropdown (Accordion Style) */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Vegetable Name *</label>
-
-              {selectedVegetable && (
-                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                  <p className="text-sm text-gray-600 mb-1">Currently Selected:</p>
-                  <p className="font-bold text-gray-900">{selectedVegetable.english}</p>
-                  <p className="text-sm text-gray-600">{selectedVegetable.marathi}</p>
-                </div>
-              )}
-
-              <div className="border border-gray-300 rounded-xl overflow-hidden bg-white flex flex-col sm:flex-row h-96">
-                <div className="w-full sm:w-64 border-b sm:border-b-0 sm:border-r border-gray-200 overflow-y-auto bg-gray-50">
-                  {VEGETABLE_CATEGORIES.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => handleCategoryClick(category.id)}
-                      className={`w-full px-4 py-3 text-left flex items-center justify-between hover:bg-gray-100 transition border-b border-gray-200 ${selectedCategory === category.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''
-                        }`}
+              
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setIsDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    placeholder="Search or Select Category..."
+                    className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
+                  />
+                  
+                  {/* Clear / Dropdown Icon Logic */}
+                  {searchTerm ? (
+                    <button 
+                      onClick={clearSelection}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 rounded-full hover:bg-gray-300 transition"
+                      title="Clear Selection"
                     >
-                      <div>
-                        <p className="font-bold text-gray-900 text-sm">{category.name}</p>
-                        <p className="text-xs text-gray-600">{category.marathi}</p>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-400" />
+                      <X size={14} className="text-gray-600" />
                     </button>
-                  ))}
-                </div>
-
-                <div className="flex-1 overflow-y-auto bg-white">
-                  {selectedCategoryData ? (
-                    <div className="p-2">
-                      {selectedCategoryData.items.map((item, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleVegetableSelect(item)}
-                          className={`w-full px-4 py-3 text-left hover:bg-green-50 transition rounded-lg mb-1 ${selectedVegetable?.english === item.english
-                            ? 'bg-green-100 border-l-4 border-green-500'
-                            : 'border-l-4 border-transparent'
-                            }`}
-                        >
-                          <p className="text-base font-bold text-gray-900">{item.english}</p>
-                          <p className="text-sm text-gray-600">{item.marathi}</p>
-                        </button>
-                      ))}
-                    </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 p-6">
-                      <div className="text-center">
-                        <Package size={48} className="mx-auto mb-3 opacity-30" />
-                        <p className="text-sm">Select a category from the left</p>
-                      </div>
-                    </div>
+                    <ChevronDown 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                      size={20}
+                    />
                   )}
                 </div>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                    <div className="absolute z-20 w-full mt-2 bg-white border border-gray-300 rounded-xl shadow-xl max-h-96 overflow-y-auto custom-scrollbar">
+                      {filteredCategories.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          No vegetables found
+                        </div>
+                      ) : (
+                        filteredCategories.map((category) => (
+                          <div key={category.id} className="border-b border-gray-100 last:border-0">
+                            {/* Accordion Header */}
+                            <button 
+                              onClick={() => toggleCategory(category.id)}
+                              className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-left"
+                            >
+                              <span className="font-bold text-sm text-gray-800">
+                                {category.name} <span className="font-normal text-gray-500 text-xs ml-1">({category.marathi})</span>
+                              </span>
+                              {expandedCategories.includes(category.id) ? (
+                                <ChevronUp size={16} className="text-gray-500" />
+                              ) : (
+                                <ChevronDown size={16} className="text-gray-500" />
+                              )}
+                            </button>
+
+                            {/* Accordion Content */}
+                            {expandedCategories.includes(category.id) && (
+                              <div className="bg-white animate-fadeIn">
+                                {category.items.map((item, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={() => handleVegetableSelect(item, category.name)}
+                                    className="w-full px-6 py-3 text-left hover:bg-green-50 transition border-b border-gray-50 last:border-0 flex justify-between items-center group"
+                                  >
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-900 group-hover:text-green-700">{item.english}</p>
+                                      <p className="text-xs text-gray-500 group-hover:text-green-600">{item.marathi}</p>
+                                    </div>
+                                    {selectedVegetable.includes(item.english) && (
+                                      <CheckCircle size={16} className="text-green-600" />
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
+
+              {selectedVegetable && (
+                <div className="mt-3 flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-0.5">Currently Selected:</p>
+                    <p className="font-bold text-gray-900 text-sm">{selectedVegetable}</p>
+                  </div>
+                  <button 
+                    onClick={clearSelection}
+                    className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 transition"
+                    title="Change Selection"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              )}
             </div>
 
+            {/* Quantity Inputs */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
                 <div>
                   <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg) *</label>
                   <input
@@ -398,7 +505,6 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
                   />
                 </div>
-
               </div>
             </div>
 
@@ -437,6 +543,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 const FarmerDashboard = () => {
   const [view, setView] = useState('dashboard');
   const [records, setRecords] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState({
     name: '',
     phone: '',
@@ -448,10 +555,12 @@ const FarmerDashboard = () => {
   const [modals, setModals] = useState({
     editProfile: false,
     details: false,
-    editRecord: false
+    editRecord: false,
+    deleteConfirm: false
   });
 
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [recordToDelete, setRecordToDelete] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
@@ -464,10 +573,30 @@ const FarmerDashboard = () => {
     quantities: { kg: '', ton: '', quintal: '' }
   });
 
+  // --- FETCH DATA FROM BACKEND ---
+  const fetchRecords = async () => {
+    try {
+      setIsLoading(true);
+      const recordsData = await api.get('/api/records/my-records');
+      
+      if (Array.isArray(recordsData)) {
+        setRecords(recordsData);
+      } else {
+        console.error("Expected array but got:", recordsData);
+        setRecords([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch records:', error);
+      toast.error('Failed to load records');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('farmer-records');
+    fetchRecords();
+    
     const prof = localStorage.getItem('farmer-profile');
-    if (saved) setRecords(JSON.parse(saved));
     if (prof) {
       const p = JSON.parse(prof);
       setProfile(p);
@@ -483,14 +612,7 @@ const FarmerDashboard = () => {
     return () => window.removeEventListener('openEditProfile', handleOpenEditProfile);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('farmer-records', JSON.stringify(records));
-  }, [records]);
-
-  useEffect(() => {
-    localStorage.setItem('farmer-profile', JSON.stringify(profile));
-  }, [profile]);
-
+  // --- COMPUTED VALUES ---
   const soldRecords = records.filter(r => r.status === 'Sold');
   const pendingRecords = records.filter(r => r.status === 'Pending');
 
@@ -502,36 +624,57 @@ const FarmerDashboard = () => {
     : records.filter(r => r.status === filterStatus);
 
   const sortedRecords = [...filteredRecords].sort((a, b) => {
-    if (sortBy === 'recent') return new Date(b.date) - new Date(a.date);
+    if (sortBy === 'recent') return new Date(b.createdAt) - new Date(a.createdAt);
     if (sortBy === 'amount') return (b.totalAmount || 0) - (a.totalAmount || 0);
     return 0;
   });
 
+  // ✅ HELPER: Format Time from Date
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-IN', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
   // --- HANDLERS ---
+  const handleAddRecord = async (data) => {
+    try {
+      await api.post('/api/records/add', data);
+      toast.success('Records saved to database!');
+      setView('dashboard');
+      fetchRecords();
+    } catch (error) {
+      console.error(error);
+      toast.error(error.response?.data?.error || 'Failed to save record');
+    }
+  };
 
-  const handleAddRecord = (data) => {
-    const newRecords = data.items.map(item => ({
-      id: Date.now() + Math.random(),
-      date: new Date().toLocaleDateString('en-GB'),
-      market: data.market,
-      vegetable: item.vegetable,
-      quantity: item.quantity,
-      qtySold: 0, // Initial Qty Sold is 0
-      status: 'Pending',
-      rate: 0,
-      totalAmount: 0,
-      trader: '-'
-    }));
+  const initiateDelete = (id) => {
+    setRecordToDelete(id);
+    setModals(prev => ({ ...prev, deleteConfirm: true }));
+  };
 
-    setRecords([...newRecords, ...records]);
-    setView('dashboard');
-    toast.success(`${newRecords.length} record(s) added successfully!`);
+  // --- CONFIRM DELETE (Called from Modal) ---
+  const confirmDelete = async () => {
+    try {
+      await api.delete(`/api/records/${recordToDelete}`);
+      toast.success('Record deleted successfully');
+      fetchRecords();
+    } catch (error) {
+      toast.error('Failed to delete record');
+    } finally {
+      setModals(prev => ({ ...prev, deleteConfirm: false }));
+      setRecordToDelete(null);
+    }
   };
 
   const handleEditClick = (record) => {
     const qty = record.quantity;
     setEditFormData({
-      id: record.id,
+      id: record._id,
       market: record.market,
       vegetable: record.vegetable,
       quantities: {
@@ -581,7 +724,7 @@ const FarmerDashboard = () => {
     }));
   };
 
-  const handleUpdateRecord = () => {
+  const handleUpdateRecord = async () => {
     const newKg = parseFloat(editFormData.quantities.kg);
 
     if (isNaN(newKg) || newKg <= 0) {
@@ -594,38 +737,37 @@ const FarmerDashboard = () => {
       return;
     }
 
-    const updatedRecords = records.map(rec => {
-      if (rec.id === editFormData.id) {
-        // Auto-update Qty Sold if status is Sold
-        const updatedQtySold = rec.status === 'Sold' ? newKg : (rec.qtySold || 0);
-        return {
-          ...rec,
-          market: editFormData.market,
-          quantity: newKg,
-          qtySold: updatedQtySold
-        };
-      }
-      return rec;
-    });
-
-    setRecords(updatedRecords);
-    setModals({ ...modals, editRecord: false });
-    toast.success("Record updated successfully!");
+    try {
+      await api.put(`/api/records/${editFormData.id}`, {
+        market: editFormData.market,
+        quantity: newKg
+      });
+      
+      toast.success("Record updated successfully!");
+      setModals({ ...modals, editRecord: false });
+      fetchRecords();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update record');
+    }
   };
 
-  // --- NEW: GENERATE HTML INVOICE FOR PRINT/DOWNLOAD ---
   const handleDownloadInvoice = (record) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error("Please allow popups to download invoice");
       return;
     }
+    
+    const recordDate = new Date(record.createdAt).toLocaleDateString('en-GB');
+    const recordTime = formatTime(record.createdAt);
+    const invoiceId = record._id.toString().slice(-6).toUpperCase();
 
     const invoiceContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Invoice #${record.id.toString().slice(-6)}</title>
+        <title>Invoice #${invoiceId}</title>
         <style>
           body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; background: #fff; }
           .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); font-size: 16px; line-height: 24px; color: #555; }
@@ -656,8 +798,9 @@ const FarmerDashboard = () => {
             </div>
             <div class="invoice-details">
               <h2>INVOICE</h2>
-              <p>#${record.id.toString().slice(-6)}</p>
-              <p>Date: ${record.date}</p>
+              <p>#${invoiceId}</p>
+              <p>Date: ${recordDate}</p>
+              <p>Time: ${recordTime}</p>
             </div>
           </div>
 
@@ -682,7 +825,6 @@ const FarmerDashboard = () => {
               <tr>
                 <th>Item Description</th>
                 <th style="text-align: center;">Total Qty</th>
-                <th style="text-align: center;">Qty Sold</th>
                 <th style="text-align: right;">Rate</th>
                 <th style="text-align: right;">Amount</th>
               </tr>
@@ -691,7 +833,6 @@ const FarmerDashboard = () => {
               <tr>
                 <td>${record.vegetable}</td>
                 <td style="text-align: center;">${record.quantity} kg</td>
-                <td style="text-align: center;">${record.status === 'Sold' ? record.quantity : 0} kg</td>
                 <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.rate : '-'}</td>
                 <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.totalAmount.toLocaleString('en-IN') : '-'}</td>
               </tr>
@@ -716,18 +857,6 @@ const FarmerDashboard = () => {
 
     printWindow.document.write(invoiceContent);
     printWindow.document.close();
-  };
-
-  const generateInvoice = (record) => {
-    // Keeping this simple alert for quick view if needed, but primary is now handleDownloadInvoice
-    alert(`Quick View:\nItem: ${record.vegetable}\nAmount: ₹${record.totalAmount}`);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm('Permanently delete this record?')) {
-      setRecords(records.filter(r => r.id !== id));
-      toast.success('Record deleted');
-    }
   };
 
   const saveProfile = () => {
@@ -863,176 +992,185 @@ const FarmerDashboard = () => {
             </div>
           </div>
 
-          {/* Mobile View */}
-          <div className="block sm:hidden">
-            {sortedRecords.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-gray-500">No records found</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {sortedRecords.map((record) => (
-                  <div key={record.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-semibold text-gray-500">{record.date}</span>
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${record.status === 'Sold'
-                        ? 'bg-green-100 text-green-700 border border-green-200'
-                        : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                        }`}>
-                        {record.status === 'Sold' ? <CheckCircle size={10} /> : <Clock size={10} />}
-                        {record.status}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center mb-3">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
-                        <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
-                          <MapPin size={12} />
-                          {record.market}
+          {isLoading ? (
+             <div className="p-12 text-center text-gray-500">Loading records...</div>
+          ) : (
+            <>
+            {/* Mobile View */}
+            <div className="block sm:hidden">
+              {sortedRecords.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500">No records found</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {sortedRecords.map((record) => (
+                    <div key={record._id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="text-xs font-semibold text-gray-500">
+                            {new Date(record.createdAt).toLocaleDateString('en-GB')}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-2">
+                            {formatTime(record.createdAt)}
+                          </span>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        {/* CHANGED QTY TO TOTAL QTY */}
-                        <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
-                        <p className="text-xs text-gray-500">Total</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
-                      <button
-                        onClick={() => handleDownloadInvoice(record)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
-                        title="Download Data / Invoice"
-                      >
-                        <FileText size={16} />
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedRecord(record);
-                          setModals({ ...modals, details: true });
-                        }}
-                        className="p-2 bg-gray-100 text-gray-600 rounded-lg"
-                        title="View"
-                      >
-                        <Eye size={16} />
-                      </button>
-
-                      <button
-                        onClick={() => handleEditClick(record)}
-                        className="p-2 bg-green-100 text-green-600 rounded-lg"
-                        title="Edit"
-                      >
-                        <Edit size={16} />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(record.id)}
-                        className="p-2 bg-red-50 text-red-600 rounded-lg"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Desktop View */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Qty Sold</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
-                  <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
-                  <th className="px-8 py-4 text-right font-semibold text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {sortedRecords.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="px-8 py-16 text-center">
-                      <Clock size={48} className="mx-auto text-gray-300 mb-3" />
-                      <p className="text-gray-600 font-medium">No records found</p>
-                      <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
-                    </td>
-                  </tr>
-                ) : (
-                  sortedRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50 transition-colors group">
-                      <td className="px-8 py-4 text-gray-700">{record.date}</td>
-                      <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
-                      <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
-                      <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
-                      {/* QTY SOLD LOGIC */}
-                      <td className="px-8 py-4 font-bold text-gray-800">
-                        {record.status === 'Sold' ? record.quantity : (record.qtySold || 0)} kg
-                      </td>
-                      <td className="px-8 py-4">
-                        <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${record.status === 'Sold'
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${record.status === 'Sold'
                           ? 'bg-green-100 text-green-700 border border-green-200'
                           : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                           }`}>
-                          {record.status === 'Sold' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                          {record.status === 'Sold' ? <CheckCircle size={10} /> : <Clock size={10} />}
                           {record.status}
                         </span>
-                      </td>
-                      <td className="px-8 py-4 text-gray-700">{record.status === 'Sold' ? `₹${record.rate}` : '-'}</td>
-                      <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
-                      <td className="px-8 py-4 text-right">
-                        <div className="flex justify-end gap-2">
+                      </div>
 
-                          <button
-                            onClick={() => handleDownloadInvoice(record)}
-                            className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
-                            title="Download Data / Invoice"
-                          >
-                            <FileText size={18} />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setSelectedRecord(record);
-                              setModals({ ...modals, details: true });
-                            }}
-                            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
-
-                          <button
-                            onClick={() => handleEditClick(record)}
-                            className="p-2.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition border border-green-200"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(record.id)}
-                            className="p-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition border border-red-200"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+                      <div className="flex justify-between items-center mb-3">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
+                          <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
+                            <MapPin size={12} />
+                            {record.market}
+                          </div>
                         </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
+                          <p className="text-xs text-gray-500">Total</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
+                        <button
+                          onClick={() => handleDownloadInvoice(record)}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
+                          title="Download Data / Invoice"
+                        >
+                          <FileText size={16} />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedRecord(record);
+                            setModals({ ...modals, details: true });
+                          }}
+                          className="p-2 bg-gray-100 text-gray-600 rounded-lg"
+                          title="View"
+                        >
+                          <Eye size={16} />
+                        </button>
+
+                        <button
+                          onClick={() => handleEditClick(record)}
+                          className="p-2 bg-green-100 text-green-600 rounded-lg"
+                          title="Edit"
+                        >
+                          <Edit size={16} />
+                        </button>
+
+                        <button
+                          onClick={() => initiateDelete(record._id)}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Time</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
+                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
+                    <th className="px-8 py-4 text-right font-semibold text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {sortedRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" className="px-8 py-16 text-center">
+                        <Clock size={48} className="mx-auto text-gray-300 mb-3" />
+                        <p className="text-gray-600 font-medium">No records found</p>
+                        <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    sortedRecords.map((record) => (
+                      <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
+                        <td className="px-8 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
+                        <td className="px-8 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
+                        <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
+                        <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
+                        <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
+                        <td className="px-8 py-4">
+                          <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${record.status === 'Sold'
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                            }`}>
+                            {record.status === 'Sold' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                            {record.status}
+                          </span>
+                        </td>
+                        <td className="px-8 py-4 text-gray-700">{record.status === 'Sold' ? `₹${record.rate}` : '-'}</td>
+                        <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
+                        <td className="px-8 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+
+                            <button
+                              onClick={() => handleDownloadInvoice(record)}
+                              className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
+                              title="Download Data / Invoice"
+                            >
+                              <FileText size={18} />
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setSelectedRecord(record);
+                                setModals({ ...modals, details: true });
+                              }}
+                              className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+
+                            <button
+                              onClick={() => handleEditClick(record)}
+                              className="p-2.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition border border-green-200"
+                              title="Edit"
+                            >
+                              <Edit size={18} />
+                            </button>
+
+                            <button
+                              onClick={() => initiateDelete(record._id)}
+                              className="p-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition border border-red-200"
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            </>
+          )}
         </div>
       </main>
 
@@ -1048,12 +1186,17 @@ const FarmerDashboard = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                 <p className="text-xs text-gray-600 font-semibold mb-1">DATE</p>
-                <p className="font-bold text-gray-900">{selectedRecord.date}</p>
+                <p className="font-bold text-gray-900">{new Date(selectedRecord.createdAt).toLocaleDateString('en-GB')}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-xs text-gray-600 font-semibold mb-1">MARKET</p>
-                <p className="font-bold text-gray-900">{selectedRecord.market}</p>
+                <p className="text-xs text-gray-600 font-semibold mb-1">TIME</p>
+                <p className="font-bold text-gray-900">{formatTime(selectedRecord.createdAt)}</p>
               </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-xs text-gray-600 font-semibold mb-1">MARKET</p>
+              <p className="font-bold text-gray-900">{selectedRecord.market}</p>
             </div>
 
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -1061,15 +1204,9 @@ const FarmerDashboard = () => {
               <p className="font-bold text-gray-900">{selectedRecord.vegetable}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL QTY</p>
-                <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-xs text-gray-600 font-semibold mb-1">QTY SOLD</p>
-                <p className="font-bold text-gray-900">{selectedRecord.status === 'Sold' ? selectedRecord.quantity : (selectedRecord.qtySold || 0)} kg</p>
-              </div>
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL QTY</p>
+              <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
             </div>
 
             {selectedRecord.status === 'Sold' && (
@@ -1113,7 +1250,6 @@ const FarmerDashboard = () => {
         size="md"
       >
         <div className="space-y-6">
-          {/* Read Only Info */}
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
             <p className="text-sm text-gray-500 mb-1">Editing Item:</p>
             <p className="font-bold text-gray-900 text-lg">{editFormData.vegetable}</p>
@@ -1189,6 +1325,38 @@ const FarmerDashboard = () => {
         </div>
       </Modal>
 
+      {/* --- CONFIRM DELETE MODAL --- */}
+      <Modal
+        isOpen={modals.deleteConfirm}
+        onClose={() => setModals({ ...modals, deleteConfirm: false })}
+        title="Confirm Deletion"
+        size="sm"
+      >
+        <div className="text-center">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="text-red-600" size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Are you sure?</h3>
+          <p className="text-gray-500 text-sm mb-6">
+            Do you really want to delete this record? This process cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => setModals({ ...modals, deleteConfirm: false })}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium shadow-md transition"
+            >
+              Yes, Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
+      
       {/* Profile Edit Modal */}
       <Modal
         isOpen={modals.editProfile}
