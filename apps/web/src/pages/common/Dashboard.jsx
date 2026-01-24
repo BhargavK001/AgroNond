@@ -16,7 +16,7 @@ export default function Dashboard() {
         case 'committee': navigate('/dashboard/committee', { replace: true }); break;
         case 'admin': navigate('/dashboard/admin', { replace: true }); break;
         case 'weight': navigate('/dashboard/weight', { replace: true }); break;
-        case 'accounting': navigate('/dashboard/accounting', { replace: true }); break;
+        case 'lilav': navigate('/dashboard/lilav', { replace: true }); break;
       }
     }
   }, [profile, navigate]);

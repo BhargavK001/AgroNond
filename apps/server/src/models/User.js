@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'],
+        enum: ['farmer', 'trader', 'committee', 'admin', 'weight', 'lilav'],
         default: 'farmer', // Default to farmer for new public users
     },
     full_name: {

@@ -33,6 +33,26 @@ const recordSchema = new mongoose.Schema({
     },
     weighed_at: {
         type: Date
+    },
+    // Sale/Auction fields
+    trader_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    sale_rate: {
+        type: Number,
+        default: 0
+    },
+    sale_amount: {
+        type: Number,
+        default: 0
+    },
+    sold_at: {
+        type: Date
+    },
+    sold_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, {
     timestamps: true

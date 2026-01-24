@@ -5,6 +5,7 @@ import TraderNavbar from '../components/TraderNavbar';
 import CommitteeNavbar from '../components/CommitteeNavbar';
 import AccountingNavbar from '../components/AccountingNavbar';
 import AdminNavbar from '../components/AdminNavbar';
+import LilavNavbar from '../components/LilavNavbar';
 import Sidebar from '../components/Sidebar';
 
 // Slide animation - smoother feel
@@ -61,6 +62,8 @@ export default function UnifiedLayout({ role }) {
                 return <AccountingNavbar {...props} />;
             case 'admin':
                 return <AdminNavbar {...props} />;
+            case 'lilav':
+                return <LilavNavbar {...props} />;
             default:
                 return null;
         }
