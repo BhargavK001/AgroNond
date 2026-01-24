@@ -16,6 +16,7 @@ import contactRouter from './routes/contact.js';
 import adminRouter from './routes/admin.js';
 import financeRouter from './routes/finance.js';
 import statusRouter from './routes/status.js';
+import dailyRatesRouter from './routes/dailyRates.js';
 import connectDB from './config/db.js';
 
 // Connect to Database
@@ -48,11 +49,10 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/contact', contactRouter);
-app.use('/api/records', recordsRouter);
-app.use('/api/contact', contactRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/finance', financeRouter);
 app.use('/api/status', statusRouter);
+app.use('/api/daily-rates', dailyRatesRouter);
 
 // 404 handler
 app.use((req, res) => {

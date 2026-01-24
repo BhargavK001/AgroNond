@@ -12,7 +12,9 @@ import {
     X,
     Wallet,
     ChevronsLeft,
-    ChevronsRight
+    ChevronsRight,
+    IndianRupee,
+    Gavel
 } from 'lucide-react';
 
 const NAV_ITEMS = {
@@ -20,6 +22,8 @@ const NAV_ITEMS = {
         { label: 'Overview', path: '/dashboard/committee', icon: LayoutDashboard },
         { label: 'Farmers', path: '/dashboard/committee/farmers', icon: Users },
         { label: 'Traders', path: '/dashboard/committee/traders', icon: Store },
+        { label: 'Daily Rates', path: '/dashboard/committee/daily-rates', icon: IndianRupee },
+        { label: 'Lilav Entry', path: '/dashboard/committee/lilav', icon: Gavel },
         { label: 'Accounting', path: '/dashboard/committee/accounting', icon: Wallet },
         { label: 'Reports', path: '/dashboard/committee/billing', icon: FileText },
 
@@ -35,8 +39,9 @@ const NAV_ITEMS = {
         { label: 'Commission', path: '/dashboard/admin/commission', icon: ShieldCheck },
         { label: 'Transactions', path: '/dashboard/admin/transactions', icon: Receipt },
     ],
-    accounting: [
-        { label: 'Dashboard', path: '/dashboard/accounting', icon: LayoutDashboard },
+    lilav: [
+        { label: 'Auction Entry', path: '/dashboard/lilav', icon: Gavel },
+        { label: 'Market Rates', path: '/dashboard/lilav/rates', icon: IndianRupee },
     ],
     farmer: [],
     weight: [],

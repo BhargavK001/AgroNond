@@ -52,7 +52,7 @@ export default function Login() {
         }
         else if (profile.role === 'weight') navigate('/dashboard/weight');
         else if (profile.role === 'committee') navigate('/dashboard/committee');
-        else if (profile.role === 'accounting') navigate('/dashboard/accounting');
+        else if (profile.role === 'lilav') navigate('/dashboard/lilav');
         else navigate('/dashboard/farmer'); // Default to farmer dashboard if role is missing/unknown logic
       } else {
         // Fallback if role is technically missing but should have been default by backend

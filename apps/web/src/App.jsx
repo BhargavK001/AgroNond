@@ -59,6 +59,8 @@ const AccountingTransactions = lazy(() => import('./pages/committee/AccountingTr
 const AccountingTraders = lazy(() => import('./pages/committee/AccountingTraders'));
 const AccountingFarmers = lazy(() => import('./pages/committee/AccountingFarmers'));
 const AccountingReports = lazy(() => import('./pages/committee/AccountingReports'));
+const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
+const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
 const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
@@ -167,16 +169,21 @@ function App() {
                   <Route path="accounting/traders" element={<AccountingTraders />} />
                   <Route path="accounting/farmers" element={<AccountingFarmers />} />
                   <Route path="accounting/reports" element={<AccountingReports />} />
+
+                  {/* Lilav (Auction) Section */}
+                  <Route path="daily-rates" element={<DailyRates />} />
+                  <Route path="lilav" element={<LilavEntry />} />
                 </Route>
 
-                {/* Accounting Dashboard - New Section */}
-                <Route path="/dashboard/accounting" element={
-                  <ProtectedRoute requireRole="accounting">
-                    <UnifiedLayout role="accounting" />
+                {/* Lilav Dashboard - Replaces Accounting */}
+                <Route path="/dashboard/lilav" element={
+                  <ProtectedRoute requireRole="lilav">
+                    <UnifiedLayout role="lilav" />
                   </ProtectedRoute>
                 }
                 >
-                  <Route index element={<AccountingDashboard />} />
+                  <Route index element={<LilavEntry />} />
+                  <Route path="rates" element={<DailyRates readOnly={true} />} />
                 </Route>
 
                 {/* Admin Dashboard - Sidebar Layout */}
