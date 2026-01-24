@@ -1,162 +1,542 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, Phone, MapPin, Camera, Save, BadgeCheck, X, Edit3, Scale, Mail } from 'lucide-react';
+import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3, Scale } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import NotificationCenter from './NotificationCenter';
+import api from '../lib/api'; 
 
 export default function WeightNavbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // UI States
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Refs
   const dropdownRef = useRef(null);
+  const notificationRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const [profile, setProfile] = useState({
+  // Profile State
+  const [weightProfile, setWeightProfile] = useState({
     name: 'Weight Officer',
-    phone: user?.phone || '',
-    location: 'Gate 1',
-    role: 'Weight Station',
+    weightId: '', // Will be generated
+    phone: '',
+    location: '',
     photo: '',
-    weightId: 'WGT-2026-001',
-    initials: 'WO'
+    initials: 'WO',
   });
 
-  const [editForm, setEditForm] = useState({ ...profile });
+  // Edit Form State
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    location: '',
+    photo: '',
+  });
 
-  useEffect(() => {
-    const saved = localStorage.getItem('weight-profile');
-    if (saved) {
-      const p = JSON.parse(saved);
-      p.initials = getInitials(p.name);
-      setProfile(p);
-      setEditForm(p);
-    }
-  }, []);
+  const [errors, setErrors] = useState({
+    name: false,
+    phone: false,
+    location: false,
+  });
 
-  // Listen for external updates (e.g. from Dashboard)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const saved = localStorage.getItem('weight-profile');
-      if (saved) {
-        const p = JSON.parse(saved);
-        p.initials = getInitials(p.name);
-        setProfile(p);
-      }
-    };
-    window.addEventListener('weightProfileUpdated', handleStorageChange);
-    return () => window.removeEventListener('weightProfileUpdated', handleStorageChange);
-  }, []);
+  // --- ID GENERATOR LOGIC ---
+  const generateWeightId = () => {
+    const currentYear = new Date().getFullYear();
+    // In a real app, '001' comes from the backend count. 
+    // Here we simulate it or fetch from localStorage if it exists to keep it consistent.
+    const savedId = localStorage.getItem('weight_station_id');
+    if (savedId) return savedId;
 
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const newId = `WGT-${currentYear}-001`;
+    localStorage.setItem('weight_station_id', newId);
+    return newId;
   };
 
+  // --- FETCH PROFILE ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        // Attempt to fetch from API
+        const data = await api.users.getProfile();
+        const profileData = data.user || data.profile || data;
+
+        // Generate Custom ID
+        const customId = profileData.weightId || generateWeightId();
+
+        if (profileData) {
+          setWeightProfile({
+            name: profileData.name || profileData.full_name || 'Weight Officer',
+            weightId: customId,
+            phone: profileData.phone || '',
+            location: profileData.location || 'Gate 1',
+            photo: profileData.photo || profileData.profile_picture || '',
+            initials: getInitials(profileData.name || 'Weight Officer'),
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        // Fallback to local storage
+        const saved = localStorage.getItem('weight-profile');
+        if (saved) {
+           setWeightProfile(JSON.parse(saved));
+        } else {
+           // First time load fallback
+           setWeightProfile(prev => ({ ...prev, weightId: generateWeightId() }));
+        }
+      }
+    };
+
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  // Sync Edit Form with Profile
+  useEffect(() => {
+    if (isEditing) {
+      let cleanPhone = weightProfile.phone || '';
+      // Simple phone cleaning logic
+      cleanPhone = cleanPhone.replace(/^\+91|^91/, '');
+
+      setEditForm({
+        name: weightProfile.name === 'Weight Officer' ? '' : weightProfile.name,
+        phone: cleanPhone,
+        location: weightProfile.location || '',
+        photo: weightProfile.photo || '',
+      });
+      setErrors({ name: false, phone: false, location: false });
+    }
+  }, [isEditing, weightProfile]);
+
+  const getInitials = (name) => {
+    if (!name) return 'WO';
+    const words = name.trim().split(' ').filter((w) => w.length > 0);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return words[0].substring(0, 2).toUpperCase();
+  };
+
+  const hasCompleteProfile = weightProfile.name !== 'Weight Officer' && weightProfile.phone;
+
+  // Mock Notifications for Weight Station
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      type: 'info',
+      title: 'Vehicle Waiting',
+      message: 'Truck MH-12-AB-1234 is waiting for weighing.',
+      time: 'Just now',
+      unread: true,
+    },
+    {
+      id: 2,
+      type: 'success',
+      title: 'Weight Recorded',
+      message: 'Lot #4059 weight confirmed successfully.',
+      time: '15 mins ago',
+      unread: true,
+    },
+  ]);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut();
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('weight-profile');
+      toast.success('Logged out successfully');
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error('Logout failed', error);
+      toast.error('Failed to log out');
+    }
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
   };
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { toast.error('Image size must be < 2MB'); return; }
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image size should be less than 2MB');
+        return;
+      }
       const reader = new FileReader();
-      reader.onloadend = () => setEditForm(prev => ({ ...prev, photo: reader.result }));
+      reader.onloadend = () => {
+        setEditForm((prev) => ({ ...prev, photo: reader.result }));
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = () => {
-    const updated = { ...editForm, initials: getInitials(editForm.name) };
-    setProfile(updated);
-    localStorage.setItem('weight-profile', JSON.stringify(updated));
-    setIsEditing(false);
-    window.dispatchEvent(new CustomEvent('weightProfileUpdated'));
-    toast.success("Profile updated!");
+  const validatePhone = (phone) => {
+    const cleaned = phone.replace(/\D/g, '');
+    return cleaned.length === 10;
   };
 
+  const handleSave = async () => {
+    const isNameValid = editForm.name && editForm.name.trim().length > 0;
+    const isPhoneEntered = editForm.phone && editForm.phone.trim().length > 0;
+    const isPhoneValid = !isPhoneEntered || validatePhone(editForm.phone);
+
+    const newErrors = {
+      name: !isNameValid,
+      phone: !isPhoneValid,
+      location: false,
+    };
+
+    setErrors(newErrors);
+
+    if (newErrors.name || newErrors.phone) {
+      toast.error('Please check your inputs.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const initials = getInitials(editForm.name.trim());
+
+      const payload = {
+        name: editForm.name.trim(),
+        phone: editForm.phone.trim(),
+        location: editForm.location.trim(),
+        photo: editForm.photo,
+        initials: initials,
+        weightId: weightProfile.weightId // Preserve ID
+      };
+
+      // API Call
+      await api.users.updateProfile(payload);
+
+      // Update UI
+      const updatedProfile = {
+        ...weightProfile,
+        ...payload
+      };
+
+      setWeightProfile(updatedProfile);
+      localStorage.setItem('weight-profile', JSON.stringify(updatedProfile));
+      window.dispatchEvent(new CustomEvent('weightProfileUpdated'));
+
+      toast.success('Profile saved successfully!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Save Profile Error:', error);
+      toast.error('Failed to save profile.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setErrors({ name: false, phone: false, location: false });
+  };
+
+  // Click Outside Listener
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
         setIsEditing(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
+      }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownRef]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownRef, notificationRef]);
+
+  // --- Render Helpers ---
+  const AvatarDisplay = ({ size = 'sm', showBadge = true }) => {
+    const sizeClasses = {
+      sm: 'w-10 h-10 text-sm',
+      md: 'w-14 h-14 text-xl',
+      lg: 'w-20 h-20 text-2xl',
+    };
+
+    return (
+      <div className="relative inline-flex">
+        {weightProfile.photo ? (
+          <img
+            src={weightProfile.photo}
+            alt="Profile"
+            className={`${sizeClasses[size]} rounded-full object-cover shadow-sm border border-emerald-100`}
+          />
+        ) : (
+          <div
+            className={`${sizeClasses[size]} rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white flex items-center justify-center font-bold shadow-sm`}
+          >
+            {weightProfile.initials}
+          </div>
+        )}
+        {showBadge && hasCompleteProfile && (
+          <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5">
+            <BadgeCheck size={size === 'sm' ? 14 : 20} className="text-green-500" />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <div className="max-w-[1400px] mx-auto px-2 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo Section */}
-          <div className="flex items-center gap-8">
+          
+          {/* --- LEFT: Logo Section --- */}
+          <div className="flex items-center">
             <Link to="/dashboard/weight" className="flex items-center gap-2 group shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
-                <Scale className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-md group-hover:shadow-lg transition-all">
+                <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
-              <div>
-                <span className="text-lg font-bold text-slate-800">AgroNond</span>
-                <span className="block text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Weight Station</span>
+              <div className="flex flex-col">
+                <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
+                  AgroNond
+                </span>
+                <span className="hidden sm:block text-[9px] sm:text-[10px] text-emerald-600 font-bold uppercase tracking-wider">
+                  Weight Station
+                </span>
               </div>
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
-            <NotificationCenter />
+          {/* --- RIGHT: Notifications & Profile --- */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            
+            {/* 1. Notification Bell */}
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <Bell size={22} className="sm:w-6 sm:h-6" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
 
+              <AnimatePresence>
+                {isNotificationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                  >
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-xs sm:text-sm font-semibold text-green-600">{unreadCount} New</span>
+                      )}
+                    </div>
+                    <div className="max-h-64 sm:max-h-96 overflow-y-auto">
+                      {notifications.map((notification) => (
+                        <div key={notification.id} className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${notification.unread ? 'bg-green-50/50' : ''}`}>
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${notification.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 text-sm truncate">{notification.title}</p>
+                              <p className="text-gray-600 text-xs sm:text-sm mt-0.5 line-clamp-2">{notification.message}</p>
+                              <p className="text-gray-400 text-[10px] sm:text-xs mt-1">{notification.time}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="p-3 bg-gray-50 border-t border-gray-100">
+                        <button onClick={markAllAsRead} className="w-full text-center text-sm font-semibold text-green-600 hover:text-green-700">Mark all as read</button>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 2. Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
-              <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-50 transition-colors focus:outline-none">
-                {profile.photo ? <img src={profile.photo} alt="Profile" className="w-10 h-10 rounded-full object-cover shadow-sm border border-emerald-100" /> : <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white flex items-center justify-center font-bold shadow-sm text-sm">{profile.initials}</div>}
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-1 p-1 pr-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <AvatarDisplay size="sm" showBadge={true} />
+                <div className="hidden md:block text-left ml-1">
+                  {hasCompleteProfile ? (
+                    <>
+                      <p className="text-sm font-semibold leading-none text-gray-900 max-w-[100px] truncate">{weightProfile.name}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{weightProfile.weightId}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 font-medium">Weight Officer</p>
+                  )}
+                </div>
+                <svg className={`hidden sm:block w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
 
               <AnimatePresence>
                 {isDropdownOpen && (
-                  <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.2 }} className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100]">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-96 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50"
+                  >
                     <AnimatePresence mode="wait">
+                      
+                      {/* --- VIEW MODE --- */}
                       {!isEditing ? (
                         <motion.div key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                           <div className="p-6 bg-slate-50 border-b border-slate-100 text-center">
                             <div className="relative inline-block mb-3">
-                              {profile.photo ? <img src={profile.photo} alt="Profile" className="w-20 h-20 rounded-full object-cover shadow-md border-4 border-white" /> : <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-2xl font-bold text-white shadow-md border-4 border-white">{profile.initials}</div>}
-                              <div className="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-sm"><BadgeCheck className="w-5 h-5 text-emerald-500 fill-emerald-50" /></div>
+                              <AvatarDisplay size="lg" showBadge={true} />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900">{profile.name}</h3>
-                            <p className="text-sm text-slate-500">{profile.role}</p>
+                            <h3 className="text-lg font-bold text-slate-900">
+                              {hasCompleteProfile ? weightProfile.name : 'Weight Officer'}
+                            </h3>
+                            <p className="text-sm text-slate-500">Weight Station Operator</p>
                             <div className="flex items-center justify-center gap-1 mt-2 bg-emerald-50 py-1 px-3 rounded-full mx-auto w-fit border border-emerald-100">
-                              <span className="text-xs font-bold text-emerald-700">{profile.weightId}</span>
+                              <span className="text-xs font-bold text-emerald-700">{weightProfile.weightId}</span>
                               <BadgeCheck className="w-3 h-3 text-emerald-500 fill-emerald-100" />
                             </div>
                           </div>
+
                           <div className="p-4 space-y-3">
-                            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors"><Phone className="w-4 h-4 text-emerald-600" /><div><p className="text-xs text-slate-500">Phone</p><p className="text-sm font-medium text-slate-900">{profile.phone || 'Not Set'}</p></div></div>
-                            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors"><MapPin className="w-4 h-4 text-emerald-600" /><div><p className="text-xs text-slate-500">Location</p><p className="text-sm font-medium text-slate-900">{profile.location}</p></div></div>
+                            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                              <Phone className="w-4 h-4 text-emerald-600" />
+                              <div>
+                                <p className="text-xs text-slate-500">Phone</p>
+                                <p className="text-sm font-medium text-slate-900">{weightProfile.phone || 'Not Set'}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                              <MapPin className="w-4 h-4 text-emerald-600" />
+                              <div>
+                                <p className="text-xs text-slate-500">Station Location</p>
+                                <p className="text-sm font-medium text-slate-900">{weightProfile.location || 'Gate 1'}</p>
+                              </div>
+                            </div>
                           </div>
+
                           <div className="p-4 border-t border-slate-100 grid grid-cols-2 gap-3">
-                            <button onClick={() => { setEditForm(profile); setIsEditing(true); }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors"><Edit3 size={16} /> Edit Profile</button>
-                            <button onClick={handleLogout} className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100">Sign Out</button>
+                            <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-colors">
+                              <Edit3 size={16} /> Edit Profile
+                            </button>
+                            <button onClick={handleLogout} className="px-4 py-2 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100">
+                              Sign Out
+                            </button>
                           </div>
                         </motion.div>
                       ) : (
-                        <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full">
-                          <div className="p-4 border-b border-slate-100 flex items-center justify-between"><h3 className="font-bold text-slate-900">Edit Profile</h3><button onClick={() => setIsEditing(false)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X size={18} /></button></div>
+                        
+                        /* --- EDIT MODE --- */
+                        <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-white">
+                          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                            <h3 className="font-bold text-slate-900">Edit Profile</h3>
+                            <button onClick={handleCancel} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                              <X size={18} />
+                            </button>
+                          </div>
+
                           <div className="p-6 space-y-5 overflow-y-auto max-h-[400px]">
-                            <div className="flex justify-center"><div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}><div className="w-20 h-20 rounded-full overflow-hidden border-2 border-slate-200">{editForm.photo ? <img src={editForm.photo} alt="Preview" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400"><User size={32} /></div>}</div><div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={20} className="text-white" /></div><input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" /></div></div>
+                            {/* Photo Upload */}
+                            <div className="flex justify-center">
+                              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 shadow-sm">
+                                  {editForm.photo ? (
+                                    <img src={editForm.photo} alt="Preview" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-2xl">
+                                      {getInitials(editForm.name) || 'WO'}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Camera size={24} className="text-white" />
+                                </div>
+                                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                              </div>
+                            </div>
+
                             <div className="space-y-4">
-                              <div><label className="block text-xs font-semibold text-slate-600 mb-1">Operator Name</label><input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" /></div>
-                              <div><label className="block text-xs font-semibold text-slate-600 mb-1">Phone</label><input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" /></div>
-                              <div><label className="block text-xs font-semibold text-slate-600 mb-1">Station Location</label><input type="text" value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" /></div>
-                              <div><label className="block text-xs font-semibold text-slate-600 mb-1">Station ID (Read Only)</label><div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 font-medium flex justify-between">{profile.weightId}<BadgeCheck className="w-4 h-4 text-emerald-500" /></div></div>
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Operator Name <span className="text-red-500">*</span></label>
+                                <input
+                                  type="text"
+                                  value={editForm.name}
+                                  onChange={(e) => {
+                                    setEditForm((prev) => ({ ...prev, name: e.target.value }));
+                                    if (e.target.value.trim()) setErrors((prev) => ({ ...prev, name: false }));
+                                  }}
+                                  placeholder="Enter full name"
+                                  className={`w-full px-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.name ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                />
+                                {errors.name && <p className="text-xs text-red-500 mt-1">Name is required</p>}
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">+91</span>
+                                  <input
+                                    type="tel"
+                                    value={editForm.phone}
+                                    onChange={(e) => {
+                                      const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                      setEditForm((prev) => ({ ...prev, phone: value }));
+                                      if (value === '' || validatePhone(value)) setErrors((prev) => ({ ...prev, phone: false }));
+                                    }}
+                                    placeholder="9876543210"
+                                    className={`w-full pl-10 pr-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.phone ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
+                                  />
+                                </div>
+                                {errors.phone && <p className="text-xs text-red-500 mt-1">Valid 10-digit number required</p>}
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Station Location</label>
+                                <div className="relative">
+                                  <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                  <input
+                                    type="text"
+                                    value={editForm.location}
+                                    onChange={(e) => setEditForm((prev) => ({ ...prev, location: e.target.value }))}
+                                    placeholder="e.g. Gate 1, Main Entrance"
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 hover:border-slate-300"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">Station ID (Read Only)</label>
+                                <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 font-medium flex justify-between items-center">
+                                  {weightProfile.weightId}
+                                  <BadgeCheck className="w-4 h-4 text-emerald-500" />
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div className="p-4 border-t border-slate-100 flex gap-3">
-                            <button onClick={() => setIsEditing(false)} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-                            <button onClick={handleSave} className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center justify-center gap-2 shadow-sm"><Save size={16} /> Save Changes</button>
+
+                          <div className="p-4 border-t border-slate-100 flex gap-3 bg-white">
+                            <button onClick={handleCancel} className="flex-1 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+                            <button onClick={handleSave} disabled={isLoading} className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                              {isLoading ? 'Saving...' : <><Save size={16} /> Save Changes</>}
+                            </button>
                           </div>
                         </motion.div>
                       )}

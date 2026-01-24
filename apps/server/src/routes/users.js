@@ -17,12 +17,17 @@ router.get('/profile', requireAuth, async (req, res) => {
       id: user._id,
       phone: user.phone,
       role: user.role,
+      
       // Profile Data
       name: user.full_name,
-      farmerId: user.farmerId,
       location: user.location,
-      photo: user.profile_picture, // Frontend expects 'photo', DB has 'profile_picture'
-      initials: user.initials
+      photo: user.profile_picture,
+      initials: user.initials,
+
+      // IDs
+      farmerId: user.farmerId,
+      weightId: user.role === 'weight' ? user.customId : undefined, // <--- Send customId as weightId
+      customId: user.customId 
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -32,25 +37,38 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations, adhaar_number } = req.body;
+    // ✅ Extract 'name' and 'photo' which the Frontend sends
+    const { 
+        role, full_name, name, // Frontend sends 'name'
+        email, location, 
+        profile_picture, photo, // Frontend sends 'photo'
+        business_name, gst_number, license_number, business_address, operating_locations, adhaar_number 
+    } = req.body;
 
-    const user = req.user; // This comes from requireAuth middleware
+    const user = req.user; 
 
     // Update User Fields
     if (role) user.role = role;
-    if (full_name) {
-      user.full_name = full_name;
-      // Auto-generate initials from full name
-      const nameParts = full_name.trim().split(' ');
+    
+    // Handle Name Update (accept either 'full_name' or 'name')
+    const newName = full_name || name;
+    if (newName) {
+      user.full_name = newName;
+      // Auto-generate initials
+      const nameParts = newName.trim().split(' ');
       if (nameParts.length >= 2) {
         user.initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
       } else if (nameParts.length === 1) {
         user.initials = nameParts[0].slice(0, 2).toUpperCase();
       }
     }
+
     if (email) user.email = email;
     if (location) user.location = location;
-    if (profile_picture) user.profile_picture = profile_picture;
+    
+    // Handle Photo Update (accept either 'profile_picture' or 'photo')
+    if (profile_picture || photo) user.profile_picture = profile_picture || photo;
+    
     if (business_name) user.business_name = business_name;
     if (gst_number) user.gst_number = gst_number;
     if (license_number) user.license_number = license_number;
@@ -60,12 +78,14 @@ router.patch('/profile', requireAuth, async (req, res) => {
 
     // Save to Database
     await user.save();
+    
     res.json({
       user: {
         name: user.full_name,
         phone: user.phone,
         location: user.location,
         farmerId: user.farmerId,
+        weightId: user.role === 'weight' ? user.customId : undefined, // <--- Return updated ID
         photo: user.profile_picture,
         initials: user.initials,
         role: user.role
@@ -80,35 +100,31 @@ router.patch('/profile', requireAuth, async (req, res) => {
   }
 });
 
+// ... existing /set-role route ...
 router.post('/set-role', requireAuth, async (req, res) => {
-  try {
-    const { role } = req.body;
-
-    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'];
-    if (!role || !validRoles.includes(role)) {
-      return res.status(400).json({
-        error: 'Invalid role',
-        validRoles
+    try {
+      const { role } = req.body;
+  
+      const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'lilav'];
+      if (!role || !validRoles.includes(role)) {
+        return res.status(400).json({
+          error: 'Invalid role',
+          validRoles
+        });
+      }
+  
+      const user = req.user;
+      user.role = role;
+      await user.save();
+  
+      res.json({
+        message: 'Role set successfully',
+        profile: user
       });
+    } catch (error) {
+      console.error('Set role error:', error);
+      res.status(500).json({ error: 'Failed to set role' });
     }
-
-    const user = req.user;
-
-    if (user.role && user.role !== 'farmer') {
-      // Optional: Allow changing from default 'farmer' but restrict others if needed
-    }
-
-    user.role = role;
-    await user.save();
-
-    res.json({
-      message: 'Role set successfully',
-      profile: user
-    });
-  } catch (error) {
-    console.error('Set role error:', error);
-    res.status(500).json({ error: 'Failed to set role' });
-  }
 });
 
 export default router;

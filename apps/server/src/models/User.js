@@ -110,6 +110,7 @@ userSchema.pre('save', async function () {
         trader: 'TRD',
         committee: 'MCDB',
         lilav: 'LLV',
+        weight: 'WGT'
     };
 
     const prefix = prefixes[this.role];

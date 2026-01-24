@@ -91,6 +91,7 @@ router.post('/add', requireAuth, async (req, res) => {
             market: market,
             vegetable: item.vegetable,
             quantity: item.quantity,
+            carat: item.carat || 0,
             status: 'Pending',
             qtySold: 0,
             rate: 0,
@@ -117,11 +118,11 @@ router.post('/add', requireAuth, async (req, res) => {
  */
 router.put('/:id', requireAuth, async (req, res) => {
     try {
-        const { market, quantity } = req.body;
+        const { market, quantity, carat } = req.body;
         
         const record = await Record.findOneAndUpdate(
             { _id: req.params.id, farmer_id: req.user._id },
-            { market, quantity },
+            { market, quantity, carat },
             { new: true }
         );
 

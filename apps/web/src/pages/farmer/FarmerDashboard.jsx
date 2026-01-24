@@ -156,6 +156,9 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     quintal: ''
   });
 
+  // ✅ NEW: Carat field state
+  const [carat, setCarat] = useState('');
+
   const [addedItems, setAddedItems] = useState([]);
 
   // Filter logic
@@ -203,6 +206,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     setSelectedVegetable('');
     setSearchTerm('');
     setQuantities({ kg: '', ton: '', quintal: '' });
+    setCarat(''); // ✅ Clear carat field
     setIsDropdownOpen(false);
   };
 
@@ -239,8 +243,17 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
   };
 
   const handleAddItem = () => {
-    if (!selectedVegetable || !quantities.kg || parseFloat(quantities.kg) <= 0) {
-      toast.error('Please select a vegetable and enter valid quantity');
+    if (!selectedVegetable) {
+      toast.error('Please select a vegetable');
+      return;
+    }
+
+    // ✅ VALIDATION: At least one field must be filled (quantity OR carat)
+    const hasQuantity = quantities.kg && parseFloat(quantities.kg) > 0;
+    const hasCarat = carat && parseFloat(carat) > 0;
+
+    if (!hasQuantity && !hasCarat) {
+      toast.error('Please enter either Quantity (Kg) or Carat');
       return;
     }
 
@@ -253,7 +266,8 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     const newItem = {
       id: Date.now(),
       vegetable: selectedVegetable,
-      quantity: parseFloat(quantities.kg)
+      quantity: parseFloat(quantities.kg) || 0, // Default to 0 if not filled
+      carat: parseFloat(carat) || 0 // ✅ Store carat value
     };
 
     setAddedItems([...addedItems, newItem]);
@@ -304,13 +318,13 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Add New Record</h2>
 
           <div className="space-y-6">
-            {/* Market Selection */}
+            {/* Market Selection - ✅ GREEN STYLING */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Market Name *</label>
               <select
                 value={selectedMarket}
                 onChange={(e) => setSelectedMarket(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
+                className="w-full px-4 py-3 rounded-xl border-2 border-green-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900 font-medium"
               >
                 <option value="">Select Market</option>
                 <option>Pune APMC</option>
@@ -338,7 +352,10 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                     <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 shadow-sm">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{item.vegetable}</p>
-                        <p className="text-xs text-gray-600">{item.quantity} kg</p>
+                        <div className="text-xs text-gray-600 space-y-0.5">
+                          {item.quantity > 0 && <p>Qty: {item.quantity} kg</p>}
+                          {item.carat > 0 && <p>Carat: {item.carat}</p>}
+                        </div>
                       </div>
                       <button
                         onClick={() => handleRemoveItem(item.id)}
@@ -465,10 +482,10 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
             {/* Quantity Inputs */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Optional if Carat is filled)</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg) *</label>
+                  <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
                   <input
                     type="number"
                     value={quantities.kg}
@@ -508,8 +525,25 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </div>
             </div>
 
+            {/* ✅ NEW: Carat Field */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Optional if Quantity is filled)</label>
+              <input
+                type="number"
+                value={carat}
+                onChange={(e) => setCarat(e.target.value)}
+                placeholder="Enter carat (e.g., 1, 2, 3...)"
+                step="0.01"
+                min="0"
+                className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                
+              </p>
+            </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-              <p><strong>Note:</strong> Enter quantity in any box, others will calculate automatically. Records are saved in Kg.</p>
+              <p><strong>Important:</strong> You must fill at least one field - either <strong>Quantity (Kg)</strong> or <strong>Carat</strong>, or both. For quantity, enter in any box and others will calculate automatically.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -570,7 +604,8 @@ const FarmerDashboard = () => {
     id: null,
     market: '',
     vegetable: '',
-    quantities: { kg: '', ton: '', quintal: '' }
+    quantities: { kg: '', ton: '', quintal: '' },
+    carat: '' // ✅ Add carat to edit form
   });
 
   // --- FETCH DATA FROM BACKEND ---
@@ -617,7 +652,7 @@ const FarmerDashboard = () => {
   const pendingRecords = records.filter(r => r.status === 'Pending');
 
   const totalGross = soldRecords.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
-  const totalQuantity = records.reduce((sum, r) => sum + r.quantity, 0);
+  const totalQuantity = records.reduce((sum, r) => sum + (r.quantity || 0), 0);
 
   const filteredRecords = filterStatus === 'All'
     ? records
@@ -672,16 +707,17 @@ const FarmerDashboard = () => {
   };
 
   const handleEditClick = (record) => {
-    const qty = record.quantity;
+    const qty = record.quantity || 0;
     setEditFormData({
       id: record._id,
       market: record.market,
       vegetable: record.vegetable,
       quantities: {
-        kg: qty.toString(),
-        ton: (qty / 1000).toFixed(3),
-        quintal: (qty / 100).toFixed(2)
-      }
+        kg: qty > 0 ? qty.toString() : '',
+        ton: qty > 0 ? (qty / 1000).toFixed(3) : '',
+        quintal: qty > 0 ? (qty / 100).toFixed(2) : ''
+      },
+      carat: record.carat ? record.carat.toString() : '' // ✅ Load carat value
     });
     setModals({ ...modals, editRecord: true });
   };
@@ -725,10 +761,12 @@ const FarmerDashboard = () => {
   };
 
   const handleUpdateRecord = async () => {
-    const newKg = parseFloat(editFormData.quantities.kg);
+    const newKg = parseFloat(editFormData.quantities.kg) || 0;
+    const newCarat = parseFloat(editFormData.carat) || 0;
 
-    if (isNaN(newKg) || newKg <= 0) {
-      toast.error("Please enter a valid quantity");
+    // ✅ VALIDATION: At least one field must be filled
+    if (newKg <= 0 && newCarat <= 0) {
+      toast.error("Please enter either Quantity (Kg) or Carat");
       return;
     }
 
@@ -740,7 +778,8 @@ const FarmerDashboard = () => {
     try {
       await api.put(`/api/records/${editFormData.id}`, {
         market: editFormData.market,
-        quantity: newKg
+        quantity: newKg,
+        carat: newCarat // ✅ Send carat to backend
       });
       
       toast.success("Record updated successfully!");
@@ -762,6 +801,14 @@ const FarmerDashboard = () => {
     const recordDate = new Date(record.createdAt).toLocaleDateString('en-GB');
     const recordTime = formatTime(record.createdAt);
     const invoiceId = record._id.toString().slice(-6).toUpperCase();
+
+    // ✅ Display both Quantity and Carat in invoice
+    let quantityDisplay = '';
+    if (record.quantity > 0) quantityDisplay += `${record.quantity} kg`;
+    if (record.carat > 0) {
+      if (quantityDisplay) quantityDisplay += ' | ';
+      quantityDisplay += `${record.carat} carat`;
+    }
 
     const invoiceContent = `
       <!DOCTYPE html>
@@ -815,7 +862,7 @@ const FarmerDashboard = () => {
               <td style="text-align: right;">
                 <strong>Market Details:</strong><br>
                 ${record.market}<br>
-                Trader: ${record.trader}
+                Trader: ${record.trader || 'N/A'}
               </td>
             </tr>
           </table>
@@ -824,7 +871,7 @@ const FarmerDashboard = () => {
             <thead>
               <tr>
                 <th>Item Description</th>
-                <th style="text-align: center;">Total Qty</th>
+                <th style="text-align: center;">Measurement</th>
                 <th style="text-align: right;">Rate</th>
                 <th style="text-align: right;">Amount</th>
               </tr>
@@ -832,7 +879,7 @@ const FarmerDashboard = () => {
             <tbody>
               <tr>
                 <td>${record.vegetable}</td>
-                <td style="text-align: center;">${record.quantity} kg</td>
+                <td style="text-align: center;">${quantityDisplay || 'N/A'}</td>
                 <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.rate : '-'}</td>
                 <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.totalAmount.toLocaleString('en-IN') : '-'}</td>
               </tr>
@@ -1033,8 +1080,9 @@ const FarmerDashboard = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
-                          <p className="text-xs text-gray-500">Total</p>
+                          {record.quantity > 0 && <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>}
+                          {record.carat > 0 && <p className="text-sm font-bold text-purple-600">{record.carat} carat</p>}
+                          <p className="text-xs text-gray-500">Measurement</p>
                         </div>
                       </div>
 
@@ -1080,26 +1128,27 @@ const FarmerDashboard = () => {
               )}
             </div>
 
-            {/* Desktop View */}
+            {/* ✅ Desktop View - FIXED: Carat now displays properly */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Time</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
-                    <th className="px-8 py-4 text-right font-semibold text-gray-900">Actions</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-900">Date</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-900">Time</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-900">Market</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-900">Item</th>
+                    <th className="px-6 py-4 text-center font-semibold text-gray-900">Total Qty</th>
+                    <th className="px-6 py-4 text-center font-semibold text-gray-900">Carat</th>
+                    <th className="px-6 py-4 text-center font-semibold text-gray-900">Status</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-900">Rate</th>
+                    <th className="px-6 py-4 text-left font-semibold text-gray-900">Amount</th>
+                    <th className="px-6 py-4 text-right font-semibold text-gray-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {sortedRecords.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="px-8 py-16 text-center">
+                      <td colSpan="10" className="px-8 py-16 text-center">
                         <Clock size={48} className="mx-auto text-gray-300 mb-3" />
                         <p className="text-gray-600 font-medium">No records found</p>
                         <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
@@ -1108,12 +1157,17 @@ const FarmerDashboard = () => {
                   ) : (
                     sortedRecords.map((record) => (
                       <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
-                        <td className="px-8 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
-                        <td className="px-8 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
-                        <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
-                        <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
-                        <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
-                        <td className="px-8 py-4">
+                        <td className="px-6 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
+                        <td className="px-6 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
+                        <td className="px-6 py-4 text-gray-900 font-medium">{record.market}</td>
+                        <td className="px-6 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
+                        <td className="px-6 py-4 text-center text-gray-700">
+                          {record.quantity && record.quantity > 0 ? `${record.quantity} kg` : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-center text-purple-700 font-semibold">
+                          {record.carat && record.carat > 0 ? record.carat : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-center">
                           <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${record.status === 'Sold'
                             ? 'bg-green-100 text-green-700 border border-green-200'
                             : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
@@ -1122,9 +1176,9 @@ const FarmerDashboard = () => {
                             {record.status}
                           </span>
                         </td>
-                        <td className="px-8 py-4 text-gray-700">{record.status === 'Sold' ? `₹${record.rate}` : '-'}</td>
-                        <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
-                        <td className="px-8 py-4 text-right">
+                        <td className="px-6 py-4 text-gray-700">{record.status === 'Sold' ? `₹${record.rate}` : '-'}</td>
+                        <td className="px-6 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
+                        <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
 
                             <button
@@ -1204,9 +1258,20 @@ const FarmerDashboard = () => {
               <p className="font-bold text-gray-900">{selectedRecord.vegetable}</p>
             </div>
 
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL QTY</p>
-              <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
+            <div className="grid grid-cols-2 gap-4">
+              {selectedRecord.quantity > 0 && (
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL QTY</p>
+                  <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
+                </div>
+              )}
+              
+              {selectedRecord.carat > 0 && (
+                <div className="p-4 bg-purple-50 rounded-xl border border-purple-200">
+                  <p className="text-xs text-purple-600 font-semibold mb-1">CARAT</p>
+                  <p className="font-bold text-purple-900">{selectedRecord.carat}</p>
+                </div>
+              )}
             </div>
 
             {selectedRecord.status === 'Sold' && (
@@ -1272,7 +1337,7 @@ const FarmerDashboard = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">Update Total Quantity</label>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Update Total Quantity (Optional if Carat is filled)</label>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
@@ -1314,6 +1379,24 @@ const FarmerDashboard = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ✅ Carat field in Edit Modal */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Optional if Quantity is filled)</label>
+            <input
+              type="number"
+              value={editFormData.carat}
+              onChange={(e) => setEditFormData({ ...editFormData, carat: e.target.value })}
+              placeholder="Enter carat"
+              step="0.01"
+              min="0"
+              className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
+            />
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+            <p><strong>Note:</strong> You must fill at least one field - either Quantity or Carat.</p>
           </div>
 
           <button

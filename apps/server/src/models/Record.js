@@ -20,8 +20,7 @@ const recordSchema = new mongoose.Schema({
         required: true,
         default: 0
     },
-    // The quantity actually sold (confirmed by trader/weight)
-    qtySold: {
+    carat: {
         type: Number,
         default: 0
     },
