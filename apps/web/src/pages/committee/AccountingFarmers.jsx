@@ -1,8 +1,8 @@
 import React from 'react';
-import { transactionsData } from './data';
+import { transactionsData } from './accountingData';
 import FarmersView from './components/FarmersView';
 
-export default function FarmersPage() {
+export default function AccountingFarmers() {
     return (
         <div className="space-y-6">
             <div>

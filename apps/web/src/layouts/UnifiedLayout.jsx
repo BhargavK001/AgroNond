@@ -1,23 +1,25 @@
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import TraderNavbar from '../components/TraderNavbar';
 import CommitteeNavbar from '../components/CommitteeNavbar';
 import AccountingNavbar from '../components/AccountingNavbar';
 import AdminNavbar from '../components/AdminNavbar';
+import Sidebar from '../components/Sidebar';
 
 // Slide animation - smoother feel
 const pageVariants = {
     initial: {
         opacity: 0,
-        x: 30,
+        y: 10,
     },
     animate: {
         opacity: 1,
-        x: 0,
+        y: 0,
     },
     exit: {
         opacity: 0,
-        x: -30,
+        y: -10,
     }
 };
 
@@ -29,44 +31,62 @@ const pageTransition = {
 
 export default function UnifiedLayout({ role }) {
     const location = useLocation();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        // Load collapsed state from localStorage
+        const saved = localStorage.getItem('sidebar-collapsed');
+        return saved === 'true';
+    });
+
+    // Save collapsed state to localStorage
+    useEffect(() => {
+        localStorage.setItem('sidebar-collapsed', isSidebarCollapsed);
+    }, [isSidebarCollapsed]);
+
+    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+    const toggleCollapse = () => setIsSidebarCollapsed(!isSidebarCollapsed);
 
     const getNavbar = () => {
+        const props = {
+            onMenuClick: toggleSidebar,
+            isCollapsed: isSidebarCollapsed,
+            onToggleCollapse: toggleCollapse
+        };
         switch (role) {
             case 'trader':
-                return <TraderNavbar />;
+                return <TraderNavbar {...props} />;
             case 'committee':
-                return <CommitteeNavbar />;
+                return <CommitteeNavbar {...props} />;
             case 'accounting':
-                return <AccountingNavbar />;
+                return <AccountingNavbar {...props} />;
             case 'admin':
-                return <AdminNavbar />;
+                return <AdminNavbar {...props} />;
             default:
                 return null;
         }
     };
 
-    const getGradient = () => {
-        switch (role) {
-            case 'trader':
-                return 'from-slate-50 via-white to-emerald-50/40';
-            case 'committee':
-                return 'from-slate-50 via-white to-emerald-50/40';
-            case 'accounting':
-                return 'from-slate-50 via-white to-emerald-50/40';
-            case 'admin':
-                return 'from-slate-50 via-white to-emerald-50/40';
-            default:
-                return 'bg-white';
-        }
-    };
-
     return (
-        <div className={`min-h-screen bg-gradient-to-br ${getGradient()}`}>
-            {getNavbar()}
+        <div className="min-h-screen bg-slate-50">
+            {/* Sidebar */}
+            <Sidebar
+                role={role}
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapse={toggleCollapse}
+            />
 
-            {/* Main Content with Slide Transitions */}
-            <main className="pt-20">
-                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {/* Main Content Wrapper */}
+            <div className={`flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-64'}`}>
+
+                {/* Navbar (now Header) */}
+                <div className="sticky top-0 z-40">
+                    {getNavbar()}
+                </div>
+
+                {/* Page Content */}
+                <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={location.pathname}
@@ -79,8 +99,8 @@ export default function UnifiedLayout({ role }) {
                             <Outlet />
                         </motion.div>
                     </AnimatePresence>
-                </div>
-            </main>
+                </main>
+            </div>
         </div>
     );
 }

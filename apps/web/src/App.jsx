@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect, Suspense, lazy } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 
 // Auth Provider
 import { AuthProvider } from './context/AuthContext';
@@ -46,17 +47,19 @@ const TransactionHistory = lazy(() => import('./pages/admin/TransactionHistory')
 const CommitteeDashboard = lazy(() => import('./pages/committee/CommitteeDashboard'));
 const FarmersList = lazy(() => import('./pages/committee/FarmersList'));
 const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
-const CommissionCalculator = lazy(() => import('./pages/committee/CommissionCalculator'));
+
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
+const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
 
+const AccountingOverview = lazy(() => import('./pages/committee/AccountingOverview'));
+const AccountingTransactions = lazy(() => import('./pages/committee/AccountingTransactions'));
+const AccountingTraders = lazy(() => import('./pages/committee/AccountingTraders'));
+const AccountingFarmers = lazy(() => import('./pages/committee/AccountingFarmers'));
+const AccountingReports = lazy(() => import('./pages/committee/AccountingReports'));
 const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
-const AccountingTransactions = lazy(() => import('./pages/accounting/TransactionsPage'));
-const AccountingTraders = lazy(() => import('./pages/accounting/TradersPage'));
-const AccountingFarmers = lazy(() => import('./pages/accounting/FarmersPage'));
-const AccountingReports = lazy(() => import('./pages/accounting/ReportsPage'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -88,6 +91,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
+          <Toaster position="top-right" />
           <ErrorBoundary>
             <ScrollToTop />
             <Suspense fallback={<Loading />}>
@@ -141,7 +145,6 @@ function App() {
                   <Route path="profile" element={<TraderProfile />} />
                 </Route>
 
-                {/* Committee Dashboard - Sidebar Layout */}
                 <Route path="/dashboard/committee" element={
                   <ProtectedRoute requireRole="committee">
                     <UnifiedLayout role="committee" />
@@ -152,14 +155,21 @@ function App() {
                   <Route path="farmers" element={<FarmersList />} />
                   <Route path="farmers/:id" element={<FarmerDetail />} />
                   <Route path="traders" element={<TradersList />} />
+                  <Route path="traders/:id" element={<TraderDetail />} />
                   <Route path="activity" element={<MarketActivity />} />
-                  <Route path="commission" element={<CommissionCalculator />} />
+
                   <Route path="billing" element={<BillingReports />} />
                   <Route path="cashflow" element={<CashFlow />} />
-                  <Route path="accounting" element={<AccountingDashboard />} />
+
+                  {/* Moved Accounting Section */}
+                  <Route path="accounting" element={<AccountingOverview />} />
+                  <Route path="accounting/transactions" element={<AccountingTransactions />} />
+                  <Route path="accounting/traders" element={<AccountingTraders />} />
+                  <Route path="accounting/farmers" element={<AccountingFarmers />} />
+                  <Route path="accounting/reports" element={<AccountingReports />} />
                 </Route>
 
-                Accounting Dashboard - Separate Role
+                {/* Accounting Dashboard - New Section */}
                 <Route path="/dashboard/accounting" element={
                   <ProtectedRoute requireRole="accounting">
                     <UnifiedLayout role="accounting" />
@@ -167,10 +177,6 @@ function App() {
                 }
                 >
                   <Route index element={<AccountingDashboard />} />
-                  <Route path="transactions" element={<AccountingTransactions />} />
-                  <Route path="traders" element={<AccountingTraders />} />
-                  <Route path="farmers" element={<AccountingFarmers />} />
-                  <Route path="reports" element={<AccountingReports />} />
                 </Route>
 
                 {/* Admin Dashboard - Sidebar Layout */}
