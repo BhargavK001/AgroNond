@@ -28,18 +28,17 @@ router.get('/profile', requireAuth, async (req, res) => {
   }
 });
 
-/**
- * PATCH /api/users/profile
- * Update current user's profile
- */
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    const { role, full_name, business_name, gst_number, license_number, business_address, operating_locations } = req.body;
+    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations } = req.body;
 
     const user = req.user;
 
     if (role) user.role = role;
     if (full_name) user.full_name = full_name;
+    if (email) user.email = email;
+    if (location) user.location = location;
+    if (profile_picture) user.profile_picture = profile_picture;
     if (business_name) user.business_name = business_name;
     if (gst_number) user.gst_number = gst_number;
     if (license_number) user.license_number = license_number;
@@ -51,7 +50,10 @@ router.patch('/profile', requireAuth, async (req, res) => {
     res.json({ profile: user });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(400).json({ error: 'Failed to update profile' });
+    res.status(400).json({
+      error: 'Failed to update profile',
+      details: error.message
+    });
   }
 });
 

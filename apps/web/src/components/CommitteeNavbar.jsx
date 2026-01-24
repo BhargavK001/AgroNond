@@ -49,7 +49,7 @@ export default function CommitteeNavbar({ onMenuClick }) {
     location: 'APMC Office',
     role: 'Market Committee',
     photo: '',
-    committeeId: 'MCDB-2026-001',
+    committeeId: user?.customId || 'MCDB-2026-001',
     initials: 'CU'
   });
 
