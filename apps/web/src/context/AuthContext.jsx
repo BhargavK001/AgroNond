@@ -33,7 +33,7 @@ export function AuthProvider({ children }) {
         // Validate token and refresh profile in background
         try {
           const profileData = await api.users.getProfile();
-          
+
           // ✅ FIX 3: Properly merge the profile data
           const updatedUser = {
             ...parsedUser,
@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
             // Ensure role is present
             role: profileData.role || parsedUser.role || 'farmer'
           };
-          
+
           setUser(updatedUser);
           localStorage.setItem('user_data', JSON.stringify(updatedUser));
         } catch (error) {
@@ -157,7 +157,15 @@ export function AuthProvider({ children }) {
   const refreshProfile = useCallback(async () => {
     try {
       const profileData = await api.users.getProfile();
-      const updatedUser = { ...profileData.user, ...profileData.profile };
+      // Backend returns flat structure: { id, phone, role, name, location... }
+      // Frontend expects: { full_name, ... }
+
+      const updatedUser = {
+        ...user,
+        ...profileData,
+        full_name: profileData.name || profileData.full_name || user?.full_name
+      };
+
       setUser(updatedUser);
       localStorage.setItem('user_data', JSON.stringify(updatedUser));
       return updatedUser;
@@ -165,7 +173,7 @@ export function AuthProvider({ children }) {
       console.error('Refresh profile error:', error);
       return null;
     }
-  }, []);
+  }, [user]);
 
   const value = useMemo(() => ({
     user,

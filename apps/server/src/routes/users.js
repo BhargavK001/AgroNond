@@ -7,22 +7,22 @@ const router = express.Router();
 router.get('/profile', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    
+
     if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Map Backend Database fields -> Frontend State fields
     res.json({
-        id: user._id,
-        phone: user.phone,
-        role: user.role,
-        // Profile Data
-        name: user.full_name,
-        farmerId: user.farmerId,
-        location: user.location,
-        photo: user.profile_picture, // Frontend expects 'photo', DB has 'profile_picture'
-        initials: user.initials
+      id: user._id,
+      phone: user.phone,
+      role: user.role,
+      // Profile Data
+      name: user.full_name,
+      farmerId: user.farmerId,
+      location: user.location,
+      photo: user.profile_picture, // Frontend expects 'photo', DB has 'profile_picture'
+      initials: user.initials
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -36,15 +36,18 @@ router.patch('/profile', requireAuth, async (req, res) => {
 
     const user = req.user; // This comes from requireAuth middleware
 
-    // 2. Update Farmer Fields
-    if (name) user.full_name = name;
-    if (location) user.location = location;
-    if (photo !== undefined) user.profile_picture = photo;
-    if (initials) user.initials = initials;
-
-    // 3. Update Trader/Role Fields (Existing logic)
+    // Update User Fields
     if (role) user.role = role;
-    if (full_name) user.full_name = full_name;
+    if (full_name) {
+      user.full_name = full_name;
+      // Auto-generate initials from full name
+      const nameParts = full_name.trim().split(' ');
+      if (nameParts.length >= 2) {
+        user.initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+      } else if (nameParts.length === 1) {
+        user.initials = nameParts[0].slice(0, 2).toUpperCase();
+      }
+    }
     if (email) user.email = email;
     if (location) user.location = location;
     if (profile_picture) user.profile_picture = profile_picture;
@@ -55,18 +58,18 @@ router.patch('/profile', requireAuth, async (req, res) => {
     if (operating_locations) user.operating_locations = operating_locations;
     if (adhaar_number) user.adhaar_number = adhaar_number;
 
-    // 4. Save to Database
+    // Save to Database
     await user.save();
     res.json({
-        user: {
-            name: user.full_name,
-            phone: user.phone,
-            location: user.location,
-            farmerId: user.farmerId,
-            photo: user.profile_picture,
-            initials: user.initials,
-            role: user.role
-        }
+      user: {
+        name: user.full_name,
+        phone: user.phone,
+        location: user.location,
+        farmerId: user.farmerId,
+        photo: user.profile_picture,
+        initials: user.initials,
+        role: user.role
+      }
     });
   } catch (error) {
     console.error('Update profile error:', error);
@@ -92,7 +95,7 @@ router.post('/set-role', requireAuth, async (req, res) => {
     const user = req.user;
 
     if (user.role && user.role !== 'farmer') {
-       // Optional: Allow changing from default 'farmer' but restrict others if needed
+      // Optional: Allow changing from default 'farmer' but restrict others if needed
     }
 
     user.role = role;
