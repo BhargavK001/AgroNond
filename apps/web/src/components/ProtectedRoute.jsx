@@ -27,10 +27,16 @@ export default function ProtectedRoute({ children, requireRole = null }) {
     if (profileLoading) {
       return <PageLoading />;
     }
-    
+
     if (profile?.role !== requireRole) {
       return <Navigate to="/dashboard" replace />;
     }
+  }
+
+  // Enforce profile completion for farmers
+  // Don't redirect if we are already on the login page (handled by Login component itself)
+  if (profile?.role === 'farmer' && (!profile?.full_name || !profile?.location) && location.pathname !== '/login') {
+    return <Navigate to="/login" replace />;
   }
 
   // User is authenticated (and has required role if specified)

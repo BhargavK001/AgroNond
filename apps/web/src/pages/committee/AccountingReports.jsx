@@ -1,7 +1,7 @@
 import React from 'react';
 import ReportsView from './components/ReportsView';
 
-export default function ReportsPage() {
+export default function AccountingReports() {
     return (
         <div className="space-y-6">
             <div>

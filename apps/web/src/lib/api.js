@@ -163,6 +163,15 @@ export const api = {
     },
     stats: () => apiRequest('/api/finance/stats', { method: 'GET' }),
   },
+
+  // Trader
+  trader: {
+    stats: () => apiRequest('/api/trader/stats', { method: 'GET' }),
+    transactions: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/api/trader/transactions${query ? '?' + query : ''}`, { method: 'GET' });
+    },
+  },
 };
 
 export default api;

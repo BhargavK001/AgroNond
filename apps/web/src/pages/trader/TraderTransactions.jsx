@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Calendar, 
-  Download, 
+import {
+  Search,
+  Calendar,
+  Download,
   Filter,
   Package,
   ChevronDown,
@@ -12,119 +12,15 @@ import {
   ArrowUpDown,
   X
 } from 'lucide-react';
-
-// Mock Transaction Data for Trader (no farmer names visible)
-const mockTraderTransactions = [
-  {
-    id: 'TXN001',
-    lotId: 'LOT-2026-001',
-    date: '2026-01-20',
-    crop: 'Tomatoes',
-    quantity: 500,
-    rate: 45,
-    grossAmount: 22500,
-    commission: 2025, // 9%
-    totalCost: 24525,
-    status: 'completed',
-    paymentStatus: 'paid'
-  },
-  {
-    id: 'TXN002',
-    lotId: 'LOT-2026-002',
-    date: '2026-01-20',
-    crop: 'Onions',
-    quantity: 800,
-    rate: 28,
-    grossAmount: 22400,
-    commission: 2016,
-    totalCost: 24416,
-    status: 'completed',
-    paymentStatus: 'paid'
-  },
-  {
-    id: 'TXN003',
-    lotId: 'LOT-2026-003',
-    date: '2026-01-19',
-    crop: 'Potatoes',
-    quantity: 1200,
-    rate: 22,
-    grossAmount: 26400,
-    commission: 2376,
-    totalCost: 28776,
-    status: 'completed',
-    paymentStatus: 'pending'
-  },
-  {
-    id: 'TXN004',
-    lotId: 'LOT-2026-004',
-    date: '2026-01-19',
-    crop: 'Cabbage',
-    quantity: 600,
-    rate: 15,
-    grossAmount: 9000,
-    commission: 810,
-    totalCost: 9810,
-    status: 'completed',
-    paymentStatus: 'paid'
-  },
-  {
-    id: 'TXN005',
-    lotId: 'LOT-2026-005',
-    date: '2026-01-18',
-    crop: 'Brinjal',
-    quantity: 400,
-    rate: 35,
-    grossAmount: 14000,
-    commission: 1260,
-    totalCost: 15260,
-    status: 'completed',
-    paymentStatus: 'paid'
-  },
-  {
-    id: 'TXN006',
-    lotId: 'LOT-2026-006',
-    date: '2026-01-18',
-    crop: 'Cauliflower',
-    quantity: 300,
-    rate: 40,
-    grossAmount: 12000,
-    commission: 1080,
-    totalCost: 13080,
-    status: 'completed',
-    paymentStatus: 'pending'
-  },
-  {
-    id: 'TXN007',
-    lotId: 'LOT-2026-007',
-    date: '2026-01-17',
-    crop: 'Green Chillies',
-    quantity: 150,
-    rate: 80,
-    grossAmount: 12000,
-    commission: 1080,
-    totalCost: 13080,
-    status: 'completed',
-    paymentStatus: 'paid'
-  },
-  {
-    id: 'TXN008',
-    lotId: 'LOT-2026-008',
-    date: '2026-01-16',
-    crop: 'Carrots',
-    quantity: 450,
-    rate: 30,
-    grossAmount: 13500,
-    commission: 1215,
-    totalCost: 14715,
-    status: 'completed',
-    paymentStatus: 'paid'
-  }
-];
+import { api } from '../../lib/api';
 
 const cropsList = ['All Crops', 'Tomatoes', 'Onions', 'Potatoes', 'Cabbage', 'Brinjal', 'Cauliflower', 'Green Chillies', 'Carrots'];
 const paymentStatuses = ['All Status', 'paid', 'pending'];
 
 export default function TraderTransactions() {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCrop, setSelectedCrop] = useState('All Crops');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('All Status');
@@ -132,16 +28,50 @@ export default function TraderTransactions() {
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [showFilters, setShowFilters] = useState(false);
 
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        setLoading(true);
+        // Fetching all transactions to allow client-side searching/sorting for now
+        // In a real app with pagination, we would pass filters to the API
+        const data = await api.trader.transactions({ limit: 100 });
+
+        // Transform data to match component expectation
+        const formattedData = data.map(t => ({
+          id: t._id,
+          lotId: t.lot_id,
+          date: t.sold_at || t.createdAt,
+          crop: t.vegetable,
+          quantity: t.official_qty,
+          rate: t.sale_rate,
+          grossAmount: t.sale_amount,
+          commission: t.commission,
+          totalCost: t.total_amount || (t.sale_amount + t.commission),
+          status: 'completed',
+          paymentStatus: t.payment_status || 'pending'
+        }));
+
+        setTransactions(formattedData);
+      } catch (error) {
+        console.error('Failed to fetch transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
-    let result = [...mockTraderTransactions];
+    let result = [...transactions];
 
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      result = result.filter(t => 
-        t.lotId.toLowerCase().includes(query) ||
-        t.crop.toLowerCase().includes(query)
+      result = result.filter(t =>
+        (t.lotId && t.lotId.toLowerCase().includes(query)) ||
+        (t.crop && t.crop.toLowerCase().includes(query))
       );
     }
 
@@ -157,29 +87,29 @@ export default function TraderTransactions() {
 
     // Date range filter
     if (dateRange.start) {
-      result = result.filter(t => t.date >= dateRange.start);
+      result = result.filter(t => new Date(t.date) >= new Date(dateRange.start));
     }
     if (dateRange.end) {
-      result = result.filter(t => t.date <= dateRange.end);
+      result = result.filter(t => new Date(t.date) <= new Date(dateRange.end));
     }
 
     // Sort
     result.sort((a, b) => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
-      
+
       if (sortConfig.key === 'date') {
         aVal = new Date(aVal);
         bVal = new Date(bVal);
       }
-      
+
       if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
 
     return result;
-  }, [searchQuery, selectedCrop, selectedPaymentStatus, dateRange, sortConfig]);
+  }, [transactions, searchQuery, selectedCrop, selectedPaymentStatus, dateRange, sortConfig]);
 
   const handleSort = (key) => {
     setSortConfig(prev => ({
@@ -196,11 +126,11 @@ export default function TraderTransactions() {
   };
 
   const handleExport = () => {
-    const headers = ['Lot ID', 'Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Commission (9%)', 'Total Cost', 'Payment Status'];
+    const headers = ['Lot ID', 'Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const csvContent = [
       headers.join(','),
-      ...filteredTransactions.map(t => 
-        [t.lotId, t.date, t.crop, t.quantity, t.rate, t.grossAmount, t.commission, t.totalCost, t.paymentStatus].join(',')
+      ...filteredTransactions.map(t =>
+        [t.lotId, t.date, t.crop, t.quantity, t.rate, t.grossAmount, t.totalCost, t.paymentStatus].join(',')
       )
     ].join('\n');
 
@@ -216,25 +146,33 @@ export default function TraderTransactions() {
   // Calculate totals
   const totals = useMemo(() => ({
     count: filteredTransactions.length,
-    quantity: filteredTransactions.reduce((sum, t) => sum + t.quantity, 0),
-    grossAmount: filteredTransactions.reduce((sum, t) => sum + t.grossAmount, 0),
-    commission: filteredTransactions.reduce((sum, t) => sum + t.commission, 0),
-    totalCost: filteredTransactions.reduce((sum, t) => sum + t.totalCost, 0)
+    quantity: filteredTransactions.reduce((sum, t) => sum + (t.quantity || 0), 0),
+    grossAmount: filteredTransactions.reduce((sum, t) => sum + (t.grossAmount || 0), 0),
+    commission: filteredTransactions.reduce((sum, t) => sum + (t.commission || 0), 0),
+    totalCost: filteredTransactions.reduce((sum, t) => sum + (t.totalCost || 0), 0)
   }), [filteredTransactions]);
 
   const hasActiveFilters = searchQuery || selectedCrop !== 'All Crops' || selectedPaymentStatus !== 'All Status' || dateRange.start || dateRange.end;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5 sm:space-y-6">
       {/* Header */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <Link 
-            to="/dashboard/trader" 
+          <Link
+            to="/dashboard/trader"
             className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-600 mb-2"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -253,7 +191,7 @@ export default function TraderTransactions() {
       </motion.div>
 
       {/* Summary Stats */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -278,7 +216,7 @@ export default function TraderTransactions() {
       </motion.div>
 
       {/* Search & Filters */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
@@ -299,11 +237,10 @@ export default function TraderTransactions() {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-                showFilters || hasActiveFilters
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${showFilters || hasActiveFilters
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
             >
               <Filter className="w-4 h-4" />
               Filters
@@ -418,14 +355,13 @@ export default function TraderTransactions() {
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Qty (kg)</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Rate/kg</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Gross</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Commission</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Payment</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredTransactions.map((txn, index) => (
-                <motion.tr 
+                <motion.tr
                   key={txn.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -447,17 +383,14 @@ export default function TraderTransactions() {
                   <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">{txn.quantity.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 text-right text-sm text-slate-600">₹{txn.rate}</td>
                   <td className="px-4 py-3 text-right text-sm text-slate-600">₹{txn.grossAmount.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-right text-sm text-violet-600">₹{txn.commission.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-emerald-600">₹{txn.totalCost.toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                      txn.paymentStatus === 'paid'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        txn.paymentStatus === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'
-                      }`} />
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${txn.paymentStatus === 'paid'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-amber-100 text-amber-700'
+                      }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${txn.paymentStatus === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`} />
                       {txn.paymentStatus.charAt(0).toUpperCase() + txn.paymentStatus.slice(1)}
                     </span>
                   </td>
@@ -465,7 +398,7 @@ export default function TraderTransactions() {
               ))}
             </tbody>
           </table>
-          
+
           {filteredTransactions.length === 0 && (
             <div className="text-center py-12">
               <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -492,14 +425,12 @@ export default function TraderTransactions() {
                   </p>
                   <h3 className="font-bold text-slate-800">{txn.lotId}</h3>
                 </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  txn.paymentStatus === 'paid'
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-amber-100 text-amber-700'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    txn.paymentStatus === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`} />
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${txn.paymentStatus === 'paid'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700'
+                  }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${txn.paymentStatus === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`} />
                   {txn.paymentStatus.charAt(0).toUpperCase() + txn.paymentStatus.slice(1)}
                 </span>
               </div>
@@ -550,7 +481,7 @@ export default function TraderTransactions() {
 
         {/* Footer */}
         <div className="p-4 bg-slate-50 border-t border-slate-100 text-center text-sm text-slate-500">
-          Showing {filteredTransactions.length} of {mockTraderTransactions.length} transactions
+          Showing {filteredTransactions.length} of {transactions.length} transactions
         </div>
       </motion.div>
     </div>

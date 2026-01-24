@@ -56,6 +56,7 @@ export default function TransactionsView({ transactions }) {
                             <th className="px-4 py-3">Farmer</th>
                             <th className="px-4 py-3">Trader</th>
                             <th className="px-4 py-3">Crop</th>
+                            <th className="px-4 py-3 text-right">Rate</th>
                             <th className="px-4 py-3 text-right">Amount</th>
                             <th className="px-4 py-3 text-center">Status</th>
                         </tr>
@@ -67,6 +68,7 @@ export default function TransactionsView({ transactions }) {
                                 <td className="px-4 py-3 font-medium text-slate-900">{txn.farmer.name}</td>
                                 <td className="px-4 py-3 text-slate-600">{txn.trader.name}</td>
                                 <td className="px-4 py-3 text-slate-600">{txn.crop} <span className="text-slate-400">({txn.quantity}kg)</span></td>
+                                <td className="px-4 py-3 text-right text-slate-600">₹{txn.rate}/kg</td>
                                 <td className="px-4 py-3 text-right font-medium text-slate-900">₹{txn.baseAmount.toLocaleString()}</td>
                                 <td className="px-4 py-3 text-center">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(txn.paymentStatus)}`}>

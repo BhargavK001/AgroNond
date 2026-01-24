@@ -118,7 +118,12 @@ router.post('/verify', async (req, res) => {
                 id: user._id,
                 phone: user.phone,
                 role: user.role,
-                full_name: user.full_name
+                full_name: user.full_name,
+                email: user.email,
+                location: user.location,
+                profile_picture: user.profile_picture,
+                business_name: user.business_name,
+                customId: user.customId
             }
         });
 

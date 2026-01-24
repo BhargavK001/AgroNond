@@ -187,4 +187,121 @@ router.patch('/:id/weight', requireAuth, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/records/weighed/:farmerId
+ * Get weighed records for a farmer (ready for auction)
+ */
+router.get('/weighed/:farmerId', requireAuth, async (req, res) => {
+    try {
+        const { farmerId } = req.params;
+
+        const records = await Record.find({
+            farmer_id: farmerId,
+            status: 'Weighed'
+        }).sort({ createdAt: -1 });
+
+        res.json(records);
+    } catch (error) {
+        console.error('Fetch weighed records error:', error);
+        res.status(500).json({ error: 'Failed to fetch records' });
+    }
+});
+
+/**
+ * GET /api/records/all-weighed
+ * Get all weighed records (for Lilav dashboard)
+ */
+router.get('/all-weighed', requireAuth, async (req, res) => {
+    try {
+        const records = await Record.find({
+            status: 'Weighed'
+        })
+            .populate('farmer_id', 'full_name phone')
+            .sort({ createdAt: -1 });
+
+        res.json(records);
+    } catch (error) {
+        console.error('Fetch all weighed records error:', error);
+        res.status(500).json({ error: 'Failed to fetch records' });
+    }
+});
+
+/**
+ * PATCH /api/records/:id/sell
+ * Complete a sale (Lilav auction)
+ */
+router.patch('/:id/sell', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { trader_id, sale_rate } = req.body;
+
+        if (!trader_id || sale_rate == null) {
+            return res.status(400).json({ error: 'Trader and sale rate required' });
+        }
+
+        const record = await Record.findById(id);
+
+        if (!record) {
+            return res.status(404).json({ error: 'Record not found' });
+        }
+
+        if (record.status !== 'Weighed') {
+            return res.status(400).json({ error: 'Record must be weighed before sale' });
+        }
+
+        const sale_amount = record.official_qty * sale_rate;
+
+        const updatedRecord = await Record.findByIdAndUpdate(
+            id,
+            {
+                trader_id,
+                sale_rate,
+                sale_amount,
+                status: 'Completed',
+                sold_by: req.user._id,
+                sold_at: new Date()
+            },
+            { new: true }
+        )
+            .populate('farmer_id', 'full_name phone')
+            .populate('trader_id', 'full_name phone business_name');
+
+        res.json(updatedRecord);
+    } catch (error) {
+        console.error('Sell record error:', error);
+        res.status(500).json({ error: 'Failed to complete sale' });
+    }
+});
+
+/**
+ * GET /api/records/completed
+ * Get completed sales (transaction history)
+ */
+router.get('/completed', requireAuth, async (req, res) => {
+    try {
+        const { date } = req.query;
+
+        let query = { status: 'Completed' };
+
+        if (date) {
+            const startDate = new Date(date);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(date);
+            endDate.setHours(23, 59, 59, 999);
+            query.sold_at = { $gte: startDate, $lte: endDate };
+        }
+
+        const records = await Record.find(query)
+            .populate('farmer_id', 'full_name phone')
+            .populate('trader_id', 'full_name phone business_name')
+            .populate('sold_by', 'full_name')
+            .sort({ sold_at: -1 });
+
+        res.json(records);
+    } catch (error) {
+        console.error('Fetch completed records error:', error);
+        res.status(500).json({ error: 'Failed to fetch records' });
+    }
+});
+
 export default router;

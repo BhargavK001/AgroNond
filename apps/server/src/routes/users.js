@@ -32,15 +32,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    // 1. Destructure ALL possible fields from the request
-    const { 
-        name, 
-        location, 
-        photo, 
-        initials,
-        // Existing trader fields (keep them so nothing breaks)
-        role, business_name, gst_number, license_number, business_address, operating_locations 
-    } = req.body;
+    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations, adhaar_number } = req.body;
 
     const user = req.user; // This comes from requireAuth middleware
 
@@ -52,11 +44,16 @@ router.patch('/profile', requireAuth, async (req, res) => {
 
     // 3. Update Trader/Role Fields (Existing logic)
     if (role) user.role = role;
+    if (full_name) user.full_name = full_name;
+    if (email) user.email = email;
+    if (location) user.location = location;
+    if (profile_picture) user.profile_picture = profile_picture;
     if (business_name) user.business_name = business_name;
     if (gst_number) user.gst_number = gst_number;
     if (license_number) user.license_number = license_number;
     if (business_address) user.business_address = business_address;
     if (operating_locations) user.operating_locations = operating_locations;
+    if (adhaar_number) user.adhaar_number = adhaar_number;
 
     // 4. Save to Database
     await user.save();
@@ -73,7 +70,10 @@ router.patch('/profile', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(400).json({ error: 'Failed to update profile' });
+    res.status(400).json({
+      error: 'Failed to update profile',
+      details: error.message
+    });
   }
 });
 
