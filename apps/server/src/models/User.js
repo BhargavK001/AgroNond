@@ -9,12 +9,33 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'],
-        default: 'farmer', // Default to farmer for new public users
+        default: 'farmer',
     },
     full_name: {
         type: String,
-        default: '',
+        default: 'Farmer',
     },
+    
+    // --- Farmer Specific Fields ---
+    farmerId: {
+        type: String,
+        default: 'AGR-PENDING' // e.g., AGR-1234
+    },
+    location: {
+        type: String,
+        default: '' 
+    },
+    initials: {
+        type: String,
+        default: 'FK' // Default Avatar initials
+    },
+    // --- NEW: Field to store Profile Photo ---
+    profile_picture: {
+        type: String, // Stores the Base64 image string
+        default: ''
+    },
+
+    // --- Trader/Business Specific Fields ---
     business_name: {
         type: String,
         default: '',
@@ -32,13 +53,39 @@ const userSchema = new mongoose.Schema({
         default: '',
     },
     operating_locations: {
-        type: [String], // Array of strings
+        type: [String],
         default: [],
     },
 }, {
-    timestamps: true, // Automatically manage createdAt and updatedAt
+    timestamps: true,
 });
+userSchema.pre('save', async function () { 
+    if (this.role === 'farmer' && (this.farmerId === 'AGR-PENDING' || !this.farmerId)) {
+        try {
+            const currentYear = new Date().getFullYear();
+            const prefix = `FRM-${currentYear}`;
+            const lastFarmer = await this.constructor.findOne({
+                role: 'farmer',
+                farmerId: { $regex: `^${prefix}` }
+            }).sort({ createdAt: -1 });
 
+            let nextSequence = 1;
+
+            if (lastFarmer && lastFarmer.farmerId) {
+                const parts = lastFarmer.farmerId.split('-');
+                const lastSeqNumber = parseInt(parts[2]);
+                
+                if (!isNaN(lastSeqNumber)) {
+                    nextSequence = lastSeqNumber + 1;
+                }
+            }
+            this.farmerId = `${prefix}-${nextSequence.toString().padStart(3, '0')}`;
+        } catch (error) {
+            console.error("Error generating Farmer ID:", error);
+            throw error; 
+        }
+    }
+});
 const User = mongoose.model('User', userSchema);
 
 export default User;

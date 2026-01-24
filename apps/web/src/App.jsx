@@ -1,9 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+// CHANGE 1: Ensure 'Navigate' is imported here
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useEffect, Suspense, lazy } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Auth Provider
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -33,7 +34,6 @@ const WeightDashboard = lazy(() => import('./pages/weight/WeightDashboard'));
 const TraderDashboardContent = lazy(() => import('./pages/trader/TraderDashboard'));
 const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
 const TraderTransactions = lazy(() => import('./pages/trader/TraderTransactions'));
-
 const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
 // Admin Dashboard
@@ -75,6 +75,28 @@ function Layout({ children, hideNav = false, hideFooter = false }) {
   );
 }
 
+// NEW COMPONENT: DashboardRedirect - Fixes infinite loop
+function DashboardRedirect() {
+  const { profile, profileLoading } = useAuth();
+  
+  if (profileLoading) {
+    return <Loading text="Loading dashboard..." />;
+  }
+  
+  // Redirect based on user's role
+  const roleRoutes = {
+    farmer: '/dashboard/farmer',
+    trader: '/dashboard/trader',
+    committee: '/dashboard/committee',
+    accounting: '/dashboard/accounting',
+    admin: '/dashboard/admin',
+    weight: '/dashboard/weight'
+  };
+  
+  const redirectTo = roleRoutes[profile?.role] || '/login';
+  return <Navigate to={redirectTo} replace />;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -109,9 +131,6 @@ function App() {
                 }
                 />
 
-                {/* Role Selection */}
-                {/* Role Selection Removed */}
-
                 {/* --- DASHBOARDS --- */}
 
                 {/* Farmer Dashboard */}
@@ -142,7 +161,7 @@ function App() {
                   <Route path="profile" element={<TraderProfile />} />
                 </Route>
 
-                {/* Committee Dashboard - Sidebar Layout */}
+                {/* Committee Dashboard */}
                 <Route path="/dashboard/committee" element={
                   <ProtectedRoute requireRole="committee">
                     <UnifiedLayout role="committee" />
@@ -161,7 +180,7 @@ function App() {
                   <Route path="accounting" element={<AccountingDashboard />} />
                 </Route>
 
-                Accounting Dashboard - Separate Role
+                {/* Accounting Dashboard - FIXED: Uses UnifiedLayout */}
                 <Route path="/dashboard/accounting" element={
                   <ProtectedRoute requireRole="accounting">
                     <UnifiedLayout role="accounting" />
@@ -175,7 +194,7 @@ function App() {
                   <Route path="reports" element={<AccountingReports />} />
                 </Route>
 
-                {/* Admin Dashboard - Sidebar Layout */}
+                {/* Admin Dashboard */}
                 <Route path="/dashboard/admin" element={
                   <ProtectedRoute requireRole="admin">
                     <UnifiedLayout role="admin" />
@@ -188,7 +207,8 @@ function App() {
                   <Route path="transactions" element={<TransactionHistory />} />
                 </Route>
 
-
+                {/* FIXED: Smart redirect based on user role - Prevents infinite loop */}
+                <Route path="/dashboard" element={<DashboardRedirect />} />
 
                 {/* Public Pages */}
                 <Route path="/" element={<Layout><Home /></Layout>} />

@@ -14,6 +14,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false); // ✅ FIX 1: Make it a state variable
 
   // Initialize auth state from local storage
   useEffect(() => {
@@ -23,13 +24,24 @@ export function AuthProvider({ children }) {
 
       if (token && storedUser) {
         // Optimistically set user
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+
+        // ✅ FIX 2: Set profileLoading to true while fetching
+        setProfileLoading(true);
 
         // Validate token and refresh profile in background
         try {
           const profileData = await api.users.getProfile();
-          // Merge profile data
-          const updatedUser = { ...profileData.user, ...profileData.profile };
+          
+          // ✅ FIX 3: Properly merge the profile data
+          const updatedUser = {
+            ...parsedUser,
+            ...profileData,
+            // Ensure role is present
+            role: profileData.role || parsedUser.role || 'farmer'
+          };
+          
           setUser(updatedUser);
           localStorage.setItem('user_data', JSON.stringify(updatedUser));
         } catch (error) {
@@ -38,6 +50,9 @@ export function AuthProvider({ children }) {
           if (error.message === 'Unauthorized' || error.message.includes('401')) {
             logout();
           }
+        } finally {
+          // ✅ FIX 4: Set profileLoading to false after fetch completes
+          setProfileLoading(false);
         }
       }
       setLoading(false);
@@ -80,12 +95,18 @@ export function AuthProvider({ children }) {
         throw new Error(data.error || 'Verification failed');
       }
 
+      // ✅ FIX 5: Ensure role exists in the user object
+      const userWithRole = {
+        ...data.user,
+        role: data.user.role || 'farmer' // Default to farmer if no role
+      };
+
       // Store session
       localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_data', JSON.stringify(data.user));
+      localStorage.setItem('user_data', JSON.stringify(userWithRole));
 
-      setUser(data.user);
-      return { data, error: null };
+      setUser(userWithRole);
+      return { data: { ...data, user: userWithRole }, error: null };
     } catch (error) {
       console.error('OTP verification error:', error);
       return { error };
@@ -131,19 +152,20 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
     setUser(null);
-  }
+  };
 
+  // ✅ FIX 6: Include profileLoading in the memoized value
   const value = useMemo(() => ({
     user,
     session: user, // Backward compatibility
     profile: user, // Backward compatibility: merged user and profile
     loading,
-    profileLoading: false,
+    profileLoading, // ✅ Now this is the actual state variable
     signInWithPhone,
     verifyOtp,
     updateRole,
     signOut,
-  }), [user, loading, signInWithPhone, verifyOtp, updateRole, signOut]);
+  }), [user, loading, profileLoading, signInWithPhone, verifyOtp, updateRole, signOut]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -29,37 +29,36 @@ export default function Login() {
   const [error, setError] = useState('');
   const firstOtpInputRef = useRef(null);
 
-  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut } = useAuth();
+  const { signInWithPhone, verifyOtp, user, profile, profileLoading, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // Handle Redirection based on Auth State
+  // Handle Redirection based on Auth State - FIXED VERSION
   useEffect(() => {
-    // 1. If we are still loading the profile, do NOTHING (wait).
-    if (profileLoading) return;
+    // ✅ FIX 1: Wait for both loading states to finish
+    if (authLoading || profileLoading) return;
 
-    // 2. If user is logged in and profile load is done:
-    if (user) {
-      if (profile?.role) {
-        // Success: Redirect to specific dashboard
-        if (profile.role === 'farmer') navigate('/dashboard/farmer');
-        else if (profile.role === 'trader') navigate('/dashboard/trader');
-        else if (profile.role === 'admin') {
-          // Block admin from this login page
-          signOut();
-          setError('Access Denied. Admins must login via the Admin Portal.');
-          navigate('/login'); // Stay/refresh on login to show error (or maybe just set error and return early)
-          return;
-        }
-        else if (profile.role === 'weight') navigate('/dashboard/weight');
-        else if (profile.role === 'committee') navigate('/dashboard/committee');
-        else if (profile.role === 'accounting') navigate('/dashboard/accounting');
-        else navigate('/dashboard/farmer'); // Default to farmer dashboard if role is missing/unknown logic
-      } else {
-        // Fallback if role is technically missing but should have been default by backend
-        navigate('/dashboard/farmer');
+    // ✅ FIX 2: Only redirect if user exists AND has a role
+    if (user && user.role) {
+      const roleRoutes = {
+        farmer: '/dashboard/farmer',
+        trader: '/dashboard/trader',
+        weight: '/dashboard/weight',
+        committee: '/dashboard/committee',
+        accounting: '/dashboard/accounting',
+      };
+
+      // ✅ FIX 3: Block admin from this page
+      if (user.role === 'admin') {
+        signOut();
+        setError('Access Denied. Admins must login via the Admin Portal.');
+        return;
       }
+
+      // ✅ FIX 4: Redirect to appropriate dashboard
+      const targetRoute = roleRoutes[user.role] || '/dashboard/farmer';
+      navigate(targetRoute, { replace: true });
     }
-  }, [user, profile, profileLoading, navigate]);
+  }, [user, authLoading, profileLoading, navigate, signOut]);
 
   // Auto-focus first OTP input when step changes to 'otp'
   useEffect(() => {
@@ -116,7 +115,7 @@ export default function Login() {
 
       if (error) throw error;
 
-
+      // Navigation will be handled by the useEffect above
 
     } catch (err) {
       console.error(err);
@@ -165,8 +164,8 @@ export default function Login() {
     setOtp(newOtp);
   };
 
-
-  if (user && profileLoading) {
+  // Show loading screen while checking auth state
+  if ((user && profileLoading) || (user && authLoading)) {
     return <PageLoading />;
   }
 

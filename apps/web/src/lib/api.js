@@ -1,5 +1,3 @@
-
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Get current access token
@@ -27,6 +25,8 @@ async function apiRequest(endpoint, options = {}) {
 
     if (response.status === 401) {
       console.warn('Unauthorized - token may be expired');
+      // Optional: Redirect to login
+      // window.location.href = '/login';
       throw new Error('Unauthorized');
     }
 
@@ -44,6 +44,13 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 export const api = {
+  // --- GENERIC METHODS (Fixes "api.get is not a function" error) ---
+  get: (endpoint, options) => apiRequest(endpoint, { ...options, method: 'GET' }),
+  post: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
+  put: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
+  patch: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
+  delete: (endpoint, options) => apiRequest(endpoint, { ...options, method: 'DELETE' }),
+
   // Health
   health: () => apiRequest('/api/health', { method: 'GET' }),
 
@@ -76,14 +83,21 @@ export const api = {
     delete: (id) => apiRequest(`/api/farmer-contacts/${id}`, { method: 'DELETE' }),
   },
 
-  // Records (Weighing)
+  // Records (Weighing + Farmer Dashboard)
   records: {
+    // --- Existing Weight Staff Methods ---
     searchFarmer: (phone) => apiRequest(`/api/records/search-farmer?phone=${phone}`, { method: 'GET' }),
     getPending: (farmerId) => apiRequest(`/api/records/pending/${farmerId}`, { method: 'GET' }),
     updateWeight: (id, weight) => apiRequest(`/api/records/${id}/weight`, {
       method: 'PATCH',
       body: JSON.stringify({ official_qty: weight })
     }),
+
+    // --- NEW Farmer Dashboard Methods ---
+    myRecords: () => apiRequest('/api/records/my-records', { method: 'GET' }),
+    add: (data) => apiRequest('/api/records/add', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id, data) => apiRequest(`/api/records/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id) => apiRequest(`/api/records/${id}`, { method: 'DELETE' }),
   },
 
   // Inventory
