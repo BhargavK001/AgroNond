@@ -13,7 +13,7 @@ const PAGE_TITLES = {
   '/dashboard/committee/traders': 'Traders',
   '/dashboard/committee/accounting': 'Accounting',
   '/dashboard/committee/billing': 'Reports',
-  '/dashboard/committee/commission': 'Calculators',
+
 };
 
 export default function CommitteeNavbar({ onMenuClick }) {

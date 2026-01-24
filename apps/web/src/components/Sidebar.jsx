@@ -22,7 +22,7 @@ const NAV_ITEMS = {
         { label: 'Traders', path: '/dashboard/committee/traders', icon: Store },
         { label: 'Accounting', path: '/dashboard/committee/accounting', icon: Wallet },
         { label: 'Reports', path: '/dashboard/committee/billing', icon: FileText },
-        { label: 'Calculators', path: '/dashboard/committee/commission', icon: Calculator },
+
     ],
     trader: [
         { label: 'Dashboard', path: '/dashboard/trader', icon: LayoutDashboard },
