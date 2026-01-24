@@ -45,14 +45,14 @@ export default function LilavEntry() {
         try {
             setLoading(true);
             const [farmersRes, tradersRes, ratesRes] = await Promise.all([
-                api.get('/users?role=farmer'),
-                api.get('/users?role=trader'),
-                api.get('/daily-rates/today')
+                api.get('/api/users?role=farmer'),
+                api.get('/api/users?role=trader'),
+                api.get('/api/daily-rates/today')
             ]);
 
-            setFarmers(farmersRes.data || []);
-            setTraders(tradersRes.data || []);
-            setDailyRates(ratesRes.data || []);
+            setFarmers(farmersRes || []);
+            setTraders(tradersRes || []);
+            setDailyRates(ratesRes || []);
         } catch (error) {
             console.error('Error fetching data:', error);
             toast.error('Failed to load initial data');
@@ -64,8 +64,8 @@ export default function LilavEntry() {
     const fetchWeighedRecords = async (farmerId) => {
         try {
             setLoadingRecords(true);
-            const response = await api.get(`/records/weighed/${farmerId}`);
-            setWeighedRecords(response.data || []);
+            const response = await api.get(`/api/records/weighed/${farmerId}`);
+            setWeighedRecords(response || []);
         } catch (error) {
             console.error('Error fetching records:', error);
             toast.error('Failed to load farmer records');
@@ -107,7 +107,7 @@ export default function LilavEntry() {
         try {
             setProcessingId(saleModal.record._id);
 
-            await api.patch(`/records/${saleModal.record._id}/sell`, {
+            await api.patch(`/api/records/${saleModal.record._id}/sell`, {
                 trader_id: saleForm.trader_id,
                 sale_rate: saleForm.sale_rate
             });
@@ -127,7 +127,7 @@ export default function LilavEntry() {
 
     // Filter farmers by search
     const filteredFarmers = useMemo(() => {
-        if (!farmerSearch.trim()) return [];
+        if (!farmerSearch.trim()) return farmers.slice(0, 10);
         return farmers.filter(f =>
             f.full_name?.toLowerCase().includes(farmerSearch.toLowerCase()) ||
             f.phone?.includes(farmerSearch)
@@ -205,44 +205,46 @@ export default function LilavEntry() {
                             </button>
                         </div>
                     ) : (
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search farmer by name or phone..."
-                                value={farmerSearch}
-                                onChange={(e) => setFarmerSearch(e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                            />
+                        <div>
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search farmer by name or phone..."
+                                    value={farmerSearch}
+                                    onChange={(e) => setFarmerSearch(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                />
+                            </div>
 
-                            {/* Farmer dropdown */}
-                            <AnimatePresence>
-                                {filteredFarmers.length > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, y: -10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl z-10 max-h-80 overflow-y-auto"
-                                    >
-                                        {filteredFarmers.map((farmer) => (
-                                            <button
-                                                key={farmer._id}
-                                                onClick={() => handleSelectFarmer(farmer)}
-                                                className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0"
-                                            >
-                                                <div className="w-10 h-10 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center font-bold">
-                                                    {farmer.full_name?.charAt(0) || 'F'}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-slate-900">{farmer.full_name || 'Unknown'}</p>
-                                                    <p className="text-sm text-slate-500">{farmer.phone}</p>
-                                                </div>
-                                                <ChevronRight className="w-5 h-5 text-slate-400" />
-                                            </button>
-                                        ))}
-                                    </motion.div>
+                            {/* Farmer List */}
+                            <div className="mt-4 flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                <h3 className="text-sm font-semibold text-slate-500 mb-2">Recent Farmers</h3>
+                                {filteredFarmers.length > 0 ? (
+                                    filteredFarmers.map((farmer) => (
+                                        <button
+                                            key={farmer._id}
+                                            onClick={() => handleSelectFarmer(farmer)}
+                                            className="w-full flex items-center gap-4 p-3 hover:bg-slate-50 transition-colors text-left border border-slate-200 rounded-xl group"
+                                        >
+                                            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold group-hover:bg-emerald-200 transition-colors">
+                                                {farmer.full_name?.charAt(0) || 'F'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-900">{farmer.full_name || 'Unknown'}</p>
+                                                <p className="text-xs text-slate-500">{farmer.phone}</p>
+                                            </div>
+                                            <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-600 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                                                Select
+                                            </div>
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-slate-500 border border-dashed border-slate-200 rounded-xl">
+                                        No farmers found
+                                    </div>
                                 )}
-                            </AnimatePresence>
+                            </div>
                         </div>
                     )}
                 </div>

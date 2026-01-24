@@ -5,6 +5,42 @@ import { requireAuth } from '../middleware/auth.js';
 const router = express.Router();
 
 /**
+ * GET /api/users
+ * Get all users (with optional filtering)
+ */
+router.get('/', requireAuth, async (req, res) => {
+  try {
+    const { role, search } = req.query;
+
+    // Build query
+    const query = {};
+
+    // Filter by role if provided
+    if (role) {
+      query.role = role;
+    }
+
+    // Search by name or phone if provided
+    if (search) {
+      query.$or = [
+        { full_name: { $regex: search, $options: 'i' } },
+        { business_name: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const users = await User.find(query)
+      .select('-password') // Exclude password
+      .sort({ createdAt: -1 }); // Newest first
+
+    res.json(users);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+/**
  * GET /api/users/profile
  * Get current user's profile
  */

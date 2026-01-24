@@ -114,4 +114,53 @@ router.get('/transactions', requireAuth, requireTrader, async (req, res) => {
     }
 });
 
+// Temporary Seed Route
+import User from '../models/User.js';
+router.post('/seed', requireAuth, requireTrader, async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // Find any farmer to associate with
+        const farmer = await User.findOne({ role: 'farmer' });
+        const farmerId = farmer ? farmer._id : new mongoose.Types.ObjectId();
+
+        const dummyRecords = [
+            {
+                farmer_id: farmerId,
+                vegetable: 'Tomatoes',
+                official_qty: 150,
+                sale_rate: 20,
+                sale_amount: 3000,
+                commission: 270,
+                total_amount: 3270,
+                status: 'Completed',
+                payment_status: 'paid',
+                trader_id: userId,
+                sold_at: new Date(),
+                market: 'Main Market'
+            },
+            {
+                farmer_id: farmerId,
+                vegetable: 'Onions',
+                official_qty: 500,
+                sale_rate: 15,
+                sale_amount: 7500,
+                commission: 675,
+                total_amount: 8175,
+                status: 'Completed',
+                payment_status: 'pending',
+                trader_id: userId,
+                sold_at: new Date(Date.now() - 86400000), // Yesterday
+                market: 'Main Market'
+            }
+        ];
+
+        await Record.insertMany(dummyRecords);
+        res.json({ message: 'Dummy data seeded successfully' });
+    } catch (error) {
+        console.error('Seed error:', error);
+        res.status(500).json({ error: 'Failed to seed data' });
+    }
+});
+
 export default router;

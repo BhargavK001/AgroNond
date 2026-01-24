@@ -89,10 +89,7 @@ router.patch('/:id/weight', requireAuth, async (req, res) => {
     }
 });
 
-/**
- * GET /api/records/weighed/:farmerId
- * Get weighed records for a farmer (ready for auction)
- */
+
 router.get('/weighed/:farmerId', requireAuth, async (req, res) => {
     try {
         const { farmerId } = req.params;

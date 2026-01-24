@@ -57,11 +57,9 @@ const userSchema = new mongoose.Schema({
         sparse: true,
     },
 }, {
-    timestamps: true, // Automatically manage createdAt and updatedAt
+    timestamps: true,
 });
 
-// Pre-save hook to generate customId
-// Pre-save hook to generate customId
 userSchema.pre('save', async function () {
     if (!this.isNew || this.customId) {
         return;

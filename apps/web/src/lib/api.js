@@ -44,6 +44,12 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 export const api = {
+  // Generic HTTP methods
+  get: (endpoint, options = {}) => apiRequest(endpoint, { ...options, method: 'GET' }),
+  post: (endpoint, data, options = {}) => apiRequest(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
+  patch: (endpoint, data, options = {}) => apiRequest(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
+  delete: (endpoint, options = {}) => apiRequest(endpoint, { ...options, method: 'DELETE' }),
+
   // Health
   health: () => apiRequest('/api/health', { method: 'GET' }),
 
@@ -157,6 +163,7 @@ export const api = {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/api/trader/transactions${query ? '?' + query : ''}`, { method: 'GET' });
     },
+    seed: () => apiRequest('/api/trader/seed', { method: 'POST' }),
   },
 };
 
