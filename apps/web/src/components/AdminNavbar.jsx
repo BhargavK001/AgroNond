@@ -36,28 +36,34 @@ export default function AdminNavbar({ onMenuClick }) {
     return 'Overview';
   };
 
+  // Profile State
   const [profile, setProfile] = useState({
-    name: 'System Admin',
+    name: user?.full_name || 'System Admin',
     phone: user?.phone || '9999999999',
-    email: 'admin@agronond.com',
-    location: 'Headquarters',
+    email: user?.email || 'admin@agronond.com',
+    location: user?.location || 'Headquarters',
     role: 'Super Administrator',
-    photo: '',
-    adminId: 'ADM-001',
+    photo: user?.profile_picture || '',
+    adminId: user?.customId || 'ADM-001',
     initials: 'SA'
   });
 
   const [editForm, setEditForm] = useState({ ...profile });
 
   useEffect(() => {
-    const saved = localStorage.getItem('admin-profile');
-    if (saved) {
-      const p = JSON.parse(saved);
-      p.initials = getInitials(p.name);
-      setProfile(p);
-      setEditForm(p);
+    if (user) {
+      setProfile(prev => ({
+        ...prev,
+        name: user.full_name || prev.name,
+        phone: user.phone || prev.phone,
+        email: user.email || prev.email,
+        location: user.location || prev.location,
+        photo: user.profile_picture || prev.photo,
+        adminId: user.customId || prev.adminId,
+        initials: getInitials(user.full_name || prev.name)
+      }));
     }
-  }, []);
+  }, [user]);
 
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -78,12 +84,33 @@ export default function AdminNavbar({ onMenuClick }) {
     }
   };
 
-  const handleSave = () => {
-    const updated = { ...editForm, initials: getInitials(editForm.name) };
-    setProfile(updated);
-    localStorage.setItem('admin-profile', JSON.stringify(updated));
-    setIsEditing(false);
-    toast.success("Profile updated!");
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          full_name: editForm.name,
+          email: editForm.email,
+          location: editForm.location,
+          profile_picture: editForm.photo
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update profile');
+
+      setProfile({ ...editForm, initials: getInitials(editForm.name) });
+      setIsEditing(false);
+      toast.success("Profile updated!");
+      window.location.reload();
+    } catch (error) {
+      toast.error("Failed to save profile");
+      console.error(error);
+    }
   };
 
   useEffect(() => {

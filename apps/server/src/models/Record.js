@@ -10,22 +10,44 @@ const recordSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    quantity: {
-        type: Number, // Estimated quantity
-        default: 0
-    },
-    official_qty: {
-        type: Number, // Measured weight
-        default: 0
-    },
     market: {
         type: String,
-        default: ''
+        required: true
+    },
+    // The quantity farmer says they have (Estimated)
+    quantity: {
+        type: Number, 
+        required: true,
+        default: 0
+    },
+    // The quantity actually sold (confirmed by trader/weight)
+    qtySold: {
+        type: Number,
+        default: 0
+    },
+    // Financials
+    rate: {
+        type: Number, // Price per unit
+        default: 0
+    },
+    totalAmount: {
+        type: Number,
+        default: 0
+    },
+    // Logistics
+    trader: {
+        type: String,
+        default: '-'
     },
     status: {
         type: String,
-        enum: ['Pending', 'Weighed', 'Completed'],
+        enum: ['Pending', 'Weighed', 'Sold', 'Completed'],
         default: 'Pending'
+    },
+    // Official weight checks (for Weight Dashboard)
+    official_qty: {
+        type: Number,
+        default: 0
     },
     weighed_by: {
         type: mongoose.Schema.Types.ObjectId,
@@ -53,9 +75,49 @@ const recordSchema = new mongoose.Schema({
     sold_by: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    payment_status: {
+        type: String,
+        enum: ['paid', 'pending', 'overdue'],
+        default: 'pending'
+    },
+    lot_id: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    commission: {
+        type: Number,
+        default: 0
+    },
+    total_amount: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true
+});
+
+// Pre-save hook to generate lot_id
+recordSchema.pre('save', async function () {
+    if (!this.isNew || this.lot_id) {
+        return;
+    }
+
+    try {
+        const currentYear = new Date().getFullYear();
+        const startOfYear = new Date(`${currentYear}-01-01T00:00:00.000Z`);
+        const endOfYear = new Date(`${currentYear}-12-31T23:59:59.999Z`);
+
+        const count = await this.constructor.countDocuments({
+            createdAt: { $gte: startOfYear, $lte: endOfYear }
+        });
+
+        const sequenceNumber = (count + 1).toString().padStart(3, '0');
+        this.lot_id = `LOT-${currentYear}-${sequenceNumber}`;
+    } catch (error) {
+        throw error;
+    }
 });
 
 const Record = mongoose.model('Record', recordSchema);

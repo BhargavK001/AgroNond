@@ -30,27 +30,34 @@ export default function TraderNavbar({ onMenuClick }) {
 
   // Profile State
   const [profile, setProfile] = useState({
-    name: 'Trader User',
+    name: user?.full_name || 'Trader User',
     phone: user?.phone || '9876543210',
-    email: 'trader@agronond.com',
-    location: 'Market Yard, Pune',
+    email: user?.email || 'trader@agronond.com',
+    location: user?.location || 'Market Yard, Pune',
     role: 'Authorized Trader',
-    photo: '',
-    traderId: 'TRD-2026-001',
-    initials: 'TU'
+    photo: user?.profile_picture || '',
+    traderId: user?.customId || 'TRD-2026-001',
+    initials: 'TU',
+    business_name: user?.business_name || ''
   });
 
   const [editForm, setEditForm] = useState({ ...profile });
 
   useEffect(() => {
-    const saved = localStorage.getItem('trader-profile');
-    if (saved) {
-      const p = JSON.parse(saved);
-      p.initials = getInitials(p.name);
-      setProfile(p);
-      setEditForm(p);
+    if (user) {
+      setProfile(prev => ({
+        ...prev,
+        name: user.full_name || prev.name,
+        phone: user.phone || prev.phone,
+        email: user.email || prev.email,
+        location: user.location || prev.location,
+        photo: user.profile_picture || prev.photo,
+        traderId: user.customId || prev.traderId,
+        business_name: user.business_name || prev.business_name,
+        initials: getInitials(user.full_name || prev.name)
+      }));
     }
-  }, []);
+  }, [user]);
 
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -76,12 +83,39 @@ export default function TraderNavbar({ onMenuClick }) {
     }
   };
 
-  const handleSave = () => {
-    const updated = { ...editForm, initials: getInitials(editForm.name) };
-    setProfile(updated);
-    localStorage.setItem('trader-profile', JSON.stringify(updated));
-    setIsEditing(false);
-    toast.success("Profile updated!");
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/users/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          full_name: editForm.name,
+          email: editForm.email,
+          location: editForm.location,
+          profile_picture: editForm.photo,
+          business_name: editForm.business_name
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to update profile');
+
+      const data = await response.json();
+
+      // Update local state is handled by re-fetching or optimistically, 
+      // but here we just update the specific component state
+      // In a real app, we should update the AuthContext user
+      setProfile({ ...editForm, initials: getInitials(editForm.name) });
+      setIsEditing(false);
+      toast.success("Profile updated!");
+      window.location.reload(); // Simple way to refresh context for now
+    } catch (error) {
+      toast.error("Failed to save profile");
+      console.error(error);
+    }
   };
 
   useEffect(() => {
@@ -182,6 +216,9 @@ export default function TraderNavbar({ onMenuClick }) {
                             <div className="inline-flex items-center gap-1.5 mt-2 bg-emerald-100 py-1 px-3 rounded-full">
                               <span className="text-xs font-bold text-emerald-700">{profile.traderId}</span>
                             </div>
+                            {profile.business_name && (
+                              <p className="text-sm font-medium text-slate-600 mt-2">{profile.business_name}</p>
+                            )}
                           </div>
 
                           <div className="p-4 space-y-2">
@@ -241,7 +278,8 @@ export default function TraderNavbar({ onMenuClick }) {
                             </div>
                             <div className="space-y-4">
                               <div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Full Name</label><input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" /></div>
-                              <div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone</label><input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" /></div>
+                              <div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Business Name</label><input type="text" value={editForm.business_name} onChange={(e) => setEditForm({ ...editForm, business_name: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" /></div>
+                              <div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone</label><input type="tel" value={editForm.phone} disabled className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-100 text-slate-500 cursor-not-allowed" /></div>
                               <div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label><input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" /></div>
                               <div><label className="block text-xs font-semibold text-slate-600 mb-1.5">Location</label><input type="text" value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" /></div>
                             </div>
@@ -256,10 +294,11 @@ export default function TraderNavbar({ onMenuClick }) {
                   </motion.div>
                 )}
               </AnimatePresence>
+
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </div >
+    </header >
   );
 }

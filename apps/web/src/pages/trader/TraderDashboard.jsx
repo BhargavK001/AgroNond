@@ -1,36 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AnimatedCounter from '../../components/AnimatedCounter';
-
-// Mock Data for Purchases
-const purchaseHistory = [
-  { id: 1, date: '2026-01-20', lotId: 'LOT-2026-001', crop: 'Tomato (Hybrid)', quantity: 500, rate: 40, status: 'Paid' },
-  { id: 2, date: '2026-01-18', lotId: 'LOT-2026-002', crop: 'Onion (Red)', quantity: 1200, rate: 15, status: 'Pending' },
-  { id: 3, date: '2026-01-15', lotId: 'LOT-2026-003', crop: 'Potato', quantity: 800, rate: 22, status: 'Paid' },
-  { id: 4, date: '2026-01-12', lotId: 'LOT-2026-004', crop: 'Okra', quantity: 300, rate: 35, status: 'Paid' },
-  { id: 5, date: '2026-01-10', lotId: 'LOT-2026-005', crop: 'Cabbage', quantity: 600, rate: 12, status: 'Overdue' },
-];
+import { api } from '../../lib/api';
 
 export default function TraderDashboard() {
-  // Calculate Totals
-  const totalQuantity = purchaseHistory.reduce((acc, item) => acc + item.quantity, 0);
-  const totalBaseAmount = purchaseHistory.reduce((acc, item) => acc + (item.quantity * item.rate), 0);
-  const commissionRate = 0.09;
-  const totalCommission = totalBaseAmount * commissionRate;
-  const totalSpent = totalBaseAmount + totalCommission;
+  const [stats, setStats] = useState({
+    totalQuantity: 0,
+    totalBaseSpend: 0,
+    totalCommission: 0,
+    totalSpend: 0,
+    pendingPayments: 0
+  });
+  const [transactionHistory, setTransactionHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const pendingPayments = purchaseHistory
-    .filter(item => item.status === 'Pending' || item.status === 'Overdue')
-    .reduce((acc, item) => acc + (item.quantity * item.rate * (1 + commissionRate)), 0);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsData, transactionsData] = await Promise.all([
+          api.trader.stats(),
+          api.trader.transactions({ limit: 5 })
+        ]);
+
+        setStats(statsData);
+        setTransactionHistory(transactionsData);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Single Color Theme - Emerald / Slate Icons
-  const stats = [
-    { label: 'Total Purchased', value: totalQuantity, unit: 'kg', icon: '🥗' },
-    { label: 'Total Spend', value: totalSpent, unit: '₹', icon: '💰', isCurrency: true },
-    { label: 'Commission (9%)', value: totalCommission, unit: '₹', icon: '🧾', isCurrency: true },
-    { label: 'Pending Payments', value: pendingPayments, unit: '₹', icon: '⏳', isCurrency: true },
+  const statCards = [
+    { label: 'Total Purchased', value: stats.totalQuantity, unit: 'kg', icon: '🥗' },
+    { label: 'Total Spend', value: stats.totalSpend, unit: '₹', icon: '💰', isCurrency: true },
+    { label: 'Commission (9%)', value: stats.totalCommission, unit: '₹', icon: '🧾', isCurrency: true },
+    { label: 'Pending Payments', value: stats.pendingPayments, unit: '₹', icon: '⏳', isCurrency: true },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +67,7 @@ export default function TraderDashboard() {
 
       {/* Stats Grid - Professional Clean Look */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
+        {statCards.map((stat, index) => (
           <div key={index} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:border-emerald-500 transition-all">
             <div className="flex justify-between items-start mb-4">
               <div className="text-2xl">{stat.icon}</div>
@@ -75,12 +94,9 @@ export default function TraderDashboard() {
             <p className="text-slate-500 text-sm">Track your orders and invoices</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">
+            <Link to="/dashboard/trader/transactions" className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">
               Filter
-            </button>
-            <button className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-sm">
-              Export Report
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -100,68 +116,80 @@ export default function TraderDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {purchaseHistory.map((item) => {
-                const baseCost = item.quantity * item.rate;
-                const tax = baseCost * 0.09;
-                const total = baseCost + tax;
-                return (
-                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
-                      {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td className="px-5 py-4 font-medium text-slate-900">{item.lotId}</td>
-                    <td className="px-5 py-4 text-slate-600">{item.crop}</td>
-                    <td className="px-5 py-4 text-right font-medium text-slate-700">{item.quantity.toLocaleString('en-IN')}</td>
-                    <td className="px-5 py-4 text-right text-slate-600">₹{item.rate}</td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="font-bold text-slate-900">₹{Math.round(total).toLocaleString('en-IN')}</div>
-                      <div className="text-[10px] text-slate-400">Base + 9%</div>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${item.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                          item.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+              {transactionHistory.length > 0 ? (
+                transactionHistory.map((item) => {
+                  const status = item.payment_status ? item.payment_status.charAt(0).toUpperCase() + item.payment_status.slice(1) : 'Pending';
+                  // item.sale_amount is base. item.total_amount is base+commission
+                  const total = item.total_amount || (item.sale_amount + item.commission);
+
+                  return (
+                    <tr key={item._id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                        {item.sold_at ? new Date(item.sold_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                      </td>
+                      <td className="px-5 py-4 font-medium text-slate-900">{item.lot_id}</td>
+                      <td className="px-5 py-4 text-slate-600">{item.vegetable}</td>
+                      <td className="px-5 py-4 text-right font-medium text-slate-700">{(item.official_qty || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-5 py-4 text-right text-slate-600">₹{item.sale_rate}</td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="font-bold text-slate-900">₹{Math.round(total).toLocaleString('en-IN')}</div>
+                        <div className="text-[10px] text-slate-400">Base + 9%</div>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                          status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                             'bg-red-50 text-red-700 border border-red-100'
-                        }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <button className="text-emerald-600 hover:text-emerald-700 font-medium text-xs hover:underline">View</button>
-                    </td>
-                  </tr>
-                );
-              })}
+                          }`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <button className="text-emerald-600 hover:text-emerald-700 font-medium text-xs hover:underline">View</button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="8" className="px-5 py-8 text-center text-slate-500">
+                    No recent purchases found.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Mobile View */}
         <div className="md:hidden space-y-3 p-3">
-          {purchaseHistory.map((item) => {
-            const baseCost = item.quantity * item.rate;
-            const tax = baseCost * 0.09;
-            const total = baseCost + tax;
-            return (
-              <div key={item.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="font-bold text-sm text-slate-800">{item.lotId}</h3>
-                    <p className="text-xs text-slate-500">{item.crop}</p>
-                  </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                      item.status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+          {transactionHistory.length > 0 ? (
+            transactionHistory.map((item) => {
+              const status = item.payment_status ? item.payment_status.charAt(0).toUpperCase() + item.payment_status.slice(1) : 'Pending';
+              const total = item.total_amount || (item.sale_amount + item.commission);
+              return (
+                <div key={item._id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-800">{item.lot_id}</h3>
+                      <p className="text-xs text-slate-500">{item.vegetable}</p>
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                      status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                         'bg-red-50 text-red-700 border border-red-100'
-                    }`}>
-                    {item.status}
-                  </span>
+                      }`}>
+                      {status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm border-t border-slate-200 pt-2 mt-2">
+                    <span className="text-slate-500">Total</span>
+                    <span className="font-bold text-slate-900">₹{Math.round(total).toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-sm border-t border-slate-200 pt-2 mt-2">
-                  <span className="text-slate-500">Total</span>
-                  <span className="font-bold text-slate-900">₹{Math.round(total).toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center py-8 text-slate-500 text-sm">No recent purchases found.</div>
+          )}
         </div>
       </div>
     </div>

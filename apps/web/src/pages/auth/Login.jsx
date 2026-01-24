@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/Button';
 import { PageLoading } from '../../components/Loading';
+import toast from 'react-hot-toast';
+import { api } from '../../lib/api';
 
 // Icons
 function WheatIcon({ className }) {
@@ -21,16 +23,81 @@ function LeafIcon({ className }) {
   );
 }
 
+// ... Icons from CompleteProfile ...
+function UserIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+}
+
+function LocationIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function CameraIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+}
+
+function IdCardIcon({ className }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+    </svg>
+  );
+}
+
+// Role based routes
+const roleRoutes = {
+  farmer: '/dashboard/farmer',
+  trader: '/dashboard/trader',
+  weight: '/dashboard/weight',
+  committee: '/dashboard/committee',
+  lilav: '/dashboard/lilav',
+};
+
 export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [step, setStep] = useState('phone');
+  const [step, setStep] = useState('phone'); // phone, otp, profile-setup
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const firstOtpInputRef = useRef(null);
 
-  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut } = useAuth();
+  // Profile Form Data
+  const [profileData, setProfileData] = useState({
+    full_name: '',
+    location: '',
+    adhaar_number: '',
+    profile_picture: ''
+  });
+
+  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut, refreshProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Helper to check if profile is incomplete
+  const isProfileIncomplete = (p) => {
+    // Logic for new farmers: must have full_name and location
+    // If role is NOT set yet (new user default), we assume farmer flow or role selection later, 
+    // but here we force profile completion first.
+    // If role is set to something else (e.g. admin), we might skip this, but for now apply to all or check role
+    if (!p) return true;
+    if (p.role === 'farmer' || !p.role) {
+      return !p.full_name || !p.location;
+    }
+    return false;
+  };
 
   // Handle Redirection based on Auth State
   useEffect(() => {
@@ -38,33 +105,38 @@ export default function Login() {
     if (profileLoading) return;
 
     // 2. If user is logged in and profile load is done:
-    if (user) {
-      if (profile?.role) {
-        // Success: Redirect to specific dashboard
-        if (profile.role === 'farmer') navigate('/dashboard/farmer');
-        else if (profile.role === 'trader') navigate('/dashboard/trader');
-        else if (profile.role === 'admin') {
-          // Block admin from this login page
-          signOut();
-          setError('Access Denied. Admins must login via the Admin Portal.');
-          navigate('/login'); // Stay/refresh on login to show error (or maybe just set error and return early)
-          return;
-        }
-        else if (profile.role === 'weight') navigate('/dashboard/weight');
-        else if (profile.role === 'committee') navigate('/dashboard/committee');
-        else if (profile.role === 'lilav') navigate('/dashboard/lilav');
-        else navigate('/dashboard/farmer'); // Default to farmer dashboard if role is missing/unknown logic
-      } else {
-        // Fallback if role is technically missing but should have been default by backend
-        navigate('/dashboard/farmer');
+    if (user && profile) {
+      if (isProfileIncomplete(profile)) {
+        // If profile is incomplete, force profile setup step
+        setStep('profile-setup');
+        // Pre-fill data
+        setProfileData(prev => ({
+          ...prev,
+          full_name: profile.full_name || '',
+          location: profile.location || '',
+          adhaar_number: profile.adhaar_number || '',
+          profile_picture: profile.profile_picture || ''
+        }));
+        return;
       }
+
+      // 3. Fully authenticated and complete profile
+      if (profile.role === 'admin') {
+        signOut();
+        setError('Access Denied. Admins must login via the Admin Portal.');
+        navigate('/login');
+        return;
+      }
+
+      // Redirect to appropriate dashboard
+      const targetRoute = roleRoutes[profile.role] || '/dashboard/farmer';
+      navigate(targetRoute, { replace: true });
     }
-  }, [user, profile, profileLoading, navigate]);
+  }, [user, profile, profileLoading, navigate, signOut]);
 
   // Auto-focus first OTP input when step changes to 'otp'
   useEffect(() => {
     if (step === 'otp' && firstOtpInputRef.current) {
-      // Small delay to ensure the DOM has updated
       setTimeout(() => {
         firstOtpInputRef.current?.focus();
       }, 100);
@@ -111,12 +183,11 @@ export default function Login() {
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
-
       const { error } = await verifyOtp(formattedPhone, otpValue);
 
       if (error) throw error;
 
-
+      // Note: useEffect will handle the redirection or step change based on profile completeness
 
     } catch (err) {
       console.error(err);
@@ -126,6 +197,59 @@ export default function Login() {
     }
   };
 
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!profileData.full_name.trim()) {
+      toast.error('Full Name is required');
+      return;
+    }
+
+    if (!profileData.location.trim()) {
+      toast.error('Location is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.users.updateProfile(profileData);
+
+      // Refresh local profile state to trigger useEffect redirect
+      await refreshProfile();
+
+      toast.success('Profile completed!');
+      // Navigation will happen automatically via useEffect
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast.error(error.message || 'Failed to update profile');
+      setError(error.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size should be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData(prev => ({ ...prev, profile_picture: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+
+  // OTP Input handlers
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
     const newOtp = [...otp];
@@ -136,11 +260,9 @@ export default function Login() {
       document.getElementById(`otp-${index + 1}`)?.focus();
     }
 
-    // Auto-submit when all 6 digits are entered
     if (value && index === 5) {
       const completeOtp = newOtp.join('');
       if (completeOtp.length === 6) {
-        // Submit the form automatically
         setTimeout(() => {
           document.getElementById('otp-form')?.requestSubmit();
         }, 150);
@@ -165,10 +287,13 @@ export default function Login() {
     setOtp(newOtp);
   };
 
-
-  if (user && profileLoading) {
+  // Show loading screen while checking auth state
+  if ((user && profileLoading) || (user && authLoading)) {
     return <PageLoading />;
   }
+
+  // If we are in profile-setup step, we are essentially duplicating CompleteProfile UI here
+  // But wrapped in the login layout/modal feel
 
   return (
     <main className="min-h-screen flex items-center justify-center gradient-bg-subtle py-16 sm:py-24 px-4 relative overflow-hidden bg-pattern">
@@ -192,6 +317,7 @@ export default function Login() {
           <div>
             <span className="text-xl sm:text-2xl font-bold block">AgroNond</span>
             <span className="text-xs text-[var(--text-muted)]">Digital Mandi Platform</span>
+            {step === 'profile-setup' && <span className="text-xs text-[var(--primary)] font-medium block">Setup Profile</span>}
           </div>
         </Link>
 
@@ -204,7 +330,7 @@ export default function Login() {
             </div>
           )}
 
-          {step === 'phone' ? (
+          {step === 'phone' && (
             <>
               <div className="text-center mb-5 sm:mb-8">
                 <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Welcome Back</h1>
@@ -235,7 +361,9 @@ export default function Login() {
                 </Button>
               </form>
             </>
-          ) : (
+          )}
+
+          {step === 'otp' && (
             <>
               <div className="text-center mb-5 sm:mb-8">
                 <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Verify OTP</h1>
@@ -278,6 +406,97 @@ export default function Login() {
               </form>
             </>
           )}
+
+          {step === 'profile-setup' && (
+            <>
+              <div className="text-center mb-6">
+                <h1 className="text-xl font-bold mb-1">Finish Profile</h1>
+                <p className="text-[var(--text-secondary)] text-sm">
+                  Just a few more details
+                </p>
+              </div>
+
+              <form onSubmit={handleProfileSubmit} className="space-y-4">
+                {/* Picture */}
+                <div className="flex justify-center mb-4">
+                  <div className="relative group">
+                    <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] flex items-center justify-center">
+                      {profileData.profile_picture ? (
+                        <img src={profileData.profile_picture} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-10 h-10 text-[var(--text-muted)]" />
+                      )}
+                    </div>
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity">
+                      <CameraIcon className="w-6 h-6" />
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                      <UserIcon className="w-5 h-5" />
+                    </span>
+                    <input
+                      type="text"
+                      name="full_name"
+                      value={profileData.full_name}
+                      onChange={handleProfileChange}
+                      placeholder="Full Name *"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                      <LocationIcon className="w-5 h-5" />
+                    </span>
+                    <input
+                      type="text"
+                      name="location"
+                      value={profileData.location}
+                      onChange={handleProfileChange}
+                      placeholder="Village/City *"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Adhaar */}
+                <div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+                      <IdCardIcon className="w-5 h-5" />
+                    </span>
+                    <input
+                      type="text"
+                      name="adhaar_number"
+                      value={profileData.adhaar_number}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                        setProfileData(prev => ({ ...prev, adhaar_number: val }));
+                      }}
+                      placeholder="Adhaar Number (Optional)"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none text-sm"
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" loading={loading} className="w-full" size="lg">
+                  Complete Setup
+                </Button>
+              </form>
+            </>
+          )}
+
         </div>
       </div>
     </main>
