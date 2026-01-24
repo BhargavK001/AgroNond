@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+    adhaar_number: {
+        type: String,
+        default: '',
+    },
     operating_locations: {
         type: [String], // Array of strings
         default: [],

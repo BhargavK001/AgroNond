@@ -133,6 +133,19 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const profileData = await api.users.getProfile();
+      const updatedUser = { ...profileData.user, ...profileData.profile };
+      setUser(updatedUser);
+      localStorage.setItem('user_data', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Refresh profile error:', error);
+      return null;
+    }
+  }, []);
+
   const value = useMemo(() => ({
     user,
     session: user, // Backward compatibility
@@ -143,7 +156,8 @@ export function AuthProvider({ children }) {
     verifyOtp,
     updateRole,
     signOut,
-  }), [user, loading, signInWithPhone, verifyOtp, updateRole, signOut]);
+    refreshProfile
+  }), [user, loading, signInWithPhone, verifyOtp, updateRole, signOut, refreshProfile]);
 
   return (
     <AuthContext.Provider value={value}>

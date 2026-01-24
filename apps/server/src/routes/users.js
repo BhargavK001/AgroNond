@@ -30,7 +30,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations } = req.body;
+    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations, adhaar_number } = req.body;
 
     const user = req.user;
 
@@ -44,6 +44,7 @@ router.patch('/profile', requireAuth, async (req, res) => {
     if (license_number) user.license_number = license_number;
     if (business_address) user.business_address = business_address;
     if (operating_locations) user.operating_locations = operating_locations;
+    if (adhaar_number) user.adhaar_number = adhaar_number;
 
     await user.save();
 
