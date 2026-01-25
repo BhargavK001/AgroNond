@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import FarmerNavbar from '../../components/FarmerNavbar';
+import FarmerNavbar from '../../components/navigation/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
 import {

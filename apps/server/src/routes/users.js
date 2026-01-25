@@ -124,7 +124,7 @@ router.post('/set-role', requireAuth, async (req, res) => {
   try {
     const { role } = req.body;
 
-    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'];
+    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting', 'lilav'];
     if (!role || !validRoles.includes(role)) {
       return res.status(400).json({
         error: 'Invalid role',

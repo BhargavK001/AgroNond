@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Phone, MapPin, Camera, Save, BadgeCheck, X, Edit3, Mail, Menu, Search, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import NotificationCenter from './NotificationCenter';
+import NotificationCenter from '../layout/NotificationCenter';
 
 // Map of paths to page titles
 const PAGE_TITLES = {

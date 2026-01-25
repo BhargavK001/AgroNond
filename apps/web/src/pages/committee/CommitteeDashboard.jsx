@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion'; // Kept for simple fade-in only
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Wallet, IndianRupee } from 'lucide-react';
-import AnimatedCounter from '../../components/AnimatedCounter';
+import AnimatedCounter from '../../components/ui/AnimatedCounter';
 
 // Mock data
 const mockMetrics = {

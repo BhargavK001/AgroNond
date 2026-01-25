@@ -1,16 +1,54 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# AgroNond Frontend 🖥️
 
-Currently, two official plugins are available:
+The React client application for the AgroNond platform.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠 Tech Stack
 
-## React Compiler
+- **Framework**: React + Vite
+- **Styling**: TailwindCSS
+- **State Management**: React Context + TanStack Query
+- **Routing**: React Router DOM
+- **Animations**: Framer Motion
+- **Icons**: Lucide React
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📂 Directory Structure
 
-## Expanding the ESLint configuration
+```
+src/
+├── components/     # Application components
+│   ├── ui/         # Generic UI (Buttons, Cards)
+│   ├── layout/     # Layouts (Navbar, Sidebar)
+│   ├── navigation/ # Role-based Navbars
+│   └── auth/       # Auth guards
+├── pages/          # Page components by feature
+├── context/        # Global context (Auth)
+├── lib/            # Utilities & API client
+└── assets/         # Images and static files
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 Getting Started
+
+1.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
+
+2.  **Environment Setup**
+    Create `.env.local`:
+    ```env
+    # Optional: Override backend URL
+    # VITE_API_URL=http://localhost:5000/api
+    ```
+
+3.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+
+## 📜 Available Scripts
+
+- `npm run dev`: Start dev server
+- `npm run build`: Build for production
+- `npm run preview`: Preview production build
+- `npm run lint`: Run ESLint

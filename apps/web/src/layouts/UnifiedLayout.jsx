@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import TraderNavbar from '../components/TraderNavbar';
-import CommitteeNavbar from '../components/CommitteeNavbar';
-import AccountingNavbar from '../components/AccountingNavbar';
-import AdminNavbar from '../components/AdminNavbar';
-import LilavNavbar from '../components/LilavNavbar';
-import Sidebar from '../components/Sidebar';
+import TraderNavbar from '../components/navigation/TraderNavbar';
+import CommitteeNavbar from '../components/navigation/CommitteeNavbar';
+import AccountingNavbar from '../components/navigation/AccountingNavbar';
+import AdminNavbar from '../components/navigation/AdminNavbar';
+import LilavNavbar from '../components/navigation/LilavNavbar';
+import Sidebar from '../components/layout/Sidebar';
 
 // Slide animation - smoother feel
 const pageVariants = {

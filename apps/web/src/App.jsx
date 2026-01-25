@@ -8,11 +8,12 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Components
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Loading from './components/Loading';
-import ProtectedRoute from './components/ProtectedRoute';
-import ErrorBoundary from './components/ErrorBoundary';
+// Components
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
+import Loading from './components/ui/Loading';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/public/Home'));
@@ -61,7 +62,7 @@ const AccountingFarmers = lazy(() => import('./pages/committee/AccountingFarmers
 const AccountingReports = lazy(() => import('./pages/committee/AccountingReports'));
 const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
-const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
+// const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -82,11 +83,11 @@ function Layout({ children, hideNav = false, hideFooter = false }) {
 // NEW COMPONENT: DashboardRedirect - Fixes infinite loop
 function DashboardRedirect() {
   const { profile, profileLoading } = useAuth();
-  
+
   if (profileLoading) {
     return <Loading text="Loading dashboard..." />;
   }
-  
+
   // Redirect based on user's role
   const roleRoutes = {
     farmer: '/dashboard/farmer',
@@ -96,7 +97,7 @@ function DashboardRedirect() {
     admin: '/dashboard/admin',
     weight: '/dashboard/weight'
   };
-  
+
   const redirectTo = roleRoutes[profile?.role] || '/login';
   return <Navigate to={redirectTo} replace />;
 }

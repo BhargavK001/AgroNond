@@ -1,66 +1,79 @@
-# System Architecture
 
-AgroNond follows a modern web architecture separating the frontend client, backend API, and database services.
+# Architecture Overview
 
-## Monorepo Structure
+## 1. System Design
 
-The project is organized as a monorepo in the `apps/` directory:
+AgroNond follows a classic Client-Server architecture.
+
+```mermaid
+graph TD
+    Client[React Client (apps/web)]
+    Server[Express API (apps/server)]
+    DB[(MongoDB)]
+
+    Client -- HTTPS/JSON --> Server
+    Server -- Mongoose --> DB
+```
+
+### Key Components
+
+*   **Client**: Single Page Application (SPA) built with React and Vite. Handles all UI/UX, state management (React Query + Context), and routing.
+*   **Server**: RESTful API built with Express. Handles business logic, authentication, data validation, and database interactions.
+*   **Database**: MongoDB. Stores users, agricultural records, and daily rates. Schema enforcement via Mongoose.
+
+## 2. Directory Structure
+
+The project is organized as a Monorepo.
 
 ```
 AgroNond/
 ├── apps/
-│   ├── web/           # React Frontend Client
-│   ├── server/        # Express Backend API
-│   └── mobile/        # React Native Mobile App (Expo)
-└── docs/              # Project Documentation
+│   ├── web/                # Frontend Application
+│   │   ├── src/
+│   │   │   ├── components/ # Reusable UI & Logic components
+│   │   │   │   ├── ui/         # Dumb UI (Buttons, Cards)
+│   │   │   │   ├── layout/     # Layouts (Navbar, Sidebar)
+│   │   │   │   ├── navigation/ # Role-based Navbars
+│   │   │   │   └── auth/       # Auth guards
+│   │   │   ├── pages/      # Route Pages (Dashboard, Public)
+│   │   │   │   ├── farmer/     # Farmer specific pages
+│   │   │   │   ├── trader/     # Trader specific pages
+│   │   │   │   └── ...
+│   │   │   ├── context/    # Global State (AuthContext)
+│   │   │   └── lib/        # Utilities (API helpers)
+│   │   └── ...
+│   │
+│   ├── server/             # Backend Application
+│   │   ├── src/
+│   │   │   ├── models/     # Mongoose Models (User, Record)
+│   │   │   ├── routes/     # API Route Definitions
+│   │   │   ├── middleware/ # Auth & Error Middleware
+│   │   │   └── config/     # DB Connection
+│   │   └── ...
+│   │
+│   └── mobile/             # React Native App (Future)
+│
+├── docs/                   # Documentation
+└── package.json            # Root configuration
 ```
 
-## 1. Frontend Client (`apps/web`)
+## 3. Key Workflows
 
-Built with **React 19** and **Vite**, focusing on performance and user experience.
+### A. Record Lifecycle
+The core data entity is the **Record**, representing a batch of produce.
 
-- **Routing**: `react-router-dom` with protected route guards.
-- **State Management**: Context API (`AuthContext` for user session).
-- **Styling**: TailwindCSS for rapid, responsive UI development.
-- **Auth**: `@supabase/supabase-js` client for direct authentication.
+1.  **Creation (Pending)**: Farmer uploads a record (Vegetable + Approx Qty).
+2.  **Verification (Weighed)**: Weight Staff verifies the actual weight (`official_qty`).
+3.  **Sale (Completed)**: Trader/Lilav Staff assigns a price (`sale_rate`) and buyer (`trader_id`).
+4.  **Payment**: Status is tracked as `Payment Pending` -> `Paid`.
 
-## 2. Backend Server (`apps/server`)
+### B. Authentication
+*   **Method**: Phone Number + OTP (Simulated dev OTP or real SMS provider).
+*   **Session**: JWT (JSON Web Token) stored in localStorage/cookies.
+*   **Protection**: `requireAuth` middleware on server, `ProtectedRoute` wrapper on client.
 
-Built with **Express.js**, acting as a middleware and business logic layer.
-
-- **Role**: Handles complex business logic, admin operations, and data aggregation that shouldn't be exposed to the client.
-- **Auth**: Verifies JWT tokens from the frontend using Supabase Admin SDK.
-- **Security**: Uses `supabase-admin` (Service Role) to bypass RLS when necessary for system operations.
-
-## 3. Database Services (Supabase)
-
-We use **Supabase** as our backend-as-a-service provider.
-
-- **PostgreSQL**: The core relational database.
-- **Authentication**: Handles user identity (Phone/OTP).
-- **Row Level Security (RLS)**: Policies enforced at the database level to ensure users can only access their own data.
-
-### Data Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Web as Web Client
-    participant API as Backend API
-    participant Supabase as Supabase Auth/DB
-
-    User->>Web: Enters Phone Number
-    Web->>Supabase: Request OTP
-    Supabase-->>User: Sends SMS
-    User->>Web: Enters OTP
-    Web->>Supabase: Verify OTP
-    Supabase-->>Web: Returns Session (JWT)
-
-    Note over Web, API: Authenticated Requests
-
-    Web->>API: Request Data (Authorization: Bearer JWT)
-    API->>Supabase: Verify User & Fetch Data
-    Supabase-->>API: Data
-    API-->>Web: JSON Response
-    Web-->>User: Display Data
-```
+## 4. Security Principles
+*   **RBAC**: All sensitive routes check `req.user.role`.
+*   **Validation**: Inputs validated before DB insertion.
+*   **Sanitization**: MongoDB injection protection via Mongoose.
+*   **Environment**: Secrets managed via `.env` files (not committed).

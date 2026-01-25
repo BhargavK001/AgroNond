@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import WeightNavbar from '../../components/WeightNavbar';
+import WeightNavbar from '../../components/navigation/WeightNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   Plus, CheckCircle, Clock, X, Eye, Edit2,

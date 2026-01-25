@@ -2,7 +2,7 @@ import { ShoppingBasket, Wallet, ReceiptText, Clock, TrendingUp } from 'lucide-r
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import AnimatedCounter from '../../components/AnimatedCounter';
+import AnimatedCounter from '../../components/ui/AnimatedCounter';
 import { api } from '../../lib/api';
 import TransactionDetailsModal from '../../components/trader/TransactionDetailsModal';
 import toast from 'react-hot-toast';
