@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 function StatusIndicator({ label, status, ping }) {
   const isHealthy = status === 'ok' || status === 'connected';
@@ -45,25 +45,25 @@ export default function SystemStatus() {
         </svg>
         System Status
       </h3>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* API Status */}
-        <StatusIndicator 
-          label="Backend API" 
-          status={isError ? 'error' : 'ok'} 
-          ping={healthData?.ping} 
+        <StatusIndicator
+          label="Backend API"
+          status={isError ? 'error' : 'ok'}
+          ping={healthData?.ping}
         />
 
         {/* Auth Status */}
-        <StatusIndicator 
-          label="Authentication Service" 
-          status={session ? 'connected' : 'disconnected'} 
+        <StatusIndicator
+          label="Authentication Service"
+          status={session ? 'connected' : 'disconnected'}
         />
-        
+
         {/* Database Status (Inferred from Auth) */}
-        <StatusIndicator 
-          label="Database Connection" 
-          status={session ? 'connected' : 'unknown'} 
+        <StatusIndicator
+          label="Database Connection"
+          status={session ? 'connected' : 'unknown'}
         />
       </div>
 

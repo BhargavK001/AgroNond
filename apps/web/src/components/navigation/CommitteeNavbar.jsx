@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Phone, MapPin, Camera, Save, BadgeCheck, X, Edit3, Mail, Menu, Search, ChevronDown } from 'lucide-react';
 import { toast } from 'react-hot-toast';
