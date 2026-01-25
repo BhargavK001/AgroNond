@@ -4,26 +4,34 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import api from '../lib/api'; // <--- Ensure this imports your API helper
 
 export default function FarmerNavbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // UI States
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Loading state for save button
+
+  // Refs for click outside handling
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Profile State
   const [farmerProfile, setFarmerProfile] = useState({
     name: 'Farmer',
-    farmerId: 'AGR-XXXX',
+    farmerId: 'AGR-PENDING',
     phone: '',
     location: '',
-    photo: '',
+    photo: '', // Base64 string from DB
     initials: 'FK',
   });
 
+  // Edit Form State
   const [editForm, setEditForm] = useState({
     name: '',
     phone: '',
@@ -36,6 +44,54 @@ export default function FarmerNavbar() {
     phone: false,
     location: false,
   });
+
+  // --- 1. FETCH PROFILE ON LOAD ---
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await api.users.getProfile();
+        const profileData = data.user || data.profile || data;
+
+        if (profileData) {
+          setFarmerProfile({
+            name: profileData.name || profileData.full_name || 'Farmer',
+            farmerId: profileData.farmerId || 'AGR-PENDING',
+            phone: profileData.phone || '',
+            location: profileData.location || '',
+            photo: profileData.photo || profileData.profile_picture || '',
+            initials: profileData.initials || 'FK',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        // Fallback to local storage if API fails
+        const saved = localStorage.getItem('farmer-profile');
+        if (saved) setFarmerProfile(JSON.parse(saved));
+      }
+    };
+
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+  useEffect(() => {
+    if (isEditing) {
+      let cleanPhone = farmerProfile.phone || '';
+      if (cleanPhone.startsWith('+91')) {
+        cleanPhone = cleanPhone.slice(3); 
+      } else if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
+        cleanPhone = cleanPhone.slice(2); 
+      }
+
+      setEditForm({
+        name: farmerProfile.name === 'Farmer' ? '' : farmerProfile.name,
+        phone: cleanPhone, 
+        location: farmerProfile.location || '',
+        photo: farmerProfile.photo || '',
+      });
+      setErrors({ name: false, phone: false, location: false });
+    }
+  }, [isEditing, farmerProfile]);
 
   const getInitials = (name) => {
     if (!name || name === 'Farmer') return 'FK';
@@ -52,6 +108,7 @@ export default function FarmerNavbar() {
   const hasCompleteProfile =
     farmerProfile.name !== 'Farmer' && farmerProfile.phone && farmerProfile.location;
 
+  // Mock Notifications
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -81,49 +138,10 @@ export default function FarmerNavbar() {
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  useEffect(() => {
-    const savedProfile = localStorage.getItem('farmer-profile');
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile);
-      profile.initials = getInitials(profile.name);
-      setFarmerProfile(profile);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const savedProfile = localStorage.getItem('farmer-profile');
-      if (savedProfile) {
-        const profile = JSON.parse(savedProfile);
-        profile.initials = getInitials(profile.name);
-        setFarmerProfile(profile);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('farmerProfileUpdated', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('farmerProfileUpdated', handleStorageChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isEditing) {
-      setEditForm({
-        name: farmerProfile.name === 'Farmer' ? '' : farmerProfile.name,
-        phone: farmerProfile.phone || '',
-        location: farmerProfile.location || '',
-        photo: farmerProfile.photo || '',
-      });
-      setErrors({ name: false, phone: false, location: false });
-    }
-  }, [isEditing, farmerProfile]);
-
   const handleLogout = async () => {
     try {
       await signOut();
+      localStorage.removeItem('auth_token');
       localStorage.removeItem('farmer-profile');
       localStorage.removeItem('farmer-records');
       toast.success('Logged out successfully');
@@ -131,7 +149,6 @@ export default function FarmerNavbar() {
     } catch (error) {
       console.error('Logout failed', error);
       toast.error('Failed to log out');
-
       window.location.href = '/';
     }
   };
@@ -159,38 +176,68 @@ export default function FarmerNavbar() {
     const cleaned = phone.replace(/\D/g, '');
     return cleaned.length === 10;
   };
+  const handleSave = async () => {
+    const isNameValid = editForm.name && editForm.name.trim().length > 0;
+    const isPhoneEntered = editForm.phone && editForm.phone.trim().length > 0;
+    const isPhoneValid = !isPhoneEntered || validatePhone(editForm.phone);
 
-  const handleSave = () => {
+    // Location is Optional (Always valid, even if empty)
+    const isLocationValid = true;
+
     const newErrors = {
-      name: !editForm.name.trim(),
-      phone: !editForm.phone.trim() || !validatePhone(editForm.phone),
-      location: !editForm.location.trim(),
+      name: !isNameValid,
+      phone: !isPhoneValid,
+      location: false, // Never show error for location
     };
 
     setErrors(newErrors);
 
-    if (newErrors.name || newErrors.phone || newErrors.location) {
-      toast.error('Please fill all required fields correctly');
+    if (newErrors.name || newErrors.phone) {
+      toast.error('Please enter a valid Name (and 10-digit Phone if provided).');
       return;
     }
 
+    setIsLoading(true);
     try {
-      const updatedProfile = {
-        ...farmerProfile,
+      const initials = getInitials(editForm.name.trim());
+
+      const payload = {
         name: editForm.name.trim(),
         phone: editForm.phone.trim(),
         location: editForm.location.trim(),
         photo: editForm.photo,
-        initials: getInitials(editForm.name.trim()),
+        initials: initials,
       };
 
-      localStorage.setItem('farmer-profile', JSON.stringify(updatedProfile));
-      setFarmerProfile(updatedProfile);
+      // API Call
+      const response = await api.users.updateProfile(payload);
+
+      const userData = response.user || response.profile || response;
+
+      if (!userData) {
+        throw new Error('Invalid response received from server');
+      }
+
+      // Update UI
+      setFarmerProfile({
+        name: userData.name || userData.full_name || payload.name,
+        phone: userData.phone || payload.phone,
+        location: userData.location || payload.location,
+        photo: userData.photo || userData.profile_picture || payload.photo,
+        initials: userData.initials || payload.initials,
+        farmerId: userData.farmerId || farmerProfile.farmerId,
+      });
+
+      localStorage.setItem('farmer-profile', JSON.stringify(userData));
       window.dispatchEvent(new CustomEvent('farmerProfileUpdated'));
-      toast.success('Profile updated successfully! ');
+
+      toast.success('Profile saved successfully!');
       setIsEditing(false);
     } catch (error) {
-      toast.error('Failed to save profile');
+      console.error('Save Profile Error:', error);
+      toast.error('Failed to save profile.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -217,6 +264,7 @@ export default function FarmerNavbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownRef, notificationRef]);
 
+  // --- RENDER HELPERS ---
   const AvatarDisplay = ({ size = 'sm', showBadge = true }) => {
     const sizeClasses = {
       sm: 'w-10 h-10 text-sm',
@@ -250,7 +298,7 @@ export default function FarmerNavbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-2 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left Side - Logo */}
           <div className="flex items-center">
@@ -265,10 +313,11 @@ export default function FarmerNavbar() {
                 </svg>
               </div>
               <div className="flex flex-col">
+                {/* 'hidden sm:block' hides text on mobile, shows on larger screens */}
                 <span className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
                   AgroNond
                 </span>
-                <span className="text-[9px] sm: text-[10px] text-green-600 font-bold uppercase tracking-wider">
+                <span className="hidden sm:block text-[9px] sm:text-[10px] text-green-600 font-bold uppercase tracking-wider">
                   Farmer Panel
                 </span>
               </div>
@@ -309,7 +358,6 @@ export default function FarmerNavbar() {
                         </span>
                       )}
                     </div>
-
                     <div className="max-h-64 sm:max-h-96 overflow-y-auto">
                       {notifications.map((notification) => (
                         <div
@@ -335,7 +383,6 @@ export default function FarmerNavbar() {
                         </div>
                       ))}
                     </div>
-
                     {notifications.length > 0 && (
                       <div className="p-3 bg-gray-50 border-t border-gray-100">
                         <button
@@ -358,10 +405,12 @@ export default function FarmerNavbar() {
                 className="flex items-center gap-1 p-1 pr-2 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <AvatarDisplay size="sm" showBadge={true} />
-                <div className="hidden sm: block text-left ml-1">
+                <div className="hidden md:block text-left ml-1">
+                  {' '}
+                  {/* Changed sm:block to md:block for better spacing */}
                   {hasCompleteProfile ? (
                     <>
-                      <p className="text-sm font-semibold leading-none text-gray-900">
+                      <p className="text-sm font-semibold leading-none text-gray-900 max-w-[100px] truncate">
                         {farmerProfile.name}
                       </p>
                       <p className="text-[10px] text-gray-500 mt-0.5">{farmerProfile.farmerId}</p>
@@ -476,7 +525,6 @@ export default function FarmerNavbar() {
                           exit={{ opacity: 0 }}
                           className="flex flex-col h-full bg-white"
                         >
-                          {/* Header */}
                           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white">
                             <h3 className="font-bold text-slate-900">
                               {hasCompleteProfile ? 'Edit Profile' : 'Create Profile'}
@@ -489,9 +537,7 @@ export default function FarmerNavbar() {
                             </button>
                           </div>
 
-                          {/* Scrollable Content */}
                           <div className="p-6 space-y-5 overflow-y-auto max-h-[400px]">
-                            {/* Photo Upload */}
                             <div className="flex justify-center">
                               <div
                                 className="relative group cursor-pointer"
@@ -523,9 +569,7 @@ export default function FarmerNavbar() {
                               </div>
                             </div>
 
-                            {/* Form Fields */}
                             <div className="space-y-4">
-                              {/* Name */}
                               <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">
                                   Full Name <span className="text-red-500">*</span>
@@ -539,20 +583,16 @@ export default function FarmerNavbar() {
                                       setErrors((prev) => ({ ...prev, name: false }));
                                   }}
                                   placeholder="Enter your full name"
-                                  className={`w-full px-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.name
-                                    ? 'border-red-300 bg-red-50'
-                                    : 'border-slate-200 hover:border-slate-300'
-                                    }`}
+                                  className={`w-full px-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.name ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
                                 />
                                 {errors.name && (
                                   <p className="text-xs text-red-500 mt-1">Name is required</p>
                                 )}
                               </div>
 
-                              {/* Phone */}
                               <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                  Phone Number <span className="text-red-500">*</span>
+                                  Phone Number
                                 </label>
                                 <div className="relative">
                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
@@ -562,18 +602,14 @@ export default function FarmerNavbar() {
                                     type="tel"
                                     value={editForm.phone}
                                     onChange={(e) => {
-                                      const value = e.target.value
-                                        .replace(/\D/g, '')
-                                        .slice(0, 10);
+                                      const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                                       setEditForm((prev) => ({ ...prev, phone: value }));
-                                      if (validatePhone(value))
+                                      // Validate only if value exists
+                                      if (value === '' || validatePhone(value))
                                         setErrors((prev) => ({ ...prev, phone: false }));
                                     }}
                                     placeholder="9876543210"
-                                    className={`w-full pl-10 pr-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.phone
-                                      ? 'border-red-300 bg-red-50'
-                                      : 'border-slate-200 hover:border-slate-300'
-                                      }`}
+                                    className={`w-full pl-10 pr-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.phone ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:border-slate-300'}`}
                                   />
                                 </div>
                                 {errors.phone && (
@@ -583,10 +619,9 @@ export default function FarmerNavbar() {
                                 )}
                               </div>
 
-                              {/* Location */}
                               <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                  Location <span className="text-red-500">*</span>
+                                  Location
                                 </label>
                                 <div className="relative">
                                   <MapPin
@@ -601,24 +636,14 @@ export default function FarmerNavbar() {
                                         ...prev,
                                         location: e.target.value,
                                       }));
-                                      if (e.target.value.trim())
-                                        setErrors((prev) => ({ ...prev, location: false }));
+                                      setErrors((prev) => ({ ...prev, location: false })); // Always valid
                                     }}
                                     placeholder="Village, District"
-                                    className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.location
-                                      ? 'border-red-300 bg-red-50'
-                                      : 'border-slate-200 hover:border-slate-300'
-                                      }`}
+                                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 hover:border-slate-300"
                                   />
                                 </div>
-                                {errors.location && (
-                                  <p className="text-xs text-red-500 mt-1">
-                                    Location is required
-                                  </p>
-                                )}
                               </div>
 
-                              {/* Farmer ID (Read Only) */}
                               <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1">
                                   Farmer ID
@@ -631,7 +656,6 @@ export default function FarmerNavbar() {
                             </div>
                           </div>
 
-                          {/* Footer Actions */}
                           <div className="p-4 border-t border-slate-100 flex gap-3 bg-white">
                             <button
                               onClick={handleCancel}
@@ -641,10 +665,16 @@ export default function FarmerNavbar() {
                             </button>
                             <button
                               onClick={handleSave}
-                              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all"
+                              disabled={isLoading}
+                              className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Save size={16} />
-                              Save Changes
+                              {isLoading ? (
+                                'Saving...'
+                              ) : (
+                                <>
+                                  <Save size={16} /> Save Changes
+                                </>
+                              )}
                             </button>
                           </div>
                         </motion.div>

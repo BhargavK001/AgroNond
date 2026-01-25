@@ -58,6 +58,15 @@ function IdCardIcon({ className }) {
   );
 }
 
+// Role based routes
+const roleRoutes = {
+  farmer: '/dashboard/farmer',
+  trader: '/dashboard/trader',
+  weight: '/dashboard/weight',
+  committee: '/dashboard/committee',
+  lilav: '/dashboard/lilav',
+};
+
 export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -74,7 +83,7 @@ export default function Login() {
     profile_picture: ''
   });
 
-  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut, refreshProfile } = useAuth();
+  const { signInWithPhone, verifyOtp, user, profile, profileLoading, signOut, refreshProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Helper to check if profile is incomplete
@@ -112,22 +121,16 @@ export default function Login() {
       }
 
       // 3. Fully authenticated and complete profile
-      if (profile.role) {
-        if (profile.role === 'farmer') navigate('/dashboard/farmer');
-        else if (profile.role === 'trader') navigate('/dashboard/trader');
-        else if (profile.role === 'admin') {
-          signOut();
-          setError('Access Denied. Admins must login via the Admin Portal.');
-          navigate('/login');
-          return;
-        }
-        else if (profile.role === 'weight') navigate('/dashboard/weight');
-        else if (profile.role === 'committee') navigate('/dashboard/committee');
-        else if (profile.role === 'lilav') navigate('/dashboard/lilav');
-        else navigate('/dashboard/farmer');
-      } else {
-        navigate('/dashboard/farmer');
+      if (profile.role === 'admin') {
+        signOut();
+        setError('Access Denied. Admins must login via the Admin Portal.');
+        navigate('/login');
+        return;
       }
+
+      // Redirect to appropriate dashboard
+      const targetRoute = roleRoutes[profile.role] || '/dashboard/farmer';
+      navigate(targetRoute, { replace: true });
     }
   }, [user, profile, profileLoading, navigate, signOut]);
 
@@ -284,8 +287,8 @@ export default function Login() {
     setOtp(newOtp);
   };
 
-
-  if (user && profileLoading) {
+  // Show loading screen while checking auth state
+  if ((user && profileLoading) || (user && authLoading)) {
     return <PageLoading />;
   }
 

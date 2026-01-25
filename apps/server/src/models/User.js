@@ -13,8 +13,19 @@ const userSchema = new mongoose.Schema({
     },
     full_name: {
         type: String,
-        default: '',
+        default: 'Farmer',
     },
+    
+    // --- Farmer Specific Fields ---
+    farmerId: {
+        type: String,
+        default: 'AGR-PENDING' // e.g., AGR-1234
+    },
+    initials: {
+        type: String,
+        default: 'FK' // Default Avatar initials
+    },
+  
     email: {
         type: String,
         default: '',
@@ -48,7 +59,7 @@ const userSchema = new mongoose.Schema({
         default: '',
     },
     operating_locations: {
-        type: [String], // Array of strings
+        type: [String],
         default: [],
     },
     customId: {
@@ -59,7 +70,35 @@ const userSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
+userSchema.pre('save', async function () { 
+    if (this.role === 'farmer' && (this.farmerId === 'AGR-PENDING' || !this.farmerId)) {
+        try {
+            const currentYear = new Date().getFullYear();
+            const prefix = `FRM-${currentYear}`;
+            const lastFarmer = await this.constructor.findOne({
+                role: 'farmer',
+                farmerId: { $regex: `^${prefix}` }
+            }).sort({ createdAt: -1 });
 
+            let nextSequence = 1;
+
+            if (lastFarmer && lastFarmer.farmerId) {
+                const parts = lastFarmer.farmerId.split('-');
+                const lastSeqNumber = parseInt(parts[2]);
+                
+                if (!isNaN(lastSeqNumber)) {
+                    nextSequence = lastSeqNumber + 1;
+                }
+            }
+            this.farmerId = `${prefix}-${nextSequence.toString().padStart(3, '0')}`;
+        } catch (error) {
+            console.error("Error generating Farmer ID:", error);
+            throw error; 
+        }
+    }
+});
+// Pre-save hook to generate customId
+// Pre-save hook to generate customId
 userSchema.pre('save', async function () {
     if (!this.isNew || this.customId) {
         return;
