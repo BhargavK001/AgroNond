@@ -1,8 +1,11 @@
+import { ShoppingBasket, Wallet, ReceiptText, Clock, TrendingUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import AnimatedCounter from '../../components/AnimatedCounter';
+import AnimatedCounter from '../../components/ui/AnimatedCounter';
 import { api } from '../../lib/api';
+import TransactionDetailsModal from '../../components/trader/TransactionDetailsModal';
+import toast from 'react-hot-toast';
 
 export default function TraderDashboard() {
   const [stats, setStats] = useState({
@@ -14,6 +17,7 @@ export default function TraderDashboard() {
   });
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,12 +39,15 @@ export default function TraderDashboard() {
     fetchData();
   }, []);
 
+  // Calculate Average Rate
+  const avgRate = stats.totalQuantity > 0 ? (stats.totalSpend / stats.totalQuantity) : 0;
+
   // Single Color Theme - Emerald / Slate Icons
   const statCards = [
-    { label: 'Total Purchased', value: stats.totalQuantity, unit: 'kg', icon: '🥗' },
-    { label: 'Total Spend', value: stats.totalSpend, unit: '₹', icon: '💰', isCurrency: true },
-    { label: 'Commission (9%)', value: stats.totalCommission, unit: '₹', icon: '🧾', isCurrency: true },
-    { label: 'Pending Payments', value: stats.pendingPayments, unit: '₹', icon: '⏳', isCurrency: true },
+    { label: 'Total Purchased', value: stats.totalQuantity, unit: 'kg', icon: <ShoppingBasket className="w-6 h-6 text-emerald-600" /> },
+    { label: 'Total Spend', value: stats.totalSpend, unit: '₹', icon: <Wallet className="w-6 h-6 text-emerald-600" />, isCurrency: true },
+    { label: 'Average Rate', value: Math.round(avgRate), unit: '₹/kg', icon: <TrendingUp className="w-6 h-6 text-emerald-600" />, isCurrency: true },
+    { label: 'Pending Payments', value: stats.pendingPayments, unit: '₹', icon: <Clock className="w-6 h-6 text-emerald-600" />, isCurrency: true },
   ];
 
   if (loading) {
@@ -63,6 +70,18 @@ export default function TraderDashboard() {
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Trader Dashboard</h1>
         <p className="text-sm text-slate-500 mt-1">Overview of your market activity and finances</p>
+        <button
+          onClick={async () => {
+            try {
+              await api.trader.seed();
+              toast.success('Dummy data added successfully');
+              window.location.reload();
+            } catch (e) { console.error(e); toast.error('Seeding failed'); }
+          }}
+          className="mt-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+        >
+          Add Dummy Data (Dev)
+        </button>
       </div>
 
       {/* Stats Grid - Professional Clean Look */}
@@ -70,7 +89,9 @@ export default function TraderDashboard() {
         {statCards.map((stat, index) => (
           <div key={index} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:border-emerald-500 transition-all">
             <div className="flex justify-between items-start mb-4">
-              <div className="text-2xl">{stat.icon}</div>
+              <div className="p-2 bg-emerald-50 rounded-lg">
+                {stat.icon}
+              </div>
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{stat.label}</p>
@@ -105,12 +126,12 @@ export default function TraderDashboard() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="px-5 py-3 text-left font-semibold text-slate-600">Date</th>
+                <th className="px-5 py-3 text-left font-semibold text-slate-600">Date & Time</th>
                 <th className="px-5 py-3 text-left font-semibold text-slate-600">Lot ID</th>
                 <th className="px-5 py-3 text-left font-semibold text-slate-600">Crop</th>
                 <th className="px-5 py-3 text-right font-semibold text-slate-600">Qty (kg)</th>
                 <th className="px-5 py-3 text-right font-semibold text-slate-600">Rate/kg</th>
-                <th className="px-5 py-3 text-right font-semibold text-slate-600">Total (inc. 9%)</th>
+                <th className="px-5 py-3 text-right font-semibold text-slate-600">Total Amount</th>
                 <th className="px-5 py-3 text-center font-semibold text-slate-600">Status</th>
                 <th className="px-5 py-3 text-center font-semibold text-slate-600">Action</th>
               </tr>
@@ -125,7 +146,12 @@ export default function TraderDashboard() {
                   return (
                     <tr key={item._id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
-                        {item.sold_at ? new Date(item.sold_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        <div className="font-medium text-slate-900">
+                          {item.sold_at ? new Date(item.sold_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {item.sold_at ? new Date(item.sold_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
                       </td>
                       <td className="px-5 py-4 font-medium text-slate-900">{item.lot_id}</td>
                       <td className="px-5 py-4 text-slate-600">{item.vegetable}</td>
@@ -144,7 +170,27 @@ export default function TraderDashboard() {
                         </span>
                       </td>
                       <td className="px-5 py-4 text-center">
-                        <button className="text-emerald-600 hover:text-emerald-700 font-medium text-xs hover:underline">View</button>
+                        <button
+                          onClick={() => {
+                            // Normalize data for the modal
+                            setSelectedTransaction({
+                              id: item._id,
+                              lotId: item.lot_id,
+                              date: item.sold_at || item.createdAt,
+                              crop: item.vegetable,
+                              quantity: item.official_qty || 0,
+                              rate: item.sale_rate,
+                              grossAmount: item.sale_amount,
+                              commission: item.commission,
+                              totalCost: item.total_amount || (item.sale_amount + item.commission),
+                              status: 'completed',
+                              paymentStatus: item.payment_status || 'pending'
+                            });
+                          }}
+                          className="text-emerald-600 hover:text-emerald-700 font-medium text-xs hover:underline"
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   );
@@ -192,6 +238,12 @@ export default function TraderDashboard() {
           )}
         </div>
       </div>
-    </div>
+
+
+      <TransactionDetailsModal
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
+    </div >
   );
 }

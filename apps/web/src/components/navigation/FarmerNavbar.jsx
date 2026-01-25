@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from '../lib/api'; // <--- Ensure this imports your API helper
+import api from "../../lib/api"; // <--- Ensure this imports your API helper
 
 export default function FarmerNavbar() {
   const { user, signOut } = useAuth();
@@ -78,14 +78,14 @@ export default function FarmerNavbar() {
     if (isEditing) {
       let cleanPhone = farmerProfile.phone || '';
       if (cleanPhone.startsWith('+91')) {
-        cleanPhone = cleanPhone.slice(3); 
+        cleanPhone = cleanPhone.slice(3);
       } else if (cleanPhone.startsWith('91') && cleanPhone.length === 12) {
-        cleanPhone = cleanPhone.slice(2); 
+        cleanPhone = cleanPhone.slice(2);
       }
 
       setEditForm({
         name: farmerProfile.name === 'Farmer' ? '' : farmerProfile.name,
-        phone: cleanPhone, 
+        phone: cleanPhone,
         location: farmerProfile.location || '',
         photo: farmerProfile.photo || '',
       });

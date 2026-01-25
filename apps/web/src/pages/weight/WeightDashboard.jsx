@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import WeightNavbar from '../../components/WeightNavbar';
+import WeightNavbar from '../../components/navigation/WeightNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   Plus, CheckCircle, Clock, X, Eye, Edit2,
   Trash2, Calendar, Package, Scale, MapPin, User, Phone, ChevronDown
 } from 'lucide-react';
+import { api } from '../../lib/api';
 
 // --- MODAL COMPONENT ---
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
@@ -63,49 +64,78 @@ const WeightDashboard = () => {
   // --- FETCH RECORDS ---
   useEffect(() => {
     fetchWeightRecords();
-    fetchMarketData(); // Fetch the source data for dropdown
+    fetchMarketData();
     loadProfile();
   }, []);
 
-  const loadProfile = () => {
-    const prof = localStorage.getItem('weight-profile');
-    if (prof) {
-      const p = JSON.parse(prof);
-      setProfile(p);
-      setProfileForm(p);
-    }
-  };
-
-  // 1. Fetch Weight Records (The list shown in the table)
-  const fetchWeightRecords = async () => {
+  const loadProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('weight_records')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setRecords(data);
+      const data = await api.weight.getProfile();
+      if (data) {
+        setProfile({
+          name: data.full_name || '',
+          phone: data.phone || '',
+          location: data.location || '',
+          initials: data.initials || 'WO',
+          weightId: data.customId || ''
+        });
+        setProfileForm({
+          name: data.full_name || '',
+          phone: data.phone || '',
+          location: data.location || '',
+          initials: data.initials || 'WO'
+        });
       }
     } catch (err) {
-      console.error('Error fetching weight records:', err);
+      console.error('Failed to load profile', err);
     }
   };
 
-  // 2. Fetch Market Data (The source for Auto-Fill)
+  // 1. Fetch Weight Records (Combined Pending + Done)
+  const fetchWeightRecords = async () => {
+    try {
+      const [done, pending] = await Promise.all([
+        api.weight.records(),
+        api.weight.pendingRecords() // "Pending" records are also needed for "Remaining Weight" KPI
+      ]);
+
+      const mapRecord = (r) => ({
+        id: r._id,
+        date: r.createdAt,
+        farmer_id: r.farmer_id?.farmerId || r.farmer_id || 'Unknown',
+        item: r.vegetable,
+        est_weight: r.quantity,
+        updated_weight: r.official_qty,
+        status: r.status,
+        record_ref_id: r._id
+      });
+
+      // Filter out duplicate pending records just in case logic overlaps, 
+      // but usually records() returns 'Weighed'/'Completed' and pendingRecords() returns 'Pending'
+      // We want all of them in the main table logic? 
+      // The original dashboard showed "Pending" records in the list too.
+      const allRecords = [...done, ...pending].map(mapRecord);
+
+      setRecords(allRecords);
+    } catch (err) {
+      console.error('Error fetching weight records:', err);
+      toast.error('Failed to fetch records');
+    }
+  };
+
+  // 2. Fetch Market Data (Source for Auto-Fill)
   const fetchMarketData = async () => {
     try {
-      // Fetch records from the 'records' table
-      const { data, error } = await supabase
-        .from('records')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setMarketData(data);
-      } else {
-        console.error("Error fetching market data:", error);
-      }
+      const data = await api.weight.pendingRecords();
+      // Map to format expected by dropdown
+      const mapped = data.map(r => ({
+        id: r._id,
+        farmer_id: r.farmer_id?.farmerId || 'Unknown',
+        item: r.vegetable,
+        est_qty: r.quantity,
+        date: r.createdAt
+      }));
+      setMarketData(mapped);
     } catch (err) {
       console.error('Error fetching market data:', err);
     }
@@ -162,30 +192,25 @@ const WeightDashboard = () => {
 
   // --- HANDLERS ---
   const handleAddWeight = async () => {
+    // If auto-filled, we have farmerId. If manual... 
+    // The simplified logic requires at least item and farmerId (or a dropdown selection).
     if (!formData.farmerId || !formData.item) {
-      toast.error('Please select a pending lot first');
+      toast.error('Please select a pending lot or enter details');
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('weight_records')
-        .insert([{
-          date: formData.date,
-          farmer_id: formData.farmerId,
-          item: formData.item,
-          est_weight: parseFloat(formData.estWeight),
-          updated_weight: formData.updatedWeight ? parseFloat(formData.updatedWeight) : null,
-          status: formData.updatedWeight ? 'Done' : 'Pending',
-          record_ref_id: formData.recordRefId || null,
-          created_at: new Date().toISOString()
-        }]);
+      await api.weight.createRecord({
+        date: formData.date,
+        farmerId: formData.farmerId,
+        item: formData.item,
+        estWeight: parseFloat(formData.estWeight || 0),
+        updatedWeight: formData.updatedWeight ? parseFloat(formData.updatedWeight) : null,
+        recordRefId: formData.recordRefId // Important for linking to existing pending record
+      });
 
-      if (error) throw error;
+      toast.success('Weight record saved successfully!');
 
-      toast.success('Weight record added successfully!');
-
-      // Reset Form
       setFormData({
         date: new Date().toISOString().split('T')[0],
         recordRefId: '',
@@ -195,10 +220,13 @@ const WeightDashboard = () => {
         updatedWeight: ''
       });
       setModals(prev => ({ ...prev, addWeight: false }));
+
+      // Refresh both lists
       fetchWeightRecords();
+      fetchMarketData();
 
     } catch (err) {
-      toast.error('Failed to add record');
+      toast.error(err.message || 'Failed to add record');
       console.error(err);
     }
   };
@@ -206,21 +234,11 @@ const WeightDashboard = () => {
   const handleUpdateWeight = async () => {
     if (!selectedRecord) return;
 
-    const newWeight = formData.updatedWeight ? parseFloat(formData.updatedWeight) : null;
-    const newStatus = newWeight ? 'Done' : 'Pending';
-
     try {
-      const { error } = await supabase
-        .from('weight_records')
-        .update({
-          date: formData.date,
-          updated_weight: newWeight,
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedRecord.id);
-
-      if (error) throw error;
+      await api.weight.updateRecord(selectedRecord.id, {
+        updatedWeight: formData.updatedWeight ? parseFloat(formData.updatedWeight) : 0,
+        date: formData.date
+      });
 
       toast.success('Weight updated successfully!');
       setModals(prev => ({ ...prev, editWeight: false }));
@@ -236,15 +254,10 @@ const WeightDashboard = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this record?')) {
       try {
-        const { error } = await supabase
-          .from('weight_records')
-          .delete()
-          .eq('id', id);
-
-        if (!error) {
-          toast.success('Record deleted');
-          fetchWeightRecords();
-        }
+        await api.weight.deleteRecord(id);
+        toast.success('Record deleted');
+        fetchWeightRecords();
+        fetchMarketData();
       } catch (err) {
         toast.error('Delete failed');
       }
@@ -263,14 +276,26 @@ const WeightDashboard = () => {
     setModals(prev => ({ ...prev, editWeight: true }));
   };
 
-  const saveProfile = () => {
-    const initials = profileForm.name ? profileForm.name.slice(0, 2).toUpperCase() : 'WO';
-    const updatedProfile = { ...profileForm, initials };
-    setProfile(updatedProfile);
-    localStorage.setItem('weight-profile', JSON.stringify(updatedProfile));
-    setModals(prev => ({ ...prev, editProfile: false }));
-    window.dispatchEvent(new CustomEvent('weightProfileUpdated'));
-    toast.success('Profile updated successfully!');
+  const saveProfile = async () => {
+    try {
+      const data = await api.weight.updateProfile({
+        name: profileForm.name,
+        phone: profileForm.phone,
+        location: profileForm.location
+      });
+
+      setProfile({
+        ...profile,
+        name: data.full_name,
+        phone: data.phone,
+        location: data.location
+      });
+      setModals(prev => ({ ...prev, editProfile: false }));
+      window.dispatchEvent(new CustomEvent('weightProfileUpdated'));
+      toast.success('Profile updated successfully!');
+    } catch (err) {
+      toast.error('Failed to update profile');
+    }
   };
 
   return (

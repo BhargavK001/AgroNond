@@ -8,11 +8,12 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Components
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import Loading from './components/Loading';
-import ProtectedRoute from './components/ProtectedRoute';
-import ErrorBoundary from './components/ErrorBoundary';
+// Components
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
+import Loading from './components/ui/Loading';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import ErrorBoundary from './components/layout/ErrorBoundary';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/public/Home'));
@@ -51,6 +52,7 @@ const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
+const WeightList = lazy(() => import('./pages/committee/WeightList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
 const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
 
@@ -61,7 +63,8 @@ const AccountingFarmers = lazy(() => import('./pages/committee/AccountingFarmers
 const AccountingReports = lazy(() => import('./pages/committee/AccountingReports'));
 const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
-const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
+const CommitteeTransactionHistory = lazy(() => import('./pages/committee/TransactionHistory'));
+// const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -82,11 +85,11 @@ function Layout({ children, hideNav = false, hideFooter = false }) {
 // NEW COMPONENT: DashboardRedirect - Fixes infinite loop
 function DashboardRedirect() {
   const { profile, profileLoading } = useAuth();
-  
+
   if (profileLoading) {
     return <Loading text="Loading dashboard..." />;
   }
-  
+
   // Redirect based on user's role
   const roleRoutes = {
     farmer: '/dashboard/farmer',
@@ -96,7 +99,7 @@ function DashboardRedirect() {
     admin: '/dashboard/admin',
     weight: '/dashboard/weight'
   };
-  
+
   const redirectTo = roleRoutes[profile?.role] || '/login';
   return <Navigate to={redirectTo} replace />;
 }
@@ -177,6 +180,7 @@ function App() {
                   <Route path="farmers/:id" element={<FarmerDetail />} />
                   <Route path="traders" element={<TradersList />} />
                   <Route path="traders/:id" element={<TraderDetail />} />
+                  <Route path="weight" element={<WeightList />} />
                   <Route path="activity" element={<MarketActivity />} />
 
                   <Route path="billing" element={<BillingReports />} />
@@ -190,7 +194,6 @@ function App() {
                   <Route path="accounting/reports" element={<AccountingReports />} />
 
                   {/* Lilav (Auction) Section */}
-                  <Route path="daily-rates" element={<DailyRates />} />
                   <Route path="lilav" element={<LilavEntry />} />
                 </Route>
 
@@ -202,7 +205,7 @@ function App() {
                 }
                 >
                   <Route index element={<LilavEntry />} />
-                  <Route path="rates" element={<DailyRates readOnly={true} />} />
+                  <Route path="transactions" element={<CommitteeTransactionHistory />} />
                 </Route>
 
                 {/* Admin Dashboard */}

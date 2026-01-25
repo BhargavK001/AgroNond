@@ -1,3 +1,4 @@
+
 # AgroNond 🌾
 
 > **Digital Mandi Platform - Connecting Farmers, Traders, and Committees**
@@ -6,54 +7,82 @@ AgroNond is a comprehensive platform designed to digitize agricultural markets (
 
 ## 🚀 Key Features
 
-- **For Farmers**: Real-time market prices, crop listing management, and direct connection with traders.
-- **For Traders**: Discover crops, place bids, and manage purchases digitally.
-- **For Committees**: Digital oversight, dispute resolution, and transaction verification.
-- **Secure Authentication**: Phone-based OTP login with role-based access control.
+- **For Farmers**: Digital record keeping of produce, real-time status tracking (Pending -> Weighed -> Sold), and sales history.
+- **For Traders**: Dashboard to view daily transactions, purchase history, and market stats.
+- **For Committees**: Role-based management, daily rate setting, and dispute resolution.
+- **For Weight Staff**: Digital weighing interface to verify farmer produce.
+- **For Lilav (Auction)**: Real-time auction entry system.
+- **Secure Authentication**: Phone-based OTP login with JWT sessions and strict role-based access control (RBAC).
 
 ## 🛠️ Tech Stack
 
 This project is a **Monorepo** containing:
 
-- **Frontend** (`apps/web`): React 19, Vite, TailwindCSS
+- **Frontend** (`apps/web`): React, Vite, TailwindCSS, Framer Motion
 - **Backend** (`apps/server`): Express.js, Node.js
-- **Database**: Supabase (PostgreSQL) with Row Level Security (RLS)
+- **Database**: MongoDB (with Mongoose ODM)
 - **Mobile** (`apps/mobile`): React Native (Expo) - _In Development_
 
 ## 📚 Documentation
 
 Detailed documentation for developers:
 
-- [**Architecture Overview**](./docs/ARCHITECTURE.md): System design, folder structure, and data flow.
-- [**Authentication System**](./docs/AUTHENTICATION.md): Deep dive into Supabase Auth & Security.
+- [**Architecture Overview**](./docs/ARCHITECTURE.md): System design, folder structure, database schema, and data flow.
+- [**API Reference**](./docs/API.md): Detailed list of backend API endpoints.
+- [**Database Schema**](./docs/DATABASE.md): Explanation of User, Record, and DailyRate models.
 - [**Developer Setup**](./docs/SETUP_DEV.md): Step-by-step guide to run the project locally.
 
 ## ⚡ Quick Start
 
-1. **Install Dependencies**
+### 1. Prerequisites
+- Node.js (v18+)
+- MongoDB (Local or Atlas URL)
 
-   ```bash
-   # Install backend deps
-   cd apps/server && npm install
+### 2. Install Dependencies
 
-   # Install frontend deps
-   cd ../web && npm install
-   ```
+```bash
+# Install backend deps
+cd apps/server
+npm install
 
-2. **Setup Environment**
-   - Create `.env` in `apps/server`
-   - Create `.env.local` in `apps/web`
-   - See [Setup Guide](./docs/SETUP_DEV.md) for required variables.
+# Install frontend deps
+cd ../web
+npm install
+```
 
-3. **Run Locally**
+### 3. Setup Environment
 
-   ```bash
-   # Terminal 1: Backend
-   cd apps/server && npm run dev
+**Backend (`apps/server/.env`):**
+```env
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/agronond
+JWT_SECRET=your_super_secret_key_change_this_in_prod
+FRONTEND_URL=http://localhost:5173
+```
 
-   # Terminal 2: Frontend
-   cd apps/web && npm run dev
-   ```
+**Frontend (`apps/web/.env.local`):**
+```env
+# No specific vars needed for dev defaults, but can override:
+# VITE_API_URL=http://localhost:5000/api
+```
+
+### 4. Run Locally
+
+You will need two terminal windows:
+
+**Terminal 1 (Backend):**
+```bash
+cd apps/server
+npm run dev
+```
+
+**Terminal 2 (Frontend):**
+```bash
+cd apps/web
+npm run dev
+```
+
+Visit `http://localhost:5173` to view the app.
 
 ## 🔒 Security Note
 

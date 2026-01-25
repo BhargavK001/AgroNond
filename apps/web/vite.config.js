@@ -50,11 +50,15 @@ export default defineConfig({
     }),
   ],
   build: {
+    chunkSizeWarningLimit: 1000,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['framer-motion', '@heroui/react', 'lucide-react', 'react-hot-toast'],
+          'data-vendor': ['@tanstack/react-query'],
+          'utils-vendor': ['html2pdf.js']
         },
       },
     },

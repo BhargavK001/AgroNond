@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, User, Phone, MapPin, Camera, Save, BadgeCheck, X, Edit3, Scale, Mail } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import NotificationCenter from './NotificationCenter';
+import NotificationCenter from '../layout/NotificationCenter';
 
 export default function WeightNavbar() {
   const { user, signOut } = useAuth();

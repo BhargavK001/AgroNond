@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Loading, { PageLoading } from './Loading';
+import { useAuth } from '../../context/AuthContext';
+import Loading, { PageLoading } from '../ui/Loading';
 
 /**
  * ProtectedRoute component
@@ -33,8 +33,6 @@ export default function ProtectedRoute({ children, requireRole = null }) {
     }
   }
 
-  // Enforce profile completion for farmers
-  // Don't redirect if we are already on the login page (handled by Login component itself)
   if (profile?.role === 'farmer' && (!profile?.full_name || !profile?.location) && location.pathname !== '/login') {
     return <Navigate to="/login" replace />;
   }

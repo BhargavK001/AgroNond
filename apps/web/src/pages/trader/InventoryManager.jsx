@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const inventoryData = [
   { id: 1, crop: 'Tomato (Hybrid)', batchId: 'TOM-2601', quantity: 850, maxQuantity: 1000, unit: 'kg', location: 'Warehouse A', daysInStorage: 3, status: 'good', price: 42 },
@@ -25,7 +26,7 @@ export default function InventoryManager() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header - Mobile Responsive */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="space-y-3 sm:space-y-4"
@@ -39,7 +40,7 @@ export default function InventoryManager() {
           </span>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800">Inventory</h1>
         </div>
-        
+
         {/* Stats - Responsive Scroll */}
         <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible">
           <div className="flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2.5 bg-white rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 shrink-0">
@@ -53,7 +54,7 @@ export default function InventoryManager() {
               <p className="text-xs sm:text-base font-bold text-slate-800">{totalStock.toLocaleString()} kg</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2.5 bg-white rounded-lg sm:rounded-2xl shadow-sm border border-slate-100 shrink-0">
             <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-emerald-100 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +66,7 @@ export default function InventoryManager() {
               <p className="text-xs sm:text-base font-bold text-emerald-600">₹{totalValue.toLocaleString('en-IN')}</p>
             </div>
           </div>
-          
+
           {lowStockItems > 0 && (
             <div className="flex items-center gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2.5 bg-red-50 rounded-lg sm:rounded-2xl border border-red-100 shrink-0">
               <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-red-100 flex items-center justify-center">
@@ -83,7 +84,7 @@ export default function InventoryManager() {
       </motion.div>
 
       {/* Stock Overview */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -97,9 +98,8 @@ export default function InventoryManager() {
                 <button
                   key={filter}
                   onClick={() => setSelectedFilter(filter)}
-                  className={`relative flex-1 sm:flex-none px-2.5 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-md sm:rounded-xl transition-all ${
-                    selectedFilter === filter ? 'text-white' : 'text-slate-600 hover:text-slate-800'
-                  }`}
+                  className={`relative flex-1 sm:flex-none px-2.5 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-md sm:rounded-xl transition-all ${selectedFilter === filter ? 'text-white' : 'text-slate-600 hover:text-slate-800'
+                    }`}
                 >
                   {selectedFilter === filter && (
                     <motion.div
@@ -112,7 +112,10 @@ export default function InventoryManager() {
                 </button>
               ))}
             </div>
-            <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors">
+            <button
+              onClick={() => toast('Inventory management coming soon!', { icon: '🚧' })}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-colors"
+            >
               + Add
             </button>
           </div>
@@ -135,13 +138,12 @@ export default function InventoryManager() {
                       <h3 className="font-bold text-xs sm:text-base text-slate-800 truncate group-hover:text-emerald-700 transition-colors">{item.crop}</h3>
                       <p className="text-[8px] sm:text-xs text-slate-400 font-mono mt-0.5">{item.batchId}</p>
                     </div>
-                    <span className={`px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[8px] sm:text-xs font-medium shrink-0 ml-1 ${
-                      item.status === 'good' 
-                        ? 'bg-emerald-100 text-emerald-700' 
-                        : item.status === 'low' 
+                    <span className={`px-1.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[8px] sm:text-xs font-medium shrink-0 ml-1 ${item.status === 'good'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : item.status === 'low'
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-red-100 text-red-700'
-                    }`}>
+                      }`}>
                       {item.status === 'good' ? '✓' : '⚠'}
                     </span>
                   </div>
@@ -157,13 +159,12 @@ export default function InventoryManager() {
                           initial={{ width: 0 }}
                           animate={{ width: `${(item.quantity / item.maxQuantity) * 100}%` }}
                           transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.05 }}
-                          className={`h-full rounded-full ${
-                            item.status === 'good' 
-                              ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' 
+                          className={`h-full rounded-full ${item.status === 'good'
+                              ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
                               : item.status === 'low'
                                 ? 'bg-gradient-to-r from-amber-400 to-amber-600'
                                 : 'bg-gradient-to-r from-red-400 to-red-600'
-                          }`}
+                            }`}
                         />
                       </div>
                     </div>

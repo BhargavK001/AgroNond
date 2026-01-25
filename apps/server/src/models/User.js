@@ -8,14 +8,14 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['farmer', 'trader', 'committee', 'admin', 'weight', 'lilav'],
+        enum: ['farmer', 'trader', 'committee', 'admin', 'weight', 'lilav', 'accounting'],
         default: 'farmer', // Default to farmer for new public users
     },
     full_name: {
         type: String,
         default: 'Farmer',
     },
-    
+
     // --- Farmer Specific Fields ---
     farmerId: {
         type: String,
@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'FK' // Default Avatar initials
     },
-  
+
     email: {
         type: String,
         default: '',
@@ -70,7 +70,7 @@ const userSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
-userSchema.pre('save', async function () { 
+userSchema.pre('save', async function () {
     if (this.role === 'farmer' && (this.farmerId === 'AGR-PENDING' || !this.farmerId)) {
         try {
             const currentYear = new Date().getFullYear();
@@ -85,7 +85,7 @@ userSchema.pre('save', async function () {
             if (lastFarmer && lastFarmer.farmerId) {
                 const parts = lastFarmer.farmerId.split('-');
                 const lastSeqNumber = parseInt(parts[2]);
-                
+
                 if (!isNaN(lastSeqNumber)) {
                     nextSequence = lastSeqNumber + 1;
                 }
@@ -93,11 +93,10 @@ userSchema.pre('save', async function () {
             this.farmerId = `${prefix}-${nextSequence.toString().padStart(3, '0')}`;
         } catch (error) {
             console.error("Error generating Farmer ID:", error);
-            throw error; 
+            throw error;
         }
     }
 });
-// Pre-save hook to generate customId
 // Pre-save hook to generate customId
 userSchema.pre('save', async function () {
     if (!this.isNew || this.customId) {
@@ -106,10 +105,13 @@ userSchema.pre('save', async function () {
 
     // Define prefixes for roles
     const prefixes = {
+        test: 'ACC', // Keeping existing ones
         admin: 'ADM',
         trader: 'TRD',
         committee: 'MCDB',
         lilav: 'LLV',
+        accounting: 'ACC',
+        weight: 'WT',
     };
 
     const prefix = prefixes[this.role];

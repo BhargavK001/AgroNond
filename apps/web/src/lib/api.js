@@ -171,6 +171,17 @@ export const api = {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/api/trader/transactions${query ? '?' + query : ''}`, { method: 'GET' });
     },
+    seed: () => apiRequest('/api/trader/seed', { method: 'POST' }),
+  },
+  weight: {
+    stats: () => apiRequest('/api/weight/stats', { method: 'GET' }),
+    records: () => apiRequest('/api/weight/records', { method: 'GET' }),
+    pendingRecords: () => apiRequest('/api/weight/pending', { method: 'GET' }),
+    createRecord: (data) => apiRequest('/api/weight/record', { method: 'POST', body: JSON.stringify(data) }),
+    updateRecord: (id, data) => apiRequest(`/api/weight/record/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteRecord: (id) => apiRequest(`/api/weight/record/${id}`, { method: 'DELETE' }),
+    getProfile: () => apiRequest('/api/weight/profile', { method: 'GET' }),
+    updateProfile: (data) => apiRequest('/api/weight/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
 };
 

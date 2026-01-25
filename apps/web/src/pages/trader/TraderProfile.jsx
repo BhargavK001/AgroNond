@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 
 export default function TraderProfile() {
@@ -73,8 +74,10 @@ export default function TraderProfile() {
       // Ideally AuthContext exposed a reloadUser method, but it reloads on mount.
 
       setIsEditing(false);
+      toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error saving profile:', error);
+      toast.error('Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -348,7 +351,10 @@ export default function TraderProfile() {
         </h3>
 
         <div className="space-y-3">
-          <button className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group">
+          <button
+            onClick={() => toast('Phone number update coming soon', { icon: '📱' })}
+            className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,7 +371,10 @@ export default function TraderProfile() {
             </svg>
           </button>
 
-          <button className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group">
+          <button
+            onClick={() => toast('Data export started... check your email', { icon: '📧' })}
+            className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
                 <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -458,6 +467,10 @@ export default function TraderProfile() {
                   Cancel
                 </button>
                 <button
+                  onClick={() => {
+                    toast.error('Account deletion is restricted for traders with active transactions');
+                    setShowDeleteModal(false);
+                  }}
                   className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
                 >
                   Delete

@@ -14,7 +14,8 @@ import {
     ChevronsLeft,
     ChevronsRight,
     IndianRupee,
-    Gavel
+    Gavel,
+    Scale
 } from 'lucide-react';
 
 const NAV_ITEMS = {
@@ -22,11 +23,10 @@ const NAV_ITEMS = {
         { label: 'Overview', path: '/dashboard/committee', icon: LayoutDashboard },
         { label: 'Farmers', path: '/dashboard/committee/farmers', icon: Users },
         { label: 'Traders', path: '/dashboard/committee/traders', icon: Store },
-        { label: 'Daily Rates', path: '/dashboard/committee/daily-rates', icon: IndianRupee },
+        { label: 'Weight', path: '/dashboard/committee/weight', icon: Scale },
         { label: 'Lilav Entry', path: '/dashboard/committee/lilav', icon: Gavel },
         { label: 'Accounting', path: '/dashboard/committee/accounting', icon: Wallet },
         { label: 'Reports', path: '/dashboard/committee/billing', icon: FileText },
-
     ],
     trader: [
         { label: 'Dashboard', path: '/dashboard/trader', icon: LayoutDashboard },
@@ -41,11 +41,12 @@ const NAV_ITEMS = {
     ],
     lilav: [
         { label: 'Auction Entry', path: '/dashboard/lilav', icon: Gavel },
-        { label: 'Market Rates', path: '/dashboard/lilav/rates', icon: IndianRupee },
+        { label: 'Transactions', path: '/dashboard/lilav/transactions', icon: Receipt },
     ],
     farmer: [],
     weight: [],
 };
+
 
 export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCollapse }) {
     const location = useLocation();

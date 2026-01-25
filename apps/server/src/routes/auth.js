@@ -49,29 +49,36 @@ router.post('/login', async (req, res) => {
  * @access  Public
  */
 router.post('/verify', async (req, res) => {
+    console.log('[Auth Debug] Verify request received body:', req.body);
     const { phone, otp } = req.body;
 
     if (!phone || !otp) {
+        console.log('[Auth Debug] Missing phone or otp');
         return res.status(400).json({ error: 'Phone and OTP are required' });
     }
 
     const storedOtpData = otpStore.get(phone);
+    console.log('[Auth Debug] Stored OTP for', phone, ':', storedOtpData);
 
     if (!storedOtpData) {
+        console.log('[Auth Debug] No OTP found');
         return res.status(400).json({ error: 'No OTP requested for this phone' });
     }
 
     if (Date.now() > storedOtpData.expires) {
+        console.log('[Auth Debug] OTP expired');
         otpStore.delete(phone);
         return res.status(400).json({ error: 'OTP expired' });
     }
 
     if (storedOtpData.otp !== otp) {
+        console.log('[Auth Debug] Invalid OTP. Expected:', storedOtpData.otp, 'Got:', otp);
         return res.status(400).json({ error: 'Invalid OTP' });
     }
 
     // OTP Valid
     otpStore.delete(phone); // Clear OTP
+    console.log('[Auth Debug] OTP Valid. Searching for user...');
 
     try {
         console.log('[Verify] Checking user for phone:', phone);
@@ -85,9 +92,10 @@ router.post('/verify', async (req, res) => {
                 { phone: `+91${rawPhone}` }
             ]
         });
+        console.log('[Auth Debug] Users found:', users.length);
 
         // Smart selection priority: Admin > Committee > Weight > Accounting > Trader > Farmer
-        const rolePriority = { 'admin': 6, 'committee': 5, 'weight': 4, 'accounting': 3, 'trader': 2, 'farmer': 1 };
+        const rolePriority = { 'admin': 6, 'committee': 5, 'weight': 4, 'accounting': 3, 'trader': 2, 'farmer': 1, 'lilav': 1 };
 
         let user = null;
         if (users.length > 0) {

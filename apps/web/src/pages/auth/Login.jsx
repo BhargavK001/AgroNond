@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import Button from '../../components/Button';
-import { PageLoading } from '../../components/Loading';
+import Button from '../../components/ui/Button';
+import { PageLoading } from '../../components/ui/Loading';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 

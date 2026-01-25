@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import ShimmerButton from './ShimmerButton';
 
 // Default background if none provided
-import heroBg from '../assets/hero-farmer.jpg';
+import heroBg from '../../assets/hero-farmer.jpg';
 
 export default function Hero() {
     return (

@@ -1,75 +1,80 @@
+
 # Authentication System
 
-AgroNond uses **Supabase Authentication** with Phone OTP (One-Time Password) as the primary login method. This ensures a passwordless, secure, and mobile-first experience suitable for our user base (farmers, traders).
+AgroNond uses a custom **JWT-based Authentication** system with Phone OTP (One-Time Password) as the primary login method. This ensures a passwordless, secure, and mobile-first experience.
 
 ## Overview
 
-- **Provider**: Supabase Auth (Phone)
+- **Method**: Phone Number + OTP
 - **Token**: JWT (JSON Web Token)
-- **Session Management**: Handled automatically by `@supabase/supabase-js` on the client.
+- **Session Management**: Client-side storage of JWT (localStorage/Cookies)
+- **RBAC**: Strict Role-Based Access Control via Middleware
 
 ## User Roles
 
-We define four distinct roles in the system. Roles are stored in the `public.profiles` table, linked to the `auth.users` table.
+We define distinct roles in the system (`User.role`):
 
-| Role        | Description                                        |
+| Role        | Description |
 | ----------- | -------------------------------------------------- |
-| `farmer`    | Can list crops, view prices, and manage own sales. |
-| `trader`    | Can bid on crops and manage purchases.             |
-| `committee` | Market committee members who oversee operations.   |
-| `admin`     | System administrators.                             |
+| `farmer`    | Uploads produce records, views sales history. |
+| `trader`    | Bids on crops, manages purchases and inventory. |
+| `committee` | Oversees market activity, sets daily rates. |
+| `admin`     | System administration and user management. |
+| `weight`    | Weighs produce (checkpoint 1). |
+| `lilav`     | Conducts auctions/sales (checkpoint 2). |
+| `accounting`| Manages payments. |
 
 ## Implementation Details
 
-### database Schema
+### Database Schema
 
-The `public.profiles` table extends the default Supabase `auth.users` table:
-
-```sql
-CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  phone TEXT UNIQUE,
-  role TEXT CHECK (role IN ('farmer', 'trader', 'committee', 'admin')),
-  full_name TEXT,
-  ...
-);
-```
-
-### Security Policies (RLS)
-
-Row Level Security is enable on `profiles`. Use policies to restrict access:
-
-- **SELECT**: Users can only see their own profile.
-- **UPDATE**: Users can only update their own profile.
-
-### Frontend Auth Flow
-
-1. **Sign In**: `supabase.auth.signInWithOtp({ phone })`
-2. **Verify**: `supabase.auth.verifyOtp({ phone, token })`
-3. **Session**: The session is persisted in `localStorage`.
-4. **Context**: `AuthContext.jsx` provides `user` and `profile` objects to the React app.
-
-### Backend Verification
-
-The backend protects API routes using a middleware (`middleware/auth.js`) that verifies the JWT token sent in the `Authorization` header.
+Users are stored in the **MongoDB** `users` collection.
 
 ```javascript
-// Example Protected Route
-router.get("/profile", requireAuth, async (req, res) => {
-  // req.user is populated with authenticated user data
-});
+{
+  phone: { type: String, unique: true },
+  role: { type: String, default: 'farmer' }, // Enum: [...]
+  full_name: String,
+  // Role specific IDs are auto-generated
+  farmerId: "FRM-2024-001",
+  customId: "TRD-2024-005" 
+}
 ```
 
-## Testing
+### Auth Flow
 
-For development, use Supabase's **Test Phone Numbers** to avoid SMS costs and delays.
+1.  **Request OTP (`POST /api/auth/login`)**:
+    *   Client sends `{ phone: "1234567890" }`.
+    *   Server generates a numeric OTP (e.g., `123456`).
+    *   (Dev Mode) OTP is logged to console. (Prod) OTP sent via SMS gateway.
 
-**Supabase Dashboard configuration:**
-Authentication → Providers → Phone → Test Phone Numbers
+2.  **Verify OTP (`POST /api/auth/verify`)**:
+    *   Client sends `{ phone, otp }`.
+    *   Server validates OTP.
+    *   Server generates **JWT** signed with `JWT_SECRET`.
+    *   Server returns `{ token, user }`.
 
-**Format:** `CountryCode` + `Number` (No `+` sign)
+3.  **Session Persistence**:
+    *   Client stores `token` in `localStorage`.
+    *   AuthContext initializes by verifying this token against `/api/auth/verify` or `/api/users/profile`.
 
-Example:
+### Backend Security
 
-- Log in with: `919876543210`
-- OTP Code: `123456`
+Backend routes are protected using the `requireAuth` middleware.
+
+```javascript
+// src/middleware/auth.js
+const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
+const decoded = jwt.verify(token, process.env.JWT_SECRET);
+req.user = await User.findById(decoded.id);
+```
+
+### Frontend Protection
+
+The `ProtectedRoute` component ensures unauthenticated users cannot access dashboard pages.
+
+```jsx
+<ProtectedRoute requireRole="trader">
+  <TraderDashboard />
+</ProtectedRoute>
+```

@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
-import ScrollReveal, { StaggerContainer, StaggerItem } from '../../components/ScrollReveal';
-import Hero from '../../components/Hero';
-import AnimatedCounter from '../../components/AnimatedCounter';
-import { FeatureGlowCard } from '../../components/GlowCard';
-import { FloatingElement } from '../../components/ParallaxImage';
-import ShimmerButton from '../../components/ShimmerButton';
+import ScrollReveal, { StaggerContainer, StaggerItem } from '../../components/ui/ScrollReveal';
+import Hero from '../../components/ui/Hero';
+import AnimatedCounter from '../../components/ui/AnimatedCounter';
+import { FeatureGlowCard } from '../../components/ui/GlowCard';
+import { FloatingElement } from '../../components/ui/ParallaxImage';
+import ShimmerButton from '../../components/ui/ShimmerButton';
 
 // CTA Background Image
 import ctaBackground from '../../assets/hero-farmer.jpg';

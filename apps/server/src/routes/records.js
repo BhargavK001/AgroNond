@@ -16,7 +16,7 @@ const router = express.Router();
 router.get('/my-records', requireAuth, async (req, res) => {
     try {
         const records = await Record.find({ farmer_id: req.user._id })
-                                    .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 });
         res.json(records);
     } catch (error) {
         console.error('Fetch my records error:', error);
@@ -118,7 +118,7 @@ router.post('/add', requireAuth, async (req, res) => {
 router.put('/:id', requireAuth, async (req, res) => {
     try {
         const { market, quantity } = req.body;
-        
+
         const record = await Record.findOneAndUpdate(
             { _id: req.params.id, farmer_id: req.user._id },
             { market, quantity },
@@ -138,9 +138,9 @@ router.put('/:id', requireAuth, async (req, res) => {
  */
 router.delete('/:id', requireAuth, async (req, res) => {
     try {
-        const record = await Record.findOneAndDelete({ 
+        const record = await Record.findOneAndDelete({
             _id: req.params.id,
-            farmer_id: req.user._id 
+            farmer_id: req.user._id
         });
 
         if (!record) {
@@ -187,17 +187,25 @@ router.patch('/:id/weight', requireAuth, async (req, res) => {
     }
 });
 
+
 /**
  * GET /api/records/weighed/:farmerId
- * Get weighed records for a farmer (ready for auction)
+ * Get weighed records for a farmer (today only for Lilav)
  */
 router.get('/weighed/:farmerId', requireAuth, async (req, res) => {
     try {
         const { farmerId } = req.params;
 
+        // Get start and end of today
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
         const records = await Record.find({
             farmer_id: farmerId,
-            status: 'Weighed'
+            status: 'Weighed',
+            weighed_at: { $gte: todayStart, $lte: todayEnd }
         }).sort({ createdAt: -1 });
 
         res.json(records);

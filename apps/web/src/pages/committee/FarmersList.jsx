@@ -1,42 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Filter, ChevronRight, Phone, Plus } from 'lucide-react';
+import { Search, Filter, ChevronRight, Phone, Plus, Users } from 'lucide-react';
 import AddFarmerModal from '../../components/committee/AddFarmerModal';
-
-// Mock farmer data
-const initialFarmersData = [
-  { id: 1, name: 'Ramesh Kumar', phone: '9876543210', village: 'Khajuri', totalSales: 285000, lastActive: '2026-01-21', totalQuantity: 12500 },
-  { id: 2, name: 'Suresh Patel', phone: '9876543211', village: 'Mandla', totalSales: 198000, lastActive: '2026-01-20', totalQuantity: 8900 },
-  { id: 3, name: 'Mahesh Singh', phone: '9876543212', village: 'Pipariya', totalSales: 342000, lastActive: '2026-01-21', totalQuantity: 15200 },
-  { id: 4, name: 'Dinesh Yadav', phone: '9876543213', village: 'Barela', totalSales: 156000, lastActive: '2026-01-19', totalQuantity: 7200 },
-  { id: 5, name: 'Ganesh Thakur', phone: '9876543214', village: 'Sihora', totalSales: 421000, lastActive: '2026-01-21', totalQuantity: 18900 },
-  { id: 6, name: 'Rajesh Sharma', phone: '9876543215', village: 'Katni', totalSales: 178000, lastActive: '2026-01-18', totalQuantity: 8100 },
-  { id: 7, name: 'Mukesh Verma', phone: '9876543216', village: 'Damoh', totalSales: 265000, lastActive: '2026-01-20', totalQuantity: 11800 },
-  { id: 8, name: 'Naresh Gupta', phone: '9876543217', village: 'Panna', totalSales: 312000, lastActive: '2026-01-21', totalQuantity: 14200 },
-];
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function FarmersList() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [farmers, setFarmers] = useState(initialFarmersData);
+  const [farmers, setFarmers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  // Fetch farmers from API
+  const fetchFarmers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get('/api/users?role=farmer');
+      setFarmers(response || []);
+    } catch (error) {
+      console.error('Failed to fetch farmers:', error);
+      toast.error('Failed to load farmers');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFarmers();
+  }, []);
 
   const filteredFarmers = farmers.filter(farmer => {
     const matchesSearch =
-      farmer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      farmer.village.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      farmer.phone.includes(searchTerm);
-
-    const isActive = farmer.lastActive === '2026-01-21';
-    const matchesFilter =
-      filterStatus === 'all' ? true :
-        filterStatus === 'active' ? isActive :
-          !isActive;
-
-    return matchesSearch && matchesFilter;
+      (farmer.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (farmer.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (farmer.phone || '').includes(searchTerm);
+    return matchesSearch;
   });
 
   const handleAddFarmer = (newFarmer) => {
@@ -93,8 +95,8 @@ export default function FarmersList() {
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${showFilters || filterStatus !== 'all'
-                ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/20'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/20'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
           >
             <Filter className={`w-4 h-4 ${filterStatus !== 'all' ? 'fill-emerald-700' : ''}`} />
@@ -121,8 +123,8 @@ export default function FarmersList() {
                     setShowFilters(false);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm transition-colors ${filterStatus === option.id
-                      ? 'bg-emerald-50 text-emerald-700 font-medium'
-                      : 'text-slate-600 hover:bg-slate-50'
+                    ? 'bg-emerald-50 text-emerald-700 font-medium'
+                    : 'text-slate-600 hover:bg-slate-50'
                     }`}
                 >
                   {option.label}
@@ -134,7 +136,7 @@ export default function FarmersList() {
       </motion.div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -150,8 +152,8 @@ export default function FarmersList() {
           transition={{ delay: 0.2 }}
           className="bg-blue-50 rounded-xl p-4 border border-blue-100"
         >
-          <p className="text-xs text-blue-600 font-medium uppercase">Total Sales</p>
-          <p className="text-2xl font-bold text-blue-700">₹{(farmers.reduce((acc, f) => acc + f.totalSales, 0) / 100000).toFixed(1)}L</p>
+          <p className="text-xs text-blue-600 font-medium uppercase">Registered</p>
+          <p className="text-2xl font-bold text-blue-700">{farmers.length}</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -159,134 +161,136 @@ export default function FarmersList() {
           transition={{ delay: 0.25 }}
           className="bg-purple-50 rounded-xl p-4 border border-purple-100"
         >
-          <p className="text-xs text-purple-600 font-medium uppercase">Total Active</p>
-          <p className="text-2xl font-bold text-purple-700">{farmers.filter(f => f.lastActive === '2026-01-21').length}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3 }}
-          className="bg-amber-50 rounded-xl p-4 border border-amber-100"
-        >
-          <p className="text-xs text-amber-600 font-medium uppercase">Total Inactive</p>
-          <p className="text-2xl font-bold text-amber-700">{farmers.filter(f => f.lastActive !== '2026-01-21').length}</p>
+          <p className="text-xs text-purple-600 font-medium uppercase">Active</p>
+          <p className="text-2xl font-bold text-purple-700">{farmers.length}</p>
         </motion.div>
       </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && filteredFarmers.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12"
+        >
+          <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-slate-700 mb-2">No Farmers Found</h3>
+          <p className="text-slate-500 mb-4">
+            {searchTerm ? 'No results match your search' : 'Add your first farmer to get started'}
+          </p>
+          {!searchTerm && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              Add Farmer
+            </button>
+          )}
+        </motion.div>
+      )}
 
       {/* Farmers Table - Desktop */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-      >
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-100">
-            <tr>
-              <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Farmer</th>
-              <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Contact</th>
-              <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Village</th>
-              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Total Sales</th>
-              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Quantity</th>
-              <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Status</th>
-              <th className="px-6 py-4"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredFarmers.map((farmer, index) => (
-              <motion.tr
-                key={farmer.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + index * 0.03 }}
-                onClick={() => handleFarmerClick(farmer.id)}
-                className="hover:bg-slate-50/50 transition-colors cursor-pointer"
-              >
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold">
-                      {farmer.name[0]}
+      {!isLoading && filteredFarmers.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
+        >
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Farmer</th>
+                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">ID</th>
+                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Contact</th>
+                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Location</th>
+                <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Joined</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredFarmers.map((farmer, index) => (
+                <motion.tr
+                  key={farmer._id || farmer.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + index * 0.03 }}
+                  onClick={() => handleFarmerClick(farmer._id || farmer.id)}
+                  className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                >
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold">
+                        {farmer.initials || (farmer.full_name ? farmer.full_name[0] : 'F')}
+                      </div>
+                      <span className="font-semibold text-slate-800">{farmer.full_name}</span>
                     </div>
-                    <span className="font-semibold text-slate-800">{farmer.name}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Phone className="w-4 h-4" />
-                    <span className="text-sm">{farmer.phone}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-600">{farmer.village}</td>
-                <td className="px-6 py-4 text-right">
-                  <span className="font-bold text-emerald-600">₹{farmer.totalSales.toLocaleString()}</span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <span className="text-sm font-medium text-slate-700">{farmer.totalQuantity.toLocaleString()} kg</span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${farmer.lastActive === '2026-01-21'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-slate-100 text-slate-800'
-                    }`}>
-                    {farmer.lastActive === '2026-01-21' ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <button className="p-2 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors">
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
-      </motion.div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+                      {farmer.farmerId || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-sm">{farmer.phone}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{farmer.location || '-'}</td>
+                  <td className="px-6 py-4 text-right text-sm text-slate-500">
+                    {farmer.createdAt ? new Date(farmer.createdAt).toLocaleDateString() : '-'}
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      )}
 
       {/* Farmers Cards - Mobile */}
-      <div className="md:hidden space-y-3">
-        {filteredFarmers.map((farmer, index) => (
-          <motion.div
-            key={farmer.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 + index * 0.05 }}
-            onClick={() => handleFarmerClick(farmer.id)}
-            className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold">
-                  {farmer.name[0]}
+      {!isLoading && filteredFarmers.length > 0 && (
+        <div className="md:hidden space-y-3">
+          {filteredFarmers.map((farmer, index) => (
+            <motion.div
+              key={farmer._id || farmer.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + index * 0.05 }}
+              onClick={() => handleFarmerClick(farmer._id || farmer.id)}
+              className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold">
+                    {farmer.initials || (farmer.full_name ? farmer.full_name[0] : 'F')}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800">{farmer.full_name}</h3>
+                    <p className="text-xs text-slate-500">{farmer.farmerId || 'Pending ID'}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-slate-800">{farmer.name}</h3>
-                  <p className="text-xs text-slate-500">{farmer.village}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-slate-50 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-slate-400 uppercase">Phone</p>
+                  <p className="font-bold text-sm text-slate-700">{farmer.phone?.slice(-4)}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-slate-400 uppercase">Location</p>
+                  <p className="font-bold text-sm text-slate-700 truncate">{farmer.location || '-'}</p>
                 </div>
               </div>
-              <div className="p-2 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors">
-                <ChevronRight className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-slate-50 rounded-lg p-2 text-center">
-                <p className="text-[10px] text-slate-400 uppercase">Sales</p>
-                <p className="font-bold text-sm text-emerald-600">₹{(farmer.totalSales / 1000).toFixed(0)}K</p>
-              </div>
-              <div className="bg-slate-50 rounded-lg p-2 text-center">
-                <p className="text-[10px] text-slate-400 uppercase">Qty</p>
-                <p className="font-bold text-sm text-slate-700">{(farmer.totalQuantity / 1000).toFixed(1)}T</p>
-              </div>
-              <div className="bg-slate-50 rounded-lg p-2 text-center">
-                <p className="text-[10px] text-slate-400 uppercase">Status</p>
-                <p className={`font-bold text-sm ${farmer.lastActive === '2026-01-21' ? 'text-emerald-600' : 'text-slate-500'
-                  }`}>
-                  {farmer.lastActive === '2026-01-21' ? 'Active' : 'Inactive'}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Add Farmer Modal */}
       <AddFarmerModal
