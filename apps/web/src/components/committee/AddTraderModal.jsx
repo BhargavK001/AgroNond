@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Store, Phone, User, FileText } from 'lucide-react';
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function AddTraderModal({ isOpen, onClose, onAdd }) {
   const [formData, setFormData] = useState({
@@ -30,23 +32,26 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    try {
+      const response = await api.post('/api/users/add', {
+        role: 'trader',
+        full_name: formData.ownerName,
+        phone: formData.phone,
+        business_name: formData.businessName,
+        license_number: formData.licenseNo,
+      });
 
-    const newTrader = {
-      id: Date.now(),
-      businessName: formData.businessName,
-      ownerName: formData.ownerName,
-      phone: formData.phone,
-      licenseNo: formData.licenseNo,
-      totalPurchases: 0,
-      lastActive: new Date().toISOString().split('T')[0],
-      status: 'Active',
-    };
-
-    onAdd(newTrader);
-    setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
-    setIsSubmitting(false);
-    onClose();
+      toast.success('Trader added successfully!');
+      onAdd(response.data.user);
+      setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
+      onClose();
+    } catch (error) {
+      console.error('Failed to add trader:', error);
+      const message = error.response?.data?.error || 'Failed to add trader';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -116,8 +121,8 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       onChange={handleChange}
                       placeholder="Enter business/shop name"
                       className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.businessName
-                          ? 'border-red-300 focus:border-red-500 bg-red-50/50'
-                          : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
+                        ? 'border-red-300 focus:border-red-500 bg-red-50/50'
+                        : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
                         } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                     />
                   </div>
@@ -138,8 +143,8 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       onChange={handleChange}
                       placeholder="Enter owner's full name"
                       className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.ownerName
-                          ? 'border-red-300 focus:border-red-500 bg-red-50/50'
-                          : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
+                        ? 'border-red-300 focus:border-red-500 bg-red-50/50'
+                        : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
                         } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                     />
                   </div>
@@ -161,8 +166,8 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       placeholder="10-digit mobile number"
                       maxLength={10}
                       className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.phone
-                          ? 'border-red-300 focus:border-red-500 bg-red-50/50'
-                          : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
+                        ? 'border-red-300 focus:border-red-500 bg-red-50/50'
+                        : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
                         } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
                     />
                   </div>

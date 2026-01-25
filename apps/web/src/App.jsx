@@ -52,6 +52,7 @@ const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
+const WeightList = lazy(() => import('./pages/committee/WeightList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
 const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
 
@@ -62,6 +63,7 @@ const AccountingFarmers = lazy(() => import('./pages/committee/AccountingFarmers
 const AccountingReports = lazy(() => import('./pages/committee/AccountingReports'));
 const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
+const CommitteeTransactionHistory = lazy(() => import('./pages/committee/TransactionHistory'));
 // const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
@@ -178,6 +180,7 @@ function App() {
                   <Route path="farmers/:id" element={<FarmerDetail />} />
                   <Route path="traders" element={<TradersList />} />
                   <Route path="traders/:id" element={<TraderDetail />} />
+                  <Route path="weight" element={<WeightList />} />
                   <Route path="activity" element={<MarketActivity />} />
 
                   <Route path="billing" element={<BillingReports />} />
@@ -191,7 +194,6 @@ function App() {
                   <Route path="accounting/reports" element={<AccountingReports />} />
 
                   {/* Lilav (Auction) Section */}
-                  <Route path="daily-rates" element={<DailyRates />} />
                   <Route path="lilav" element={<LilavEntry />} />
                 </Route>
 
@@ -203,7 +205,7 @@ function App() {
                 }
                 >
                   <Route index element={<LilavEntry />} />
-                  <Route path="rates" element={<DailyRates readOnly={true} />} />
+                  <Route path="transactions" element={<CommitteeTransactionHistory />} />
                 </Route>
 
                 {/* Admin Dashboard */}

@@ -120,6 +120,79 @@ router.patch('/profile', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/users/add
+ * Add a new user (farmer, trader, weight) - for committee use
+ */
+router.post('/add', requireAuth, async (req, res) => {
+  try {
+    const { role, full_name, phone, location, adhaar_number, business_name, gst_number, license_number, business_address } = req.body;
+
+    // Validate required fields
+    if (!role || !full_name || !phone) {
+      return res.status(400).json({ error: 'Role, full name, and phone are required' });
+    }
+
+    // Validate role
+    const allowedRoles = ['farmer', 'trader', 'weight'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Allowed: farmer, trader, weight' });
+    }
+
+    // Check if phone already exists
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(400).json({ error: 'A user with this phone number already exists' });
+    }
+
+    // Create user object
+    const userData = {
+      role,
+      full_name,
+      phone,
+      location: location || '',
+      adhaar_number: adhaar_number || '',
+    };
+
+    // Add trader-specific fields
+    if (role === 'trader') {
+      userData.business_name = business_name || '';
+      userData.gst_number = gst_number || '';
+      userData.license_number = license_number || '';
+      userData.business_address = business_address || '';
+    }
+
+    // Generate initials
+    const nameParts = full_name.trim().split(' ');
+    if (nameParts.length >= 2) {
+      userData.initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+    } else if (nameParts.length === 1) {
+      userData.initials = nameParts[0].slice(0, 2).toUpperCase();
+    }
+
+    const user = await User.create(userData);
+
+    res.status(201).json({
+      message: 'User added successfully',
+      user: {
+        id: user._id,
+        customId: user.customId,
+        farmerId: user.farmerId,
+        phone: user.phone,
+        role: user.role,
+        full_name: user.full_name,
+        location: user.location,
+        initials: user.initials,
+        business_name: user.business_name,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Add user error:', error);
+    res.status(500).json({ error: 'Failed to add user', details: error.message });
+  }
+});
+
 router.post('/set-role', requireAuth, async (req, res) => {
   try {
     const { role } = req.body;

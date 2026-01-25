@@ -105,11 +105,13 @@ userSchema.pre('save', async function () {
 
     // Define prefixes for roles
     const prefixes = {
+        test: 'ACC', // Keeping existing ones
         admin: 'ADM',
         trader: 'TRD',
         committee: 'MCDB',
         lilav: 'LLV',
         accounting: 'ACC',
+        weight: 'WT',
     };
 
     const prefix = prefixes[this.role];

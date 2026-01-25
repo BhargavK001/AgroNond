@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from '../lib/api'; // <--- Ensure this imports your API helper
+import api from "../../lib/api"; // <--- Ensure this imports your API helper
 
 export default function FarmerNavbar() {
   const { user, signOut } = useAuth();

@@ -18,6 +18,7 @@ import financeRouter from './routes/finance.js';
 import statusRouter from './routes/status.js';
 import dailyRatesRouter from './routes/dailyRates.js';
 import traderRouter from './routes/trader.js';
+import weightRouter from './routes/weight.js';
 import connectDB from './config/db.js';
 
 // Connect to Database
@@ -56,6 +57,7 @@ app.use('/api/finance', financeRouter);
 app.use('/api/status', statusRouter);
 app.use('/api/daily-rates', dailyRatesRouter);
 app.use('/api/trader', traderRouter);
+app.use('/api/weight', weightRouter);
 
 // 404 handler
 app.use((req, res) => {
