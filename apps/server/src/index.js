@@ -26,15 +26,36 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for cloud deployments
+
+// Parse allowed origins from environment (supports comma-separated list)
+const getAllowedOrigins = () => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  // Support comma-separated origins for multi-environment CORS
+  return frontendUrl.split(',').map(url => url.trim());
+};
+
+// CORS configuration with multiple origin support
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+};
 
 // Middleware
 app.use(helmet()); // Security headers
 app.use(compression()); // Gzip compression
-app.use(morgan('dev')); // Logger
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true,
-}));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Logger
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -74,7 +95,9 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 AgroNond Server running on http://localhost:${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 AgroNond Server running on http://${HOST}:${PORT}`);
+  console.log(`📡 Health check: http://${HOST}:${PORT}/api/health`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Allowed origins: ${getAllowedOrigins().join(', ')}`);
 });
