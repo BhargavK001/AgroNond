@@ -7,8 +7,8 @@ AgroNond follows a classic Client-Server architecture.
 
 ```mermaid
 graph TD
-    Client[React Client (apps/web)]
-    Server[Express API (apps/server)]
+    Client["React Client (apps/web)"]
+    Server["Express API (apps/server)"]
     DB[(MongoDB)]
 
     Client -- HTTPS/JSON --> Server
