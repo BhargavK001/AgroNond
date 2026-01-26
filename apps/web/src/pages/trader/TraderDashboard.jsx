@@ -139,9 +139,10 @@ export default function TraderDashboard() {
             <tbody className="divide-y divide-slate-100">
               {transactionHistory.length > 0 ? (
                 transactionHistory.map((item) => {
-                  const status = item.payment_status ? item.payment_status.charAt(0).toUpperCase() + item.payment_status.slice(1) : 'Pending';
-                  // item.sale_amount is base. item.total_amount is base+commission
-                  const total = item.total_amount || (item.sale_amount + item.commission);
+                  const status = item.trader_payment_status || 'Pending';
+                  const baseAmount = item.sale_amount || 0;
+                  const commission = item.trader_commission || 0;
+                  const total = item.net_receivable_from_trader || (baseAmount + commission);
 
                   return (
                     <tr key={item._id} className="hover:bg-slate-50/50 transition-colors">
@@ -159,7 +160,7 @@ export default function TraderDashboard() {
                       <td className="px-5 py-4 text-right text-slate-600">₹{item.sale_rate}</td>
                       <td className="px-5 py-4 text-right">
                         <div className="font-bold text-slate-900">₹{Math.round(total).toLocaleString('en-IN')}</div>
-                        <div className="text-[10px] text-slate-400">Base + 9%</div>
+                        <div className="text-[10px] text-slate-400">Base: {baseAmount} + Comm: {commission}</div>
                       </td>
                       <td className="px-5 py-4 text-center">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
@@ -180,11 +181,11 @@ export default function TraderDashboard() {
                               crop: item.vegetable,
                               quantity: item.official_qty || 0,
                               rate: item.sale_rate,
-                              grossAmount: item.sale_amount,
-                              commission: item.commission,
-                              totalCost: item.total_amount || (item.sale_amount + item.commission),
+                              grossAmount: baseAmount,
+                              commission: commission,
+                              totalCost: total,
                               status: 'completed',
-                              paymentStatus: item.payment_status || 'pending'
+                              paymentStatus: status
                             });
                           }}
                           className="text-emerald-600 hover:text-emerald-700 font-medium text-xs hover:underline"

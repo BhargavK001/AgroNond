@@ -57,6 +57,7 @@ const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
+const PaymentManagement = lazy(() => import('./pages/committee/PaymentManagement'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
 const WeightList = lazy(() => import('./pages/committee/WeightList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
@@ -187,7 +188,9 @@ function App() {
                   <Route path="activity" element={<MarketActivity />} />
 
                   <Route path="billing" element={<BillingReports />} />
+                  <Route path="billing" element={<BillingReports />} />
                   <Route path="cashflow" element={<CashFlow />} />
+                  <Route path="payments" element={<PaymentManagement />} />
 
                   {/* Moved Accounting Section */}
                   <Route path="accounting" element={<AccountingOverview />} />

@@ -103,16 +103,16 @@ export default function TransactionDetailsModal({ transaction, onClose }) {
                         {/* Billing Info */}
                         <div className="space-y-3 pt-2">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Gross Amount</span>
+                                <span className="text-slate-600">Base Amount</span>
                                 <span className="font-semibold text-slate-800">₹{transaction.grossAmount?.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Commission</span>
-                                <span className="font-medium text-violet-600">₹{transaction.commission?.toLocaleString('en-IN')}</span>
+                                <span className="text-slate-600">Market Commission (9%)</span>
+                                <span className="font-medium text-emerald-600">+₹{transaction.commission?.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="h-px bg-slate-100 my-2" />
                             <div className="flex justify-between text-base">
-                                <span className="font-bold text-slate-800">Total Cost</span>
+                                <span className="font-bold text-slate-800">Total Payable</span>
                                 <span className="font-bold text-emerald-600">₹{transaction.totalCost?.toLocaleString('en-IN')}</span>
                             </div>
                         </div>

@@ -54,10 +54,10 @@ export default function TraderTransactions() {
           quantity: t.official_qty,
           rate: t.sale_rate,
           grossAmount: t.sale_amount,
-          commission: t.commission,
-          totalCost: t.total_amount || (t.sale_amount + t.commission),
+          commission: t.trader_commission || Math.round((t.sale_amount || 0) * 0.09),
+          totalCost: t.net_receivable_from_trader || t.total_amount || (t.sale_amount + (t.trader_commission || Math.round((t.sale_amount || 0) * 0.09))),
           status: 'completed',
-          paymentStatus: t.payment_status || 'pending'
+          paymentStatus: t.trader_payment_status || t.payment_status || 'pending'
         }));
 
         setTransactions(formattedData);

@@ -12,15 +12,79 @@ const router = express.Router();
 /**
  * GET /api/records/my-records
  * Fetch all records for the logged-in farmer
+ * PRIVACY: Exclude trader details
  */
 router.get('/my-records', requireAuth, async (req, res) => {
     try {
         const records = await Record.find({ farmer_id: req.user._id })
+            .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission') // Exclude trader info
             .sort({ createdAt: -1 });
         res.json(records);
     } catch (error) {
         console.error('Fetch my records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });
+    }
+});
+
+/**
+ * GET /api/records/my-purchases
+ * Fetch all purchases for the logged-in trader
+ * PRIVACY: Exclude farmer details
+ */
+router.get('/my-purchases', requireAuth, async (req, res) => {
+    try {
+        const records = await Record.find({ trader_id: req.user._id, status: 'Completed' })
+            .select('-farmer_id -farmer_payment_ref -farmer_payment_mode -farmer_payment_status -net_payable_to_farmer -farmer_commission') // Exclude farmer info
+            .sort({ sold_at: -1 });
+        res.json(records);
+    } catch (error) {
+        console.error('Fetch my purchases error:', error);
+        res.status(500).json({ error: 'Failed to fetch purchases' });
+    }
+});
+
+/**
+ * PATCH /api/records/:id/payment-status
+ * Update payment status (Committee Only)
+ */
+router.patch('/:id/payment-status', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { type, status, mode, ref } = req.body; // type: 'farmer' or 'trader'
+
+        if (!['farmer', 'trader'].includes(type)) {
+            return res.status(400).json({ error: 'Invalid payment type' });
+        }
+
+        const updateField = type === 'farmer' ? 'farmer_payment_status' : 'trader_payment_status';
+        const modeField = type === 'farmer' ? 'farmer_payment_mode' : 'trader_payment_mode';
+        const refField = type === 'farmer' ? 'farmer_payment_ref' : 'trader_payment_ref';
+        const dateField = type === 'farmer' ? 'farmer_payment_date' : 'trader_payment_date';
+
+        const updateData = {
+            [updateField]: status,
+            [modeField]: mode || '',
+            [refField]: ref || ''
+        };
+
+        if (status === 'Paid') {
+            updateData[dateField] = new Date();
+        }
+
+        const record = await Record.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true }
+        );
+
+        if (!record) {
+            return res.status(404).json({ error: 'Record not found' });
+        }
+
+        res.json(record);
+    } catch (error) {
+        console.error('Update payment status error:', error);
+        res.status(500).json({ error: 'Failed to update payment status' });
     }
 });
 
@@ -259,6 +323,14 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
 
         const sale_amount = record.official_qty * sale_rate;
 
+        // Calculate Commissions
+        const farmer_commission = Math.round(sale_amount * 0.04);
+        const trader_commission = Math.round(sale_amount * 0.09);
+
+        // Calculate Net Amounts
+        const net_payable_to_farmer = sale_amount - farmer_commission;
+        const net_receivable_from_trader = sale_amount + trader_commission;
+
         const updatedRecord = await Record.findByIdAndUpdate(
             id,
             {
@@ -267,7 +339,20 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
                 sale_amount,
                 status: 'Completed',
                 sold_by: req.user._id,
-                sold_at: new Date()
+                sold_at: new Date(),
+
+                // Commission & Billing info
+                farmer_commission,
+                trader_commission,
+                commission: farmer_commission + trader_commission, // Total commission for stats
+
+                net_payable_to_farmer,
+                net_receivable_from_trader,
+                total_amount: net_receivable_from_trader, // For general "Total Amount" ref
+
+                // Initialize payment status
+                farmer_payment_status: 'Pending',
+                trader_payment_status: 'Pending'
             },
             { new: true }
         )

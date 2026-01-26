@@ -1,9 +1,68 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
-import { motion } from 'framer-motion';
-import { FileText, Download, Filter, Calendar, Users, ShoppingBag } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Download, Filter, Calendar, Users, ShoppingBag, X, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-// State management
+// Payment Modal Component
+const PaymentModal = ({ isOpen, onClose, onSubmit, type, amount, name }) => {
+  const [mode, setMode] = useState('Cash');
+  const [ref, setRef] = useState('');
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-slate-800">
+            {type === 'pay' ? 'Pay Farmer' : 'Receive Payment'}
+          </h3>
+          <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-slate-600" /></button>
+        </div>
+
+        <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+          <p className="text-xs text-slate-500 mb-1">{name}</p>
+          <p className="text-2xl font-bold text-slate-900">₹{amount.toLocaleString()}</p>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Mode</label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option>Cash</option>
+              <option>Cheque</option>
+              <option>Online / UPI</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Reference / Cheque No.</label>
+            <input
+              type="text"
+              value={ref}
+              onChange={(e) => setRef(e.target.value)}
+              placeholder="Optional"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          <button
+            onClick={() => onSubmit({ mode, ref })}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-lg mt-2"
+          >
+            Confirm {type === 'pay' ? 'Payment' : 'Receipt'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main Component
 export default function BillingReports() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,6 +70,10 @@ export default function BillingReports() {
   const [dateFilter, setDateFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Payment Modal State
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     fetchRecords();
@@ -38,12 +101,29 @@ export default function BillingReports() {
   };
 
   const processRecord = (record) => {
-    const baseAmount = record.sale_amount || 0;
-    const totalCommission = record.commission || 0;
+    // Backend now provides explicit fields, logic simplified but kept robust
+    // Fallback to calculation if fields missing (backward compatibility)
 
-    // Split commission logic (Mock split: 4 parts Farmer, 9 parts Trader)
-    const farmerComm = Math.round(totalCommission * (4 / 13));
-    const traderComm = Math.round(totalCommission * (9 / 13));
+    // Check if new API fields exist
+    const hasNewFields = record.net_payable_to_farmer !== undefined;
+
+    const baseAmount = record.sale_amount || 0;
+
+    let farmerComm, traderComm, netFarmer, netTrader, paymentStatus;
+
+    if (hasNewFields) {
+      farmerComm = record.farmer_commission;
+      traderComm = record.trader_commission;
+      netFarmer = record.net_payable_to_farmer;
+      netTrader = record.net_receivable_from_trader;
+    } else {
+      // Fallback Calc
+      const totalCommission = record.commission || 0;
+      farmerComm = Math.round(totalCommission * (4 / 13));
+      traderComm = Math.round(totalCommission * (9 / 13));
+      netFarmer = baseAmount - farmerComm;
+      netTrader = baseAmount + traderComm;
+    }
 
     if (activeTab === 'farmers') {
       return {
@@ -54,8 +134,9 @@ export default function BillingReports() {
         qty: record.qtySold || record.quantity,
         baseAmount: baseAmount,
         commission: farmerComm, // Deducted
-        finalAmount: baseAmount - farmerComm, // Net Payable
-        status: record.payment_status === 'paid' ? 'Paid' : 'Pending'
+        finalAmount: netFarmer, // Net Payable
+        status: record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'), // Use specific status
+        type: 'pay'
       };
     } else {
       return {
@@ -66,9 +147,38 @@ export default function BillingReports() {
         qty: record.qtySold || record.quantity,
         baseAmount: baseAmount,
         commission: traderComm, // Added
-        finalAmount: baseAmount + traderComm, // Total Receivable
-        status: record.payment_status === 'paid' ? 'Paid' : 'Pending'
+        finalAmount: netTrader, // Total Receivable
+        status: record.trader_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
+        type: 'receive'
       };
+    }
+  };
+
+  const handlePayment = (record) => {
+    if (record.status === 'Paid') return;
+    setSelectedRecord(record);
+    setShowPaymentModal(true);
+  };
+
+  const confirmPayment = async ({ mode, ref }) => {
+    if (!selectedRecord) return;
+
+    try {
+      if (selectedRecord.type === 'pay') {
+        // Pay Farmer
+        await api.post(`/api/finance/pay-farmer/${selectedRecord.id}`, { mode, ref });
+        toast.success(`Paid ₹${selectedRecord.finalAmount} to ${selectedRecord.name}`);
+      } else {
+        // Receive from Trader
+        await api.post(`/api/finance/receive-trader/${selectedRecord.id}`, { mode, ref });
+        toast.success(`Received ₹${selectedRecord.finalAmount} from ${selectedRecord.name}`);
+      }
+      setShowPaymentModal(false);
+      setSelectedRecord(null);
+      fetchRecords(); // Refresh data
+    } catch (error) {
+      console.error(error);
+      toast.error("Transaction failed");
     }
   };
 
@@ -82,13 +192,22 @@ export default function BillingReports() {
 
   return (
     <div className="space-y-6">
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        type={selectedRecord?.type}
+        amount={selectedRecord?.finalAmount || 0}
+        name={selectedRecord?.name}
+        onSubmit={confirmPayment}
+      />
+
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Billing Reports</h1>
-        <p className="text-sm sm:text-base text-slate-500 mt-1">View billing reports for farmers and traders</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Billing Management</h1>
+        <p className="text-sm sm:text-base text-slate-500 mt-1">Manage payments for farmers and traders</p>
       </motion.div>
 
       {/* Tab Switcher */}
@@ -106,7 +225,7 @@ export default function BillingReports() {
             }`}
         >
           <Users className="w-4 h-4" />
-          Farmer Reports
+          Pay Farmers
         </button>
         <button
           onClick={() => setActiveTab('traders')}
@@ -116,7 +235,7 @@ export default function BillingReports() {
             }`}
         >
           <ShoppingBag className="w-4 h-4" />
-          Trader Reports
+          Receive from Traders
         </button>
       </motion.div>
 
@@ -128,7 +247,7 @@ export default function BillingReports() {
           transition={{ delay: 0.15 }}
           className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm"
         >
-          <p className="text-xs text-slate-500 font-medium uppercase mb-1">Base Amount</p>
+          <p className="text-xs text-slate-500 font-medium uppercase mb-1">Base Sales Amount</p>
           <p className="text-2xl font-bold text-slate-800">₹{totalBase.toLocaleString()}</p>
         </motion.div>
         <motion.div
@@ -137,7 +256,7 @@ export default function BillingReports() {
           transition={{ delay: 0.2 }}
           className={`bg-${commissionColor}-50 rounded-xl p-4 border border-${commissionColor}-100`}
         >
-          <p className={`text-xs text-${commissionColor}-600 font-medium uppercase mb-1`}>Commission ({commissionLabel})</p>
+          <p className={`text-xs text-${commissionColor}-600 font-medium uppercase mb-1`}>Market Commission ({commissionLabel})</p>
           <p className={`text-2xl font-bold text-${commissionColor}-700`}>₹{totalCommission.toLocaleString()}</p>
         </motion.div>
         <motion.div
@@ -147,7 +266,7 @@ export default function BillingReports() {
           className="bg-emerald-50 rounded-xl p-4 border border-emerald-100"
         >
           <p className="text-xs text-emerald-600 font-medium uppercase mb-1">
-            {activeTab === 'farmers' ? 'Net Payable' : 'Total Receivable'}
+            {activeTab === 'farmers' ? 'Total Payable to Farmers' : 'Total Receivable from Traders'}
           </p>
           <p className="text-2xl font-bold text-emerald-700">₹{totalFinal.toLocaleString()}</p>
         </motion.div>
@@ -197,7 +316,7 @@ export default function BillingReports() {
               <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Comm ({commissionLabel})</th>
               <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Final Amt</th>
               <th className="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider px-6 py-4">Status</th>
-              <th className="px-6 py-4"></th>
+              <th className="px-6 py-4 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -208,6 +327,7 @@ export default function BillingReports() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.4 + index * 0.03 }}
                 className="hover:bg-slate-50/50 transition-colors"
+                onClick={() => handlePayment(item)}
               >
                 <td className="px-6 py-4 text-sm text-slate-600">
                   {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
@@ -233,10 +353,16 @@ export default function BillingReports() {
                     {item.status}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <button className="p-2 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors">
-                    <FileText className="w-5 h-5" />
-                  </button>
+                <td className="px-6 py-4 text-center">
+                  {item.status !== 'Paid' && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
+                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition"
+                    >
+                      {activeTab === 'farmers' ? 'Pay' : 'Receive'}
+                    </button>
+                  )}
+                  {item.status === 'Paid' && <CheckCircle size={18} className="text-emerald-500 mx-auto" />}
                 </td>
               </motion.tr>
             ))}
@@ -253,6 +379,7 @@ export default function BillingReports() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 + index * 0.05 }}
             className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm"
+            onClick={() => handlePayment(item)}
           >
             <div className="flex justify-between items-start mb-3">
               <div>
@@ -290,6 +417,14 @@ export default function BillingReports() {
                 <p className="font-bold text-sm text-emerald-700">₹{(item.finalAmount / 1000).toFixed(1)}K</p>
               </div>
             </div>
+            {item.status !== 'Paid' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
+                className="w-full mt-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg"
+              >
+                {activeTab === 'farmers' ? 'Pay Now' : 'Mark Received'}
+              </button>
+            )}
           </motion.div>
         ))}
       </div>

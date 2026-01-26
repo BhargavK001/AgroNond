@@ -2,9 +2,74 @@ import express from 'express';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
-
-// Middleware to require auth (finance might be accessible to admin and accountant)
+// Middleware to require auth
 router.use(requireAuth);
+
+/**
+ * POST /api/finance/pay-farmer/:id
+ * Process payment to farmer
+ */
+router.post('/pay-farmer/:id', async (req, res) => {
+    try {
+        const { mode, ref, date } = req.body;
+
+        if (!mode) return res.status(400).json({ error: 'Payment mode required' });
+
+        const record = await Record.findByIdAndUpdate(
+            req.params.id,
+            {
+                farmer_payment_status: 'Paid',
+                farmer_payment_mode: mode,
+                farmer_payment_ref: ref,
+                farmer_payment_date: date || new Date(),
+                // If the overall payment is done when both are paid, check that?
+                // For now, let's keep them independent.
+                payment_status: 'pending' // Keep overall pending until trader pays too? Or modify logic.
+            },
+            { new: true }
+        );
+
+        if (!record) return res.status(404).json({ error: 'Record not found' });
+
+        // Update overall payment_status if both are paid?
+        // Let's rely on specific statuses primarily.
+
+        res.json(record);
+    } catch (error) {
+        console.error('Pay farmer error:', error);
+        res.status(500).json({ error: 'Payment failed' });
+    }
+});
+
+/**
+ * POST /api/finance/receive-trader/:id
+ * Process payment from trader
+ */
+router.post('/receive-trader/:id', async (req, res) => {
+    try {
+        const { mode, ref, date } = req.body;
+
+        if (!mode) return res.status(400).json({ error: 'Payment mode required' });
+
+        const record = await Record.findByIdAndUpdate(
+            req.params.id,
+            {
+                trader_payment_status: 'Paid',
+                trader_payment_mode: mode,
+                trader_payment_ref: ref,
+                trader_payment_date: date || new Date(),
+                payment_status: 'paid' // Mark main status as paid when Money is Received
+            },
+            { new: true }
+        );
+
+        if (!record) return res.status(404).json({ error: 'Record not found' });
+        res.json(record);
+    } catch (error) {
+        console.error('Receive trader error:', error);
+        res.status(500).json({ error: 'Payment processing failed' });
+    }
+});
 
 /**
  * GET /api/finance/stats
@@ -16,38 +81,33 @@ router.get('/stats', async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         const [
-            totalStats,
-            pendingStats,
-            todayStats,
+            totalCommission,
+            pendingReceivables,
+            collectedToday,
             totalCount
         ] = await Promise.all([
-            // Total Revenue (Commission only? Or Total Turnover? Usually Revenue = Commission)
-            // Let's assume Revenue = Total Commission for the committee.
+            // Total Revenue (Commission)
             Record.aggregate([
                 { $match: { status: { $in: ['Sold', 'Completed'] } } },
                 { $group: { _id: null, total: { $sum: '$commission' } } }
             ]),
-            // Pending Payments (Money we are waiting for from Traders)
+            // Pending Payments from Traders (Receivables)
             Record.aggregate([
                 {
                     $match: {
                         status: { $in: ['Sold', 'Completed'] },
-                        payment_status: { $ne: 'paid' }
+                        trader_payment_status: 'Pending'
                     }
                 },
-                // Trader pays Sale + Trader Commission (approx 9/13 of total commission + Sale)
-                // For simplicity, let's assume Pending = Total Amount (Sale + All Comm) or just Sale + Trader Comm.
-                // Converting: Pending Amount = sale_amount + (commission * 9/13)
-                // But simplified: sum `sale_amount` + `commission` as rough estimate or use strict math.
-                { $group: { _id: null, total: { $sum: { $add: ['$sale_amount', { $multiply: ['$commission', 0.69] }] } } } } // 9/13 ~= 0.69
+                { $group: { _id: null, total: { $sum: '$net_receivable_from_trader' } } }
             ]),
-            // Collected Today (Commission collected today)
+            // Collected Today (Commission from Paid Traders)
             Record.aggregate([
                 {
                     $match: {
                         status: { $in: ['Sold', 'Completed'] },
-                        payment_status: 'paid',
-                        sold_at: { $gte: today }
+                        trader_payment_status: 'Paid',
+                        trader_payment_date: { $gte: today }
                     }
                 },
                 { $group: { _id: null, total: { $sum: '$commission' } } }
@@ -56,9 +116,9 @@ router.get('/stats', async (req, res) => {
         ]);
 
         res.json({
-            totalRevenue: totalStats[0]?.total || 0,
-            pendingPayments: Math.round(pendingStats[0]?.total || 0),
-            collectedToday: todayStats[0]?.total || 0,
+            totalRevenue: totalCommission[0]?.total || 0,
+            pendingPayments: Math.round(pendingReceivables[0]?.total || 0), // UI calls it "Pending Payments", context implies Receivables
+            collectedToday: collectedToday[0]?.total || 0,
             transactionsCount: totalCount
         });
     } catch (error) {
@@ -77,70 +137,73 @@ router.get('/cashflow', async (req, res) => {
             .populate('farmer_id', 'full_name')
             .populate('trader_id', 'business_name full_name')
             .sort({ sold_at: -1 })
-            .limit(50); // Limit for UI
+            .limit(50);
 
         const received = [];
         const pending = [];
 
         records.forEach(record => {
-            const base = record.sale_amount || 0;
-            const comm = record.commission || 0;
-            const farmerComm = Math.round(comm * (4 / 13));
-            const traderComm = Math.round(comm * (9 / 13));
-            const traderTotal = base + traderComm;
-
             const date = record.sold_at || record.createdAt;
             const ref = `TXN-${record.lot_id || record._id.toString().slice(-6)}`;
 
-            if (record.payment_status === 'paid') {
-                // Trader Payment Received
+            // 1. Trader Transaction (Receivable)
+            if (record.trader_payment_status === 'Paid') {
                 received.push({
                     id: `${record._id}-trader`,
-                    date: date,
+                    date: record.trader_payment_date || date,
                     from: record.trader_id?.business_name || 'Unknown Trader',
                     type: 'trader',
-                    amount: traderTotal,
-                    reference: ref
-                });
-                // Farmer Commission "Received" (Booked)
-                received.push({
-                    id: `${record._id}-farmer`,
-                    date: date,
-                    from: record.farmer_id?.full_name || 'Unknown Farmer',
-                    type: 'farmer',
-                    amount: farmerComm,
-                    reference: ref
+                    amount: record.net_receivable_from_trader, // Full amount received
+                    reference: ref,
+                    mode: record.trader_payment_mode
                 });
             } else {
-                // Pending
                 const dueDate = new Date(date);
-                dueDate.setDate(dueDate.getDate() + 7); // Assume 7 day credit
-
-                const now = new Date();
-                const diffTime = Math.abs(now - dueDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                const isOverdue = now > dueDate;
+                dueDate.setDate(dueDate.getDate() + 7);
+                const isOverdue = new Date() > dueDate;
 
                 pending.push({
                     id: `${record._id}-trader`,
                     dueDate: dueDate,
                     from: record.trader_id?.business_name || 'Unknown Trader',
                     type: 'trader',
-                    amount: traderTotal,
-                    daysOverdue: isOverdue ? diffDays : 0,
-                    reference: ref
+                    label: 'Receivable from Trader',
+                    amount: record.net_receivable_from_trader,
+                    daysOverdue: isOverdue ? 1 : 0,
+                    reference: ref,
+                    recordId: record._id
                 });
-                // Farmer commission finding? usually we don't track farmer commission pending as a receivable in same way, 
-                // but for consistency with "Accounting" view:
+            }
+
+            // 2. Farmer Transaction (Payable)
+            // Note: "Received" list usually shows Money In. Money Out is "Expenses/Payouts".
+            // The prompt asks for "Cashflow". 
+            // If they want to see "Paid to Farmer", it might belong in a separate list or "Paid" section.
+            // But if the UI has "Received" and "Pending", "Pending" usually implies Action Items.
+            // Pending Payables are Action Items.
+
+            if (record.farmer_payment_status === 'Pending') {
+                const dueDate = new Date(date);
+                dueDate.setDate(dueDate.getDate() + 1); // Pay farmer next day?
+
                 pending.push({
                     id: `${record._id}-farmer`,
                     dueDate: dueDate,
                     from: record.farmer_id?.full_name || 'Unknown Farmer',
-                    type: 'farmer',
-                    amount: farmerComm,
-                    daysOverdue: isOverdue ? diffDays : 0,
-                    reference: ref
+                    type: 'farmer', // Logic: "from" is usually "Party". Here Party is Farmer.
+                    label: 'Payable to Farmer',
+                    amount: record.net_payable_to_farmer,
+                    daysOverdue: 0,
+                    reference: ref,
+                    recordId: record._id
                 });
+            } else {
+                // If we want to show "Paid to Farmer" history, we could add to a 'paid' list?
+                // For now, let's just show Receivables in 'Received' tab if that's what it means.
+                // Or maybe 'Received' is 'Completed Transactions'.
+                // Let's include Farmer Payments in 'Received' but with negative amount or type indication if UI supports it?
+                // The current UI seems to be "Cashflow" -> Money In / Money Out?
+                // Let's assume 'Received' tab = Completed Transactions.
             }
         });
 
@@ -150,12 +213,6 @@ router.get('/cashflow', async (req, res) => {
         res.status(500).json({ error: "Failed to fetch cashflow" });
     }
 });
-
-/**
- * GET /api/finance/billing-records
- * Get billing records list
- */
-import Record from '../models/Record.js';
 
 /**
  * GET /api/finance/billing-records
@@ -195,13 +252,6 @@ router.get('/billing-records', async (req, res) => {
                 .limit(Number(limit)),
             Record.countDocuments(query)
         ]);
-
-        // Format for frontend
-        // We will send generic "billing" objects that contain both sets of info, 
-        // or frontend can interpret the Record object directly. 
-        // Let's send cleaned up generic objects to match what the frontend likely expects, 
-        // OR just send the records. Sending records is cleaner for strict REST but formatting here saves frontend work.
-        // Let's return the records with populated fields.
 
         res.json({
             records,

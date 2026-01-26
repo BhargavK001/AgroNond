@@ -118,6 +118,10 @@ export const api = {
 
   // User Profile
   users: {
+    list: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/api/users${query ? '?' + query : ''}`, { method: 'GET' });
+    },
     getProfile: () => apiRequest('/api/users/profile', { method: 'GET' }),
     updateProfile: (data) => apiRequest('/api/users/profile', { method: 'PATCH', body: JSON.stringify(data) }),
     setRole: (role) => apiRequest('/api/users/set-role', { method: 'POST', body: JSON.stringify({ role }) }),
@@ -165,6 +169,8 @@ export const api = {
     },
     payments: {
       create: (data) => apiRequest('/api/finance/payments', { method: 'POST', body: JSON.stringify(data) }),
+      payFarmer: (id, data) => apiRequest(`/api/finance/pay-farmer/${id}`, { method: 'POST', body: JSON.stringify(data) }),
+      receiveTrader: (id, data) => apiRequest(`/api/finance/receive-trader/${id}`, { method: 'POST', body: JSON.stringify(data) }),
     },
     stats: () => apiRequest('/api/finance/stats', { method: 'GET' }),
     cashflow: () => apiRequest('/api/finance/cashflow', { method: 'GET' }),
@@ -175,7 +181,7 @@ export const api = {
     stats: () => apiRequest('/api/trader/stats', { method: 'GET' }),
     transactions: (params = {}) => {
       const query = new URLSearchParams(params).toString();
-      return apiRequest(`/api/trader/transactions${query ? '?' + query : ''}`, { method: 'GET' });
+      return apiRequest(`/api/records/my-purchases${query ? '?' + query : ''}`, { method: 'GET' });
     },
     seed: () => apiRequest('/api/trader/seed', { method: 'POST' }),
     inventory: () => apiRequest('/api/trader/inventory', { method: 'GET' }),
