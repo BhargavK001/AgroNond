@@ -2,9 +2,8 @@ import { motion } from 'framer-motion';
 import ScrollReveal, { StaggerContainer, StaggerItem } from '../../components/ui/ScrollReveal';
 import Hero from '../../components/ui/Hero';
 import AnimatedCounter from '../../components/ui/AnimatedCounter';
-import { FeatureGlowCard } from '../../components/ui/GlowCard';
-import { FloatingElement } from '../../components/ui/ParallaxImage';
 import ShimmerButton from '../../components/ui/ShimmerButton';
+import Card from '../../components/ui/Card';
 
 // CTA Background Image
 import ctaBackground from '../../assets/hero-farmer.jpg';
@@ -77,35 +76,18 @@ const steps = [
 export default function Home() {
   return (
     <main>
-      {/* Hero Section - Enhanced */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Mesh Gradient Background */}
-        <div className="mesh-gradient-bg" />
-
+      {/* Hero Section - Simplified */}
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-white to-[var(--primary-50)]">
         {/* Background Pattern */}
-        <div className="absolute inset-0 bg-pattern opacity-50" />
-
-        {/* Floating Decorative Elements */}
-        <FloatingElement className="top-32 right-[15%]" speed={0.2} delay={0.2}>
-          <WheatIcon className="w-16 h-16 text-[var(--primary)]/20" />
-        </FloatingElement>
-        <FloatingElement className="top-48 left-[10%]" speed={0.15} delay={0.4}>
-          <LeafIcon className="w-12 h-12 text-[var(--primary)]/25" />
-        </FloatingElement>
-        <FloatingElement className="bottom-32 left-[8%]" speed={0.25} delay={0.6}>
-          <TractorIcon className="w-20 h-20 text-[var(--primary)]/15" />
-        </FloatingElement>
-        <FloatingElement className="bottom-48 right-[12%]" speed={0.18} delay={0.3}>
-          <VegetableIcon className="w-14 h-14 text-[var(--primary)]/20" />
-        </FloatingElement>
+        <div className="absolute inset-0 bg-pattern opacity-30" />
 
         <div className="container relative z-10 py-20 sm:py-24 lg:py-32">
           <div className="max-w-3xl mx-auto text-center">
             {/* Badge */}
             <ScrollReveal variant="fadeDown" delay={0}>
               <motion.div
-                className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/90 border border-[var(--primary-200)] shadow-lg mb-6 sm:mb-8 backdrop-blur-sm"
-                whileHover={{ scale: 1.05 }}
+                className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white border border-[var(--primary-200)] shadow-sm mb-6 sm:mb-8"
+                whileHover={{ scale: 1.02 }}
               >
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--primary)] opacity-75" />
@@ -121,11 +103,11 @@ export default function Home() {
             <ScrollReveal variant="fadeUp" delay={0.1}>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 sm:mb-6 tracking-tight">
                 <span className="text-[var(--text-primary)]">Transforming </span>
-                <span className="gradient-text">Agricultural</span>
+                <span className="text-[var(--primary)]">Agricultural</span>
                 <br className="hidden sm:block" />
                 <span className="sm:hidden"> </span>
                 <span className="text-[var(--text-primary)]">Markets </span>
-                <span className="gradient-text">Digitally</span>
+                <span className="text-[var(--primary)]">Digitally</span>
               </h1>
             </ScrollReveal>
 
@@ -162,16 +144,15 @@ export default function Home() {
                   { icon: '✓', text: 'OTP Based Login' },
                   { icon: '✓', text: 'Govt Approved' },
                 ].map((badge, i) => (
-                  <motion.div
+                  <div
                     key={i}
                     className="flex items-center gap-2 text-xs sm:text-sm text-[var(--text-muted)]"
-                    whileHover={{ scale: 1.05, color: 'var(--primary)' }}
                   >
                     <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <span>{badge.text}</span>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             </ScrollReveal>
@@ -193,7 +174,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      {/* Features Section - Enhanced with Glow Cards */}
+      {/* Features Section - Standard Grid */}
       <section className="section bg-[var(--surface)]">
         <div className="container">
           <ScrollReveal variant="fadeUp">
@@ -213,40 +194,40 @@ export default function Home() {
           <StaggerContainer staggerDelay={0.15} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature, index) => (
               <StaggerItem key={index}>
-                <FeatureGlowCard
-                  icon={feature.icon}
-                  title={feature.title}
-                  description={feature.description}
-                  index={index}
-                />
+                <Card className="h-full p-6 hover:shadow-md transition-shadow">
+                  <div className="text-[var(--primary)] mb-4 bg-[var(--primary-50)] w-12 h-12 rounded-lg flex items-center justify-center">
+                    {feature.icon}
+                  </div>
+                  <h4 className="text-lg font-semibold mb-2">{feature.title}</h4>
+                  <p className="text-sm text-[var(--text-secondary)]">{feature.description}</p>
+                </Card>
               </StaggerItem>
             ))}
           </StaggerContainer>
         </div>
       </section>
 
-      {/* Stats Section - Enhanced with Animated Counters */}
+      {/* Stats Section */}
       <section className="section">
         <div className="container">
           <StaggerContainer staggerDelay={0.1} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
             {stats.map((stat, index) => (
               <StaggerItem key={index}>
-                <motion.div
-                  className="stat-card-enhanced text-center"
-                  whileHover={{ scale: 1.02 }}
+                <div
+                  className="bg-white p-6 rounded-xl border border-[var(--border)] shadow-sm text-center"
                 >
-                  <div className="stat-value">
+                  <div className="text-3xl font-bold text-[var(--primary)] mb-2">
                     <AnimatedCounter value={stat.value} duration={2000} />
                   </div>
-                  <p className="stat-label">{stat.label}</p>
-                </motion.div>
+                  <p className="text-sm text-[var(--text-secondary)] font-medium">{stat.label}</p>
+                </div>
               </StaggerItem>
             ))}
           </StaggerContainer>
         </div>
       </section>
 
-      {/* How It Works Section - Enhanced with step cards */}
+      {/* How It Works Section */}
       <section className="section bg-[var(--surface)]">
         <div className="container">
           <ScrollReveal variant="fadeUp">
@@ -266,37 +247,33 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             {steps.map((item, index) => (
               <ScrollReveal key={index} variant="fadeUp" delay={index * 0.15}>
-                <motion.div
-                  className="step-card-enhanced relative"
-                  whileHover={{ y: -8 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
+                <div className="bg-white rounded-xl p-6 border border-[var(--border)] relative overflow-hidden h-full">
                   {/* Big step number background */}
-                  <div className="absolute top-4 right-4 sm:right-6 text-4xl sm:text-6xl font-bold text-[var(--primary)]/10">
+                  <div className="absolute top-4 right-4 sm:right-6 text-4xl sm:text-6xl font-bold text-[var(--primary)]/5 select-none">
                     {item.step}
                   </div>
 
                   <div className="relative z-10">
-                    <div className="step-number-badge mb-4 sm:mb-6">
+                    <div className="w-10 h-10 rounded-full bg-[var(--primary)] text-white flex items-center justify-center font-bold mb-4">
                       {index + 1}
                     </div>
                     <h4 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3">{item.title}</h4>
                     <p className="text-[var(--text-secondary)] text-sm sm:text-base">{item.description}</p>
                   </div>
-                </motion.div>
+                </div>
               </ScrollReveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section - Enhanced with Image Background */}
+      {/* CTA Section */}
       <section className="section">
         <div className="container">
           <ScrollReveal variant="scale">
-            <div className="cta-section-image text-center" style={{ backgroundImage: `url(${ctaBackground})` }}>
+            <div className="rounded-2xl overflow-hidden relative text-center py-20 px-6" style={{ backgroundImage: `url(${ctaBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
               {/* Dark overlay for text readability */}
-              <div className="cta-overlay" />
+              <div className="absolute inset-0 bg-black/60" />
               <motion.div
                 className="relative z-10"
                 initial={{ opacity: 0, y: 30 }}
@@ -319,38 +296,5 @@ export default function Home() {
         </div>
       </section>
     </main>
-  );
-}
-
-// Icon Components
-function WheatIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2L9.5 8.5L3 6L7 12L3 18L9.5 15.5L12 22L14.5 15.5L21 18L17 12L21 6L14.5 8.5L12 2Z" />
-    </svg>
-  );
-}
-
-function LeafIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M17,8C8,10 5.9,16.17 3.82,21.34L5.71,22L6.66,19.7C7.14,19.87 7.64,20 8,20C19,20 22,3 22,3C21,5 14,5.25 9,6.25C4,7.25 2,11.5 2,13.5C2,15.5 3.75,17.25 3.75,17.25C7,8 17,8 17,8Z" />
-    </svg>
-  );
-}
-
-function TractorIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M5,4V11.26C3.2,11.9 2,13.6 2,15.5C2,18 4,20 6.5,20C8.79,20 10.71,18.28 10.97,16H15.17C15.06,16.32 15,16.66 15,17A3,3 0 0,0 18,20A3,3 0 0,0 21,17C21,15.77 20.19,14.71 19.07,14.29C18.86,13.16 18.03,12.24 17,11.83V8H22V6H17V4M7,6H15V11H13V9H7M6.5,13.5A2,2 0 0,1 8.5,15.5A2,2 0 0,1 6.5,17.5A2,2 0 0,1 4.5,15.5A2,2 0 0,1 6.5,13.5M18,15.5A1.5,1.5 0 0,1 19.5,17A1.5,1.5 0 0,1 18,18.5A1.5,1.5 0 0,1 16.5,17A1.5,1.5 0 0,1 18,15.5Z" />
-    </svg>
-  );
-}
-
-function VegetableIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12,6C10.89,6 10,5.1 10,4C10,3.62 10.1,3.26 10.29,2.95L12,0L13.71,2.95C13.9,3.26 14,3.62 14,4C14,5.1 13.1,6 12,6M16.56,12.17C14.28,11.04 12.5,9.54 11.5,7.7C10.5,9.54 8.72,11.04 6.44,12.17C5.16,12.78 4.25,14.07 4,15.5C3.88,16.28 4.03,17.04 4.39,17.7C4.97,18.88 6.12,19.7 7.5,19.91C7.67,19.97 7.83,20 8,20C10.21,20 12,18.21 12,16C12,18.21 13.79,20 16,20C16.17,20 16.33,19.97 16.5,19.91C17.88,19.7 19.03,18.88 19.61,17.7C19.97,17.04 20.12,16.28 20,15.5C19.75,14.07 18.84,12.78 17.56,12.17H16.56Z" />
-    </svg>
   );
 }

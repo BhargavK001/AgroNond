@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, User, Phone, MapPin, Camera, Save, BadgeCheck, X, Edit3, Scale, Mail } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import NotificationCenter from '../layout/NotificationCenter';
+import UniversalSearch from '../common/UniversalSearch';
 
 export default function WeightNavbar() {
   const { user, signOut } = useAuth();
@@ -108,6 +109,9 @@ export default function WeightNavbar() {
           </div>
 
           <div className="flex items-center gap-3">
+            <div className="hidden md:block mr-4">
+              <UniversalSearch placeholder="Search records..." />
+            </div>
             <NotificationCenter />
 
             <div className="relative" ref={dropdownRef}>

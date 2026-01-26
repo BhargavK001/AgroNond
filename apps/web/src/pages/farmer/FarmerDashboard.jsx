@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import FarmerNavbar from '../../components/navigation/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
+import SoldRecordCard from '../../components/farmer/SoldRecordCard';
 import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
-  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle
+  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History
 } from 'lucide-react';
 
 // --- MODAL COMPONENT ---
@@ -13,18 +14,20 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className={`bg-white rounded-3xl shadow-2xl w-full ${sizes[size]} border border-gray-200 max-h-[90vh] overflow-y-auto`}>
+      <div className={`bg-white rounded-xl shadow-2xl w-full ${sizes[size]} border border-gray-200 max-h-[90vh] flex flex-col`}>
         <div className="flex justify-between items-center px-6 py-5 sm:px-8 sm:py-6 border-b border-gray-100">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <X size={24} className="text-gray-500" />
           </button>
         </div>
-        <div className="px-6 py-6 sm:px-8">{children}</div>
+        <div className="px-6 py-6 sm:px-8 overflow-y-auto">{children}</div>
       </div>
     </div>
   );
 };
+
+
 
 // --- VEGETABLE DATA ---
 const VEGETABLE_CATEGORIES = [
@@ -133,7 +136,7 @@ const VEGETABLE_CATEGORIES = [
 ];
 
 // Helper to flatten data for search, but UI will use categories
-const ALL_VEGETABLES = VEGETABLE_CATEGORIES.flatMap(category => 
+const ALL_VEGETABLES = VEGETABLE_CATEGORIES.flatMap(category =>
   category.items.map(item => ({
     ...item,
     category: category.name,
@@ -145,6 +148,7 @@ const ALL_VEGETABLES = VEGETABLE_CATEGORIES.flatMap(category =>
 // --- ADD NEW RECORD SECTION ---
 const AddNewRecordSection = ({ onBack, onSave }) => {
   const [selectedMarket, setSelectedMarket] = useState('');
+  const [isLoadingMarket, setIsLoadingMarket] = useState(true);
   const [selectedVegetable, setSelectedVegetable] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -158,26 +162,50 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
   const [addedItems, setAddedItems] = useState([]);
 
+  // Fetch Market Info (Committee)
+  useEffect(() => {
+    const fetchMarket = async () => {
+      try {
+        setIsLoadingMarket(true);
+        const users = await api.users.list({ role: 'committee' });
+        if (users && users.length > 0) {
+          // Use the first committee found
+          const marketName = users[0].business_name || users[0].full_name || 'AgroNond Market';
+          setSelectedMarket(marketName);
+        } else {
+          toast.error("No Market Committee found");
+        }
+      } catch (error) {
+        console.error("Failed to fetch market info", error);
+        // toast.error("Failed to load market info");
+      } finally {
+        setIsLoadingMarket(false);
+      }
+    };
+    fetchMarket();
+  }, []);
+
+
   // Filter logic
   const isSearching = searchTerm.length > 0 && selectedVegetable !== searchTerm;
-  
+
   const filteredCategories = VEGETABLE_CATEGORIES.map(cat => {
     // If searching, filter items inside. If not searching, keep all items.
-    const matchingItems = isSearching 
-      ? cat.items.filter(item => 
-          item.english.toLowerCase().includes(searchTerm.toLowerCase()) || 
-          item.marathi.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+    const matchingItems = isSearching
+      ? cat.items.filter(item =>
+        item.english.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.marathi.toLowerCase().includes(searchTerm.toLowerCase())
+      )
       : cat.items;
-      
+
     return { ...cat, items: matchingItems };
   }).filter(cat => cat.items.length > 0 || !isSearching); // Hide empty categories only when searching
 
   // Toggle Category Accordion
   const toggleCategory = (categoryId) => {
-    setExpandedCategories(prev => 
-      prev.includes(categoryId) 
-        ? prev.filter(id => id !== categoryId) 
+    setExpandedCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
     );
   };
@@ -284,7 +312,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
       items: addedItems
     });
 
-    setSelectedMarket('');
+    // setSelectedMarket(''); // Keep market selected
     clearSelection();
     setAddedItems([]);
   };
@@ -306,19 +334,19 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
           <div className="space-y-6">
             {/* Market Selection */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Market Name *</label>
-              <select
-                value={selectedMarket}
-                onChange={(e) => setSelectedMarket(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
-              >
-                <option value="">Select Market</option>
-                <option>Pune APMC</option>
-                <option>Mumbai Market</option>
-                <option>Nashik Mandi</option>
-                <option>Nagpur Market</option>
-                <option>Aurangabad Market</option>
-              </select>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Market Name</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={isLoadingMarket ? "Loading..." : selectedMarket}
+                  readOnly
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-700 font-medium outline-none cursor-not-allowed"
+                />
+                {!isLoadingMarket && selectedMarket && (
+                  <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-600" size={20} />
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1 ml-1">Automatically assigned to registered market committee</p>
             </div>
 
             {/* Added Items List (Top Green Section) */}
@@ -326,7 +354,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
                 <div className="flex justify-between items-center mb-3">
                   <p className="text-sm font-semibold text-gray-900">Added Items ({addedItems.length}):</p>
-                  <button 
+                  <button
                     onClick={() => setAddedItems([])}
                     className="text-xs text-red-600 hover:underline font-medium"
                   >
@@ -356,7 +384,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
             {/* Vegetable Dropdown (Accordion Style) */}
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">Vegetable Name *</label>
-              
+
               <div className="relative">
                 <div className="relative">
                   <input
@@ -370,10 +398,10 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                     placeholder="Search or Select Category..."
                     className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
                   />
-                  
+
                   {/* Clear / Dropdown Icon Logic */}
                   {searchTerm ? (
-                    <button 
+                    <button
                       onClick={clearSelection}
                       className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 rounded-full hover:bg-gray-300 transition"
                       title="Clear Selection"
@@ -381,7 +409,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                       <X size={14} className="text-gray-600" />
                     </button>
                   ) : (
-                    <ChevronDown 
+                    <ChevronDown
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
                       size={20}
                     />
@@ -391,8 +419,8 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
                   <>
-                    <div 
-                      className="fixed inset-0 z-10" 
+                    <div
+                      className="fixed inset-0 z-10"
                       onClick={() => setIsDropdownOpen(false)}
                     />
                     <div className="absolute z-20 w-full mt-2 bg-white border border-gray-300 rounded-xl shadow-xl max-h-96 overflow-y-auto custom-scrollbar">
@@ -404,7 +432,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                         filteredCategories.map((category) => (
                           <div key={category.id} className="border-b border-gray-100 last:border-0">
                             {/* Accordion Header */}
-                            <button 
+                            <button
                               onClick={() => toggleCategory(category.id)}
                               className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-left"
                             >
@@ -452,7 +480,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                     <p className="text-xs text-gray-600 mb-0.5">Currently Selected:</p>
                     <p className="font-bold text-gray-900 text-sm">{selectedVegetable}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={clearSelection}
                     className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 transition"
                     title="Change Selection"
@@ -578,7 +606,7 @@ const FarmerDashboard = () => {
     try {
       setIsLoading(true);
       const recordsData = await api.get('/api/records/my-records');
-      
+
       if (Array.isArray(recordsData)) {
         setRecords(recordsData);
       } else {
@@ -595,7 +623,7 @@ const FarmerDashboard = () => {
 
   useEffect(() => {
     fetchRecords();
-    
+
     const prof = localStorage.getItem('farmer-profile');
     if (prof) {
       const p = JSON.parse(prof);
@@ -616,7 +644,7 @@ const FarmerDashboard = () => {
   const soldRecords = records.filter(r => r.status === 'Sold');
   const pendingRecords = records.filter(r => r.status === 'Pending');
 
-  const totalGross = soldRecords.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
+  const totalGross = soldRecords.reduce((sum, r) => sum + (r.sale_amount || 0), 0);
   const totalQuantity = records.reduce((sum, r) => sum + r.quantity, 0);
 
   const filteredRecords = filterStatus === 'All'
@@ -632,10 +660,10 @@ const FarmerDashboard = () => {
   // ✅ HELPER: Format Time from Date
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('en-IN', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
@@ -742,7 +770,7 @@ const FarmerDashboard = () => {
         market: editFormData.market,
         quantity: newKg
       });
-      
+
       toast.success("Record updated successfully!");
       setModals({ ...modals, editRecord: false });
       fetchRecords();
@@ -758,7 +786,7 @@ const FarmerDashboard = () => {
       toast.error("Please allow popups to download invoice");
       return;
     }
-    
+
     const recordDate = new Date(record.createdAt).toLocaleDateString('en-GB');
     const recordTime = formatTime(record.createdAt);
     const invoiceId = record._id.toString().slice(-6).toUpperCase();
@@ -834,29 +862,32 @@ const FarmerDashboard = () => {
                 <td>${record.vegetable}</td>
                 <td style="text-align: center;">${record.quantity} kg</td>
                 <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.rate : '-'}</td>
-                <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.totalAmount.toLocaleString('en-IN') : '-'}</td>
+                <td style="text-align: right;">${record.status === 'Sold' ? '₹' + (record.sale_amount || (record.rate * record.quantity) || 0).toLocaleString('en-IN') : '-'}</td>
               </tr>
             </tbody>
           </table>
 
           <div class="total-section">
-            <p>Status: <span class="badge ${record.status === 'Sold' ? 'badge-sold' : 'badge-pending'}">${record.status}</span></p>
-            <p class="total-amount">Total: ${record.status === 'Sold' ? '₹' + record.totalAmount.toLocaleString('en-IN') : '---'}</p>
+             <p style="margin: 5px 0;">Gross Sale Amount: ₹${(record.sale_amount || (record.rate * record.quantity) || 0).toLocaleString('en-IN')}</p>
+             <p style="margin: 5px 0; font-size: 14px; color: #666;">Less: Market Commission (4%): -₹${(record.farmer_commission || 0).toLocaleString('en-IN')}</p>
+             <p class="total-amount" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">Net Payable: ₹${(record.net_payable_to_farmer || 0).toLocaleString('en-IN')}</p>
+             <p style="font-size: 12px; color: #888; margin-top: 5px;">Payment Status: <span class="badge ${record.farmer_payment_status === 'Paid' ? 'badge-sold' : 'badge-pending'}">${record.farmer_payment_status || 'Pending'}</span></p>
           </div>
 
+
           <div class="footer">
-            <p>This is a computer generated invoice from AgroNond.</p>
+            <p>This is a computer-generated invoice and does not require a signature.</p>
+            <p>AgroNond Market Committee • Pune, Maharashtra</p>
           </div>
         </div>
-        <script>
-          window.print();
-        </script>
       </body>
       </html>
     `;
 
-    printWindow.document.write(invoiceContent);
-    printWindow.document.close();
+    const printDocument = printWindow.document;
+    printDocument.write(invoiceContent);
+    printDocument.close();
+    printWindow.print();
   };
 
   const saveProfile = () => {
@@ -884,6 +915,42 @@ const FarmerDashboard = () => {
     );
   }
 
+  if (view === 'history') {
+    return (
+      <div className="min-h-screen bg-white">
+        <Toaster position="top-center" reverseOrder={false} />
+        <FarmerNavbar />
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
+          <div className="mb-8">
+            <button
+              onClick={() => setView('dashboard')}
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 mb-6 font-medium"
+            >
+              <ArrowLeft size={20} />
+              Back to Dashboard
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900">Sales History</h1>
+            <p className="text-gray-500 mt-2">View all your completed transactions and download bills.</p>
+          </div>
+
+          {soldRecords.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-3xl border border-gray-100">
+              <History size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-600 font-medium">No sales history yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {soldRecords.map(record => (
+                <SoldRecordCard key={record._id} record={record} />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <Toaster position="top-center" reverseOrder={false} />
@@ -902,13 +969,22 @@ const FarmerDashboard = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => setView('addRecord')}
-              className="w-full sm:w-auto flex justify-center items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl sm:rounded-full shadow-lg shadow-green-200 transition hover:shadow-xl hover:-translate-y-1"
-            >
-              <Plus size={20} />
-              New Record
-            </button>
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => setView('history')}
+                className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-6 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition hover:shadow-md"
+              >
+                <History size={20} />
+                Sales History
+              </button>
+              <button
+                onClick={() => setView('addRecord')}
+                className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl sm:rounded-full shadow-lg shadow-green-200 transition hover:shadow-xl hover:-translate-y-1"
+              >
+                <Plus size={20} />
+                New Record
+              </button>
+            </div>
           </div>
         </div>
 
@@ -993,182 +1069,198 @@ const FarmerDashboard = () => {
           </div>
 
           {isLoading ? (
-             <div className="p-12 text-center text-gray-500">Loading records...</div>
+            <div className="p-12 text-center text-gray-500">Loading records...</div>
           ) : (
             <>
-            {/* Mobile View */}
-            <div className="block sm:hidden">
-              {sortedRecords.length === 0 ? (
-                <div className="p-8 text-center">
-                  <p className="text-gray-500">No records found</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {sortedRecords.map((record) => (
-                    <div key={record._id} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <span className="text-xs font-semibold text-gray-500">
-                            {new Date(record.createdAt).toLocaleDateString('en-GB')}
-                          </span>
-                          <span className="text-xs text-gray-400 ml-2">
-                            {formatTime(record.createdAt)}
-                          </span>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${record.status === 'Sold'
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                          }`}>
-                          {record.status === 'Sold' ? <CheckCircle size={10} /> : <Clock size={10} />}
-                          {record.status}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center mb-3">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
-                          <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
-                            <MapPin size={12} />
-                            {record.market}
+              {/* Mobile View */}
+              <div className="block sm:hidden">
+                {sortedRecords.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <p className="text-gray-500">No records found</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {sortedRecords.map((record) => (
+                      <div key={record._id} className="p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <span className="text-xs font-semibold text-gray-500">
+                              {new Date(record.createdAt).toLocaleDateString('en-GB')}
+                            </span>
+                            <span className="text-xs text-gray-400 ml-2">
+                              {formatTime(record.createdAt)}
+                            </span>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
-                          <p className="text-xs text-gray-500">Total</p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
-                        <button
-                          onClick={() => handleDownloadInvoice(record)}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
-                          title="Download Data / Invoice"
-                        >
-                          <FileText size={16} />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setSelectedRecord(record);
-                            setModals({ ...modals, details: true });
-                          }}
-                          className="p-2 bg-gray-100 text-gray-600 rounded-lg"
-                          title="View"
-                        >
-                          <Eye size={16} />
-                        </button>
-
-                        <button
-                          onClick={() => handleEditClick(record)}
-                          className="p-2 bg-green-100 text-green-600 rounded-lg"
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </button>
-
-                        <button
-                          onClick={() => initiateDelete(record._id)}
-                          className="p-2 bg-red-50 text-red-600 rounded-lg"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-100">
-                  <tr>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Time</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
-                    <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
-                    <th className="px-8 py-4 text-right font-semibold text-gray-900">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {sortedRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan="9" className="px-8 py-16 text-center">
-                        <Clock size={48} className="mx-auto text-gray-300 mb-3" />
-                        <p className="text-gray-600 font-medium">No records found</p>
-                        <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedRecords.map((record) => (
-                      <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
-                        <td className="px-8 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
-                        <td className="px-8 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
-                        <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
-                        <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
-                        <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
-                        <td className="px-8 py-4">
-                          <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${record.status === 'Sold'
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${['Sold', 'Completed'].includes(record.status)
                             ? 'bg-green-100 text-green-700 border border-green-200'
                             : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
                             }`}>
-                            {record.status === 'Sold' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                            {['Sold', 'Completed'].includes(record.status) ? <CheckCircle size={10} /> : <Clock size={10} />}
                             {record.status}
                           </span>
-                        </td>
-                        <td className="px-8 py-4 text-gray-700">{record.status === 'Sold' ? `₹${record.rate}` : '-'}</td>
-                        <td className="px-8 py-4 font-bold text-green-600">{record.status === 'Sold' ? `₹${record.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
-                        <td className="px-8 py-4 text-right">
-                          <div className="flex justify-end gap-2">
+                        </div>
 
-                            <button
-                              onClick={() => handleDownloadInvoice(record)}
-                              className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
-                              title="Download Data / Invoice"
-                            >
-                              <FileText size={18} />
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setSelectedRecord(record);
-                                setModals({ ...modals, details: true });
-                              }}
-                              className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
-                              title="View Details"
-                            >
-                              <Eye size={18} />
-                            </button>
-
-                            <button
-                              onClick={() => handleEditClick(record)}
-                              className="p-2.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg transition border border-green-200"
-                              title="Edit"
-                            >
-                              <Edit size={18} />
-                            </button>
-
-                            <button
-                              onClick={() => initiateDelete(record._id)}
-                              className="p-2.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition border border-red-200"
-                              title="Delete"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                        <div className="flex justify-between items-center mb-3">
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
+                            <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
+                              <MapPin size={12} />
+                              {record.market}
+                            </div>
                           </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
+                            <p className="text-xs text-gray-500">Total</p>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
+                          <button
+                            onClick={() => handleDownloadInvoice(record)}
+                            className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
+                            title="Download Data / Invoice"
+                          >
+                            <FileText size={16} />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setSelectedRecord(record);
+                              setModals({ ...modals, details: true });
+                            }}
+                            className="p-2 bg-gray-100 text-gray-600 rounded-lg"
+                            title="View"
+                          >
+                            <Eye size={16} />
+                          </button>
+
+                          <button
+                            onClick={() => handleEditClick(record)}
+                            disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                            className={`p-2 rounded-lg ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                              ? 'bg-gray-50 text-gray-300 pointer-events-none'
+                              : 'bg-green-100 text-green-600'
+                              }`}
+                            title={record.official_qty > 0 ? "Cannot edit weighed item" : "Edit"}
+                          >
+                            <Edit size={16} />
+                          </button>
+
+                          <button
+                            onClick={() => initiateDelete(record._id)}
+                            disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                            className={`p-2 rounded-lg ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                              ? 'bg-gray-50 text-gray-300 pointer-events-none'
+                              : 'bg-red-50 text-red-600'
+                              }`}
+                            title={record.official_qty > 0 ? "Cannot delete weighed item" : "Delete"}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Time</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
+                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
+                      <th className="px-8 py-4 text-right font-semibold text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {sortedRecords.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-8 py-16 text-center">
+                          <Clock size={48} className="mx-auto text-gray-300 mb-3" />
+                          <p className="text-gray-600 font-medium">No records found</p>
+                          <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      sortedRecords.map((record) => (
+                        <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
+                          <td className="px-8 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
+                          <td className="px-8 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
+                          <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
+                          <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
+                          <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
+                          <td className="px-8 py-4">
+                            <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${['Sold', 'Completed'].includes(record.status)
+                              ? 'bg-green-100 text-green-700 border border-green-200'
+                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                              } `}>
+                              {['Sold', 'Completed'].includes(record.status) ? <CheckCircle size={14} /> : <Clock size={14} />}
+                              {record.status}
+                            </span>
+                          </td>
+                          <td className="px-8 py-4 text-gray-700">{['Sold', 'Completed'].includes(record.status) ? `₹${record.sale_rate || record.rate} ` : '-'}</td>
+                          <td className="px-8 py-4 font-bold text-green-600">{['Sold', 'Completed'].includes(record.status) ? `₹${(record.sale_amount || (record.sale_rate * record.quantity) || 0).toLocaleString('en-IN')} ` : '-'}</td>
+                          <td className="px-8 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+
+                              <button
+                                onClick={() => handleDownloadInvoice(record)}
+                                className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
+                                title="Download Data / Invoice"
+                              >
+                                <FileText size={18} />
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setSelectedRecord(record);
+                                  setModals({ ...modals, details: true });
+                                }}
+                                className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
+                                title="View Details"
+                              >
+                                <Eye size={18} />
+                              </button>
+
+                              <button
+                                onClick={() => handleEditClick(record)}
+                                disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                                className={`p-2.5 rounded-lg transition border ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                                  ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                                  : 'bg-green-100 hover:bg-green-200 text-green-600 border-green-200'
+                                  }`}
+                                title={record.official_qty > 0 ? "Cannot edit weighed item" : "Edit"}
+                              >
+                                <Edit size={18} />
+                              </button>
+
+                              <button
+                                onClick={() => initiateDelete(record._id)}
+                                disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                                className={`p-2.5 rounded-lg transition border ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                                  ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                                  : 'bg-red-100 hover:bg-red-200 text-red-600 border-red-200'
+                                  }`}
+                                title={record.official_qty > 0 ? "Cannot delete weighed item" : "Delete"}
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
         </div>
@@ -1209,22 +1301,17 @@ const FarmerDashboard = () => {
               <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
             </div>
 
-            {selectedRecord.status === 'Sold' && (
+            {['Sold', 'Completed'].includes(selectedRecord.status) && (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <p className="text-xs text-gray-600 font-semibold mb-1">RATE</p>
-                    <p className="font-bold text-gray-900">₹{selectedRecord.rate}/kg</p>
+                    <p className="font-bold text-gray-900">₹{selectedRecord.sale_rate || selectedRecord.rate}/kg</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL AMOUNT</p>
-                    <p className="font-bold text-green-600">₹{selectedRecord.totalAmount.toLocaleString('en-IN')}</p>
+                    <p className="font-bold text-green-600">₹{(selectedRecord.sale_amount || (selectedRecord.sale_rate * selectedRecord.quantity) || 0).toLocaleString('en-IN')}</p>
                   </div>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <p className="text-xs text-gray-600 font-semibold mb-1">TRADER</p>
-                  <p className="font-bold text-gray-900">{selectedRecord.trader}</p>
                 </div>
 
                 <div className="pt-2 border-t border-gray-200">
@@ -1323,10 +1410,10 @@ const FarmerDashboard = () => {
             Update Record
           </button>
         </div>
-      </Modal>
+      </Modal >
 
       {/* --- CONFIRM DELETE MODAL --- */}
-      <Modal
+      < Modal
         isOpen={modals.deleteConfirm}
         onClose={() => setModals({ ...modals, deleteConfirm: false })}
         title="Confirm Deletion"
@@ -1355,10 +1442,10 @@ const FarmerDashboard = () => {
             </button>
           </div>
         </div>
-      </Modal>
-      
+      </Modal >
+
       {/* Profile Edit Modal */}
-      <Modal
+      < Modal
         isOpen={modals.editProfile}
         onClose={() => setModals({ ...modals, editProfile: false })}
         title="Edit Profile"
@@ -1422,8 +1509,8 @@ const FarmerDashboard = () => {
             Save Changes
           </button>
         </div>
-      </Modal>
-    </div>
+      </Modal >
+    </div >
   );
 };
 

@@ -30,3 +30,6 @@ coverage/
 
 # Antigravity
 .antigravity/
+
+# Agent
+.agent/

@@ -16,7 +16,7 @@ const recordSchema = new mongoose.Schema({
     },
     // The quantity farmer says they have (Estimated)
     quantity: {
-        type: Number, 
+        type: Number,
         required: true,
         default: 0
     },
@@ -93,6 +93,56 @@ const recordSchema = new mongoose.Schema({
     total_amount: {
         type: Number,
         default: 0
+    },
+    // Split Commission & Net Amounts
+    farmer_commission: {
+        type: Number,
+        default: 0
+    },
+    trader_commission: {
+        type: Number,
+        default: 0
+    },
+    net_payable_to_farmer: {
+        type: Number,
+        default: 0
+    },
+    net_receivable_from_trader: {
+        type: Number,
+        default: 0
+    },
+    // Detailed Payment Status
+    farmer_payment_status: {
+        type: String,
+        enum: ['Pending', 'Paid'],
+        default: 'Pending'
+    },
+    trader_payment_status: {
+        type: String,
+        enum: ['Pending', 'Paid'],
+        default: 'Pending'
+    },
+    farmer_payment_mode: {
+        type: String, // 'Cash', 'Cheque', 'Online'
+        default: ''
+    },
+    trader_payment_mode: {
+        type: String,
+        default: ''
+    },
+    farmer_payment_ref: {
+        type: String, // Cheque No / Transaction ID
+        default: ''
+    },
+    trader_payment_ref: {
+        type: String,
+        default: ''
+    },
+    farmer_payment_date: {
+        type: Date
+    },
+    trader_payment_date: {
+        type: Date
     }
 }, {
     timestamps: true

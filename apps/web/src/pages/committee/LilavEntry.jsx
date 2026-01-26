@@ -114,9 +114,11 @@ export default function LilavEntry() {
 
             toast.success('Sale completed successfully!');
 
-            // Remove from list
+            // Trigger Success Modal
+            setSaleModal(prev => ({ ...prev, success: true }));
+
+            // Remove from list after a short delay or immediately (optional)
             setWeighedRecords(prev => prev.filter(r => r._id !== saleModal.record._id));
-            setSaleModal({ open: false, record: null });
         } catch (error) {
             console.error('Error completing sale:', error);
             toast.error(error.response?.data?.error || 'Failed to complete sale');
@@ -343,14 +345,15 @@ export default function LilavEntry() {
                 </motion.div>
             )}
 
-            {/* Sale Modal */}
+            {/* Sale Modals */}
             <AnimatePresence>
-                {saleModal.open && saleModal.record && (
+                {/* 1. CONFIRMATION MODAL */}
+                {saleModal.open && saleModal.record && !saleModal.success && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
                         onClick={() => setSaleModal({ open: false, record: null })}
                     >
                         <motion.div
@@ -358,120 +361,175 @@ export default function LilavEntry() {
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.95, opacity: 0, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto"
+                            className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden my-8"
                         >
-                            {/* Modal Header */}
-                            <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between sticky top-0">
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm sm:text-base">Complete Sale</h3>
-                                    <p className="text-xs sm:text-sm text-slate-500">{saleModal.record.vegetable} - {saleModal.record.official_qty} kg</p>
+                            {/* Header */}
+                            <div className="bg-emerald-600 px-6 py-5 flex items-center justify-between">
+                                <div className="text-white">
+                                    <h2 className="text-xl font-bold">Complete Sale</h2>
+                                    <p className="text-emerald-100 text-sm">Review transaction details before confirming</p>
                                 </div>
                                 <button
                                     onClick={() => setSaleModal({ open: false, record: null })}
-                                    className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                                    className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition text-white"
                                 >
-                                    <X className="w-5 h-5 text-slate-500" />
+                                    <X size={20} />
                                 </button>
                             </div>
 
-                            {/* Modal Body */}
-                            <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
-                                {/* Rate Input */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Sale Rate (₹/kg)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.5"
-                                            value={saleForm.sale_rate}
-                                            onChange={(e) => setSaleForm(prev => ({ ...prev, sale_rate: parseFloat(e.target.value) || 0 }))}
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg font-semibold"
-                                        />
+                            <div className="p-6 space-y-6">
+                                {/* Inputs Row */}
+                                <div className="grid sm:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <label className="block text-sm font-semibold text-gray-700">Sale Rate (₹/kg)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={saleForm.sale_rate}
+                                                onChange={(e) => setSaleForm(prev => ({ ...prev, sale_rate: parseFloat(e.target.value) || 0 }))}
+                                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none"
+                                            />
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-slate-400 mt-1">Today's rate auto-filled if available</p>
-                                </div>
 
-                                {/* Trader Selection */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Select Trader</label>
-                                    <div className="relative mb-3">
-                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search trader..."
-                                            value={traderSearch}
-                                            onChange={(e) => setTraderSearch(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="max-h-48 overflow-y-auto space-y-2">
-                                        {filteredTraders.map((trader) => (
-                                            <button
-                                                key={trader._id}
-                                                onClick={() => setSaleForm(prev => ({ ...prev, trader_id: trader._id }))}
-                                                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left ${saleForm.trader_id === trader._id
-                                                    ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20'
-                                                    : 'border-slate-200 hover:bg-slate-50'
-                                                    }`}
-                                            >
-                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${saleForm.trader_id === trader._id
-                                                    ? 'bg-emerald-600 text-white'
-                                                    : 'bg-slate-200 text-slate-600'
-                                                    }`}>
-                                                    {trader.full_name?.charAt(0) || 'T'}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-slate-900">{trader.full_name || trader.business_name || 'Unknown'}</p>
-                                                    <p className="text-xs text-slate-500">{trader.phone}</p>
-                                                </div>
-                                                {saleForm.trader_id === trader._id && (
-                                                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                                                )}
-                                            </button>
-                                        ))}
+                                    <div className="space-y-4">
+                                        <label className="block text-sm font-semibold text-gray-700">Buyer (Trader)</label>
+                                        <div className="relative">
+                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search trader..."
+                                                value={traderSearch}
+                                                onChange={(e) => setTraderSearch(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                                            />
+                                            {/* Trader Dropdown would go here or reuse logic */}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Total */}
-                                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-emerald-700">Total Amount</span>
-                                        <span className="text-2xl font-bold text-emerald-700">
-                                            ₹{calculateAmount(saleModal.record.official_qty, saleForm.sale_rate).toLocaleString()}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-emerald-600 mt-1">
-                                        {saleModal.record.official_qty} kg × ₹{saleForm.sale_rate}/kg
-                                    </p>
+                                {/* Trader Selection List (Compact) */}
+                                <div className="h-40 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/50 p-2 custom-scrollbar">
+                                    {filteredTraders.map((trader) => (
+                                        <button
+                                            key={trader._id}
+                                            onClick={() => setSaleForm(prev => ({ ...prev, trader_id: trader._id }))}
+                                            className={`w-full flex items-center p-2 rounded-lg mb-1 transition ${saleForm.trader_id === trader._id ? 'bg-emerald-100 border border-emerald-200' : 'hover:bg-gray-100'}`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mr-3 ${saleForm.trader_id === trader._id ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                                {trader.full_name?.charAt(0)}
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className="font-semibold text-sm text-gray-900">{trader.full_name}</p>
+                                                <p className="text-xs text-gray-500">{trader.business_name}</p>
+                                            </div>
+                                            {saleForm.trader_id === trader._id && <CheckCircle2 size={16} className="text-emerald-600" />}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Financial Breakdown Card */}
+                                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
+                                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <AlertCircle size={16} className="text-emerald-600" />
+                                        Financial Summary
+                                    </h3>
+
+                                    {(() => {
+                                        const qty = saleModal.record.official_qty || 0;
+                                        const rate = saleForm.sale_rate || 0;
+                                        const baseAmount = qty * rate;
+                                        const farmerComm = Math.round(baseAmount * 0.04);
+                                        const traderComm = Math.round(baseAmount * 0.09);
+                                        const farmerPayable = baseAmount - farmerComm;
+                                        const traderPayable = baseAmount + traderComm;
+
+                                        return (
+                                            <div className="space-y-3 text-sm">
+                                                <div className="flex justify-between py-2 border-b border-gray-200">
+                                                    <span className="text-gray-600">Base Amount ({qty}kg × ₹{rate})</span>
+                                                    <span className="font-bold text-gray-900">₹{baseAmount.toLocaleString()}</span>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {/* Farmer Side */}
+                                                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                                                        <p className="text-xs font-bold text-blue-800 uppercase mb-2">Farmer Side</p>
+                                                        <div className="flex justify-between text-xs mb-1">
+                                                            <span className="text-gray-500">Commission (4%)</span>
+                                                            <span className="text-red-500 font-medium">- ₹{farmerComm}</span>
+                                                        </div>
+                                                        <div className="flex justify-between font-bold text-blue-900 pt-2 border-t border-blue-200">
+                                                            <span>Net Payable</span>
+                                                            <span>₹{farmerPayable.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Trader Side */}
+                                                    <div className="bg-purple-50/50 p-3 rounded-xl border border-purple-100">
+                                                        <p className="text-xs font-bold text-purple-800 uppercase mb-2">Trader Side</p>
+                                                        <div className="flex justify-between text-xs mb-1">
+                                                            <span className="text-gray-500">Commission (9%)</span>
+                                                            <span className="text-gray-700 font-medium">+ ₹{traderComm}</span>
+                                                        </div>
+                                                        <div className="flex justify-between font-bold text-purple-900 pt-2 border-t border-purple-200">
+                                                            <span>Total Due</span>
+                                                            <span>₹{traderPayable.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
 
-                            {/* Modal Footer */}
-                            <div className="p-4 sm:p-5 border-t border-slate-100 flex gap-2 sm:gap-3 sticky bottom-0 bg-white">
+                            <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
                                 <button
                                     onClick={() => setSaleModal({ open: false, record: null })}
-                                    className="flex-1 px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors text-sm sm:text-base"
+                                    className="flex-1 py-3 px-4 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleConfirmSale}
                                     disabled={!saleForm.trader_id || processingId}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                                    className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
-                                    {processingId ? (
-                                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <Check className="w-4 h-4 sm:w-5 sm:h-5" />
-                                            <span className="hidden sm:inline">Confirm Sale</span>
-                                            <span className="sm:hidden">Confirm</span>
-                                        </>
-                                    )}
+                                    {processingId ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+                                    Confirm Sale
                                 </button>
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {/* 2. SUCCESS MODAL */}
+                {saleModal.success && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center"
+                        >
+                            <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Check size={40} strokeWidth={3} />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sale Successful!</h2>
+                            <p className="text-gray-500 mb-8">Transaction recorded. Bills have been generated for both parties.</p>
+                            <button
+                                onClick={() => setSaleModal({ open: false, record: null, success: false })}
+                                className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition"
+                            >
+                                Done
+                            </button>
                         </motion.div>
                     </motion.div>
                 )}

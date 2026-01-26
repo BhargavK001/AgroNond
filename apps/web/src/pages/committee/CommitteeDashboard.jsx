@@ -1,37 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion'; // Kept for simple fade-in only
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Wallet, IndianRupee } from 'lucide-react';
 import AnimatedCounter from '../../components/ui/AnimatedCounter';
-
-// Mock data
-const mockMetrics = {
-  totalFarmers: 156,
-  totalTraders: 42,
-  totalVolume: 2850000,
-  pendingPayments: 125000,
-  receivedPayments: 2725000,
-  farmerCommission: 114000, // 4%
-  traderCommission: 256500, // 9%
-  totalCommission: 370500,
-};
-
-const recentTransactions = [
-  { id: 1, date: '2026-01-21', farmer: 'Ramesh Kumar', trader: 'Sharma Traders', crop: 'Tomato', qty: 500, rate: 40, amount: 20000, status: 'Paid' },
-  { id: 2, date: '2026-01-20', farmer: 'Suresh Patel', trader: 'Gupta & Sons', crop: 'Onion', qty: 1200, rate: 15, amount: 18000, status: 'Pending' },
-  { id: 3, date: '2026-01-19', farmer: 'Mahesh Singh', trader: 'Fresh Mart', crop: 'Potato', qty: 800, rate: 22, amount: 17600, status: 'Paid' },
-  { id: 4, date: '2026-01-18', farmer: 'Dinesh Yadav', trader: 'Sharma Traders', crop: 'Cabbage', qty: 600, rate: 12, amount: 7200, status: 'Paid' },
-  { id: 5, date: '2026-01-17', farmer: 'Ganesh Thakur', trader: 'City Grocers', crop: 'Cauliflower', qty: 400, rate: 30, amount: 12000, status: 'Pending' },
-];
-
-// Unified Theme - All Stats use consistent Emerald/Slate styling
-const stats = [
-  { label: 'Total Farmers', value: mockMetrics.totalFarmers, icon: Users, isCurrency: false },
-  { label: 'Total Traders', value: mockMetrics.totalTraders, icon: ShoppingBag, isCurrency: false },
-  { label: 'Received Payments', value: mockMetrics.receivedPayments, icon: Wallet, isCurrency: true },
-  { label: 'Pending Due', value: mockMetrics.pendingPayments, icon: AlertCircle, isCurrency: true },
-];
+import api from '../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function CommitteeDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState({
+    totalFarmers: 0,
+    totalTraders: 0,
+    totalVolume: 0,
+    pendingPayments: 0,
+    receivedPayments: 0,
+    farmerCommission: 0,
+    traderCommission: 0,
+    totalCommission: 0,
+  });
+  const [recentTransactions, setRecentTransactions] = useState([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsResponse, transactionsResponse] = await Promise.all([
+          api.get('/api/committee/stats'),
+          api.get('/api/committee/transactions')
+        ]);
+
+        setStatsData(statsResponse);
+        setRecentTransactions(transactionsResponse);
+      } catch (error) {
+        console.error("Dashboard fetch error:", error);
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Unified Theme - All Stats use consistent Emerald/Slate styling
+  const stats = [
+    { label: 'Total Farmers', value: statsData.totalFarmers, icon: Users, isCurrency: false },
+    { label: 'Total Traders', value: statsData.totalTraders, icon: ShoppingBag, isCurrency: false },
+    { label: 'Received Payments', value: statsData.receivedPayments, icon: Wallet, isCurrency: true },
+    { label: 'Pending Due', value: statsData.pendingPayments, icon: AlertCircle, isCurrency: true },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header - Clean & Simple */}
@@ -95,24 +120,32 @@ export default function CommitteeDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {recentTransactions.map((txn) => (
-                  <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-5 py-3.5 text-slate-600">{new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
-                    <td className="px-5 py-3.5 font-medium text-slate-900">{txn.farmer}</td>
-                    <td className="px-5 py-3.5 text-slate-600">{txn.trader}</td>
-                    <td className="px-5 py-3.5 text-slate-500">{txn.crop} ({txn.qty}kg)</td>
-                    <td className="px-5 py-3.5 text-right text-slate-600">₹{txn.rate}/kg</td>
-                    <td className="px-5 py-3.5 text-right font-bold text-slate-900">₹{txn.amount.toLocaleString()}</td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${txn.status === 'Paid'
-                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                        {txn.status}
-                      </span>
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((txn) => (
+                    <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-5 py-3.5 text-slate-600">{new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                      <td className="px-5 py-3.5 font-medium text-slate-900">{txn.farmer}</td>
+                      <td className="px-5 py-3.5 text-slate-600">{txn.trader}</td>
+                      <td className="px-5 py-3.5 text-slate-500">{txn.crop} ({txn.qty}kg)</td>
+                      <td className="px-5 py-3.5 text-right text-slate-600">₹{txn.rate}/kg</td>
+                      <td className="px-5 py-3.5 text-right font-bold text-slate-900">₹{txn.amount.toLocaleString()}</td>
+                      <td className="px-5 py-3.5 text-right">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${txn.status === 'Paid'
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                          {txn.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="px-5 py-8 text-center text-slate-500">
+                      No recent transactions found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -127,17 +160,17 @@ export default function CommitteeDashboard() {
             <h3 className="font-bold text-slate-900 mb-4">Commission Revenue</h3>
             <div className="mb-5 text-center p-4 bg-emerald-50 rounded-xl border border-emerald-100">
               <p className="text-sm font-medium text-emerald-600 mb-1">Total Collected</p>
-              <p className="text-3xl font-bold text-emerald-700">₹{mockMetrics.totalCommission.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-emerald-700">₹{statsData.totalCommission.toLocaleString()}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg border border-slate-200 text-center">
                 <p className="text-xs text-slate-500 mb-1">From Farmers (4%)</p>
-                <p className="font-bold text-slate-900">₹{mockMetrics.farmerCommission.toLocaleString()}</p>
+                <p className="font-bold text-slate-900">₹{statsData.farmerCommission.toLocaleString()}</p>
               </div>
               <div className="p-3 rounded-lg border border-slate-200 text-center">
                 <p className="text-xs text-slate-500 mb-1">From Traders (9%)</p>
-                <p className="font-bold text-slate-900">₹{mockMetrics.traderCommission.toLocaleString()}</p>
+                <p className="font-bold text-slate-900">₹{statsData.traderCommission.toLocaleString()}</p>
               </div>
             </div>
           </div>

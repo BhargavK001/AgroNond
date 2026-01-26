@@ -114,6 +114,59 @@ router.get('/transactions', requireAuth, requireTrader, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/trader/inventory
+ * Get inventory items (Completed records bought by trader)
+ */
+router.get('/inventory', requireAuth, requireTrader, async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // Fetch all completed records bought by this trader
+        const records = await Record.find({
+            trader_id: userId,
+            status: 'Completed'
+        })
+            .populate('farmer_id', 'full_name') // To get farmer name if needed for location/origin
+            .sort({ sold_at: -1 });
+
+        // Map records to Inventory format
+        const inventory = records.map(record => {
+            // Calculate days in storage
+            const soldDate = new Date(record.sold_at);
+            const now = new Date();
+            const daysInStorage = Math.floor((now - soldDate) / (1000 * 60 * 60 * 24));
+
+            // Determine status based on age
+            let status = 'good';
+            if (daysInStorage > 10) status = 'critical';
+            else if (daysInStorage > 5) status = 'low';
+
+            // Determine location (Default to market or user location)
+            // Ideally this would be a real field in a future "move stock" feature
+            const location = record.market || (req.user.operating_locations && req.user.operating_locations[0]) || 'Warehouse A';
+
+            return {
+                id: record._id,
+                crop: record.vegetable,
+                batchId: record.lot_id || `LOT-${record._id.toString().substr(-6).toUpperCase()}`,
+                quantity: record.official_qty,
+                maxQuantity: record.official_qty, // Assuming full batch is initially available
+                unit: 'kg',
+                location: location,
+                daysInStorage: daysInStorage,
+                status: status,
+                price: record.sale_rate
+            };
+        });
+
+        res.json(inventory);
+    } catch (error) {
+        console.error('Inventory fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch inventory' });
+    }
+});
+
 // Temporary Seed Route
 import User from '../models/User.js';
 router.post('/seed', requireAuth, requireTrader, async (req, res) => {
@@ -151,6 +204,20 @@ router.post('/seed', requireAuth, requireTrader, async (req, res) => {
                 payment_status: 'pending',
                 trader_id: userId,
                 sold_at: new Date(Date.now() - 86400000), // Yesterday
+                market: 'Main Market'
+            },
+            {
+                farmer_id: farmerId,
+                vegetable: 'Potatoes',
+                official_qty: 1200,
+                sale_rate: 12,
+                sale_amount: 14400,
+                commission: 1296,
+                total_amount: 15696,
+                status: 'Completed',
+                payment_status: 'pending',
+                trader_id: userId,
+                sold_at: new Date(Date.now() - (86400000 * 6)), // 6 days ago (Low stock warning)
                 market: 'Main Market'
             }
         ];
