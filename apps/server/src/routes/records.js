@@ -267,12 +267,13 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
         const quantity = record.official_qty;
         const base_amount = quantity * sale_rate;
         
-        // Farmer commission (4% deducted from base)
-        const farmer_commission = Math.round((base_amount * FARMER_COMMISSION_RATE / 100) * 100) / 100;
+        // Calculate commissions using helper function
+        const calculateCommission = (amount, rate) => Math.round((amount * rate / 100) * 100) / 100;
+        
+        const farmer_commission = calculateCommission(base_amount, FARMER_COMMISSION_RATE);
         const farmer_payable = base_amount - farmer_commission;
         
-        // Trader commission (9% added to base)
-        const trader_commission = Math.round((base_amount * TRADER_COMMISSION_RATE / 100) * 100) / 100;
+        const trader_commission = calculateCommission(base_amount, TRADER_COMMISSION_RATE);
         const trader_receivable = base_amount + trader_commission;
 
         // Create Transaction record

@@ -7,6 +7,19 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 const router = express.Router();
 
 /**
+ * Helper function to sync record payment status based on transaction
+ * Updates record to 'paid' only if both farmer and trader payments are complete
+ * Updates record to 'pending' if either payment is pending
+ */
+async function syncRecordPaymentStatus(transaction) {
+    const bothPaid = transaction.farmer_payment_status === 'paid' && transaction.trader_payment_status === 'paid';
+    await Record.findByIdAndUpdate(
+        transaction.record_id, 
+        { payment_status: bothPaid ? 'paid' : 'pending' }
+    );
+}
+
+/**
  * GET /api/transactions
  * List all transactions (Committee, Admin, Lilav only)
  */
@@ -228,10 +241,8 @@ router.patch('/:id/farmer-payment', requireAuth, requireRole('committee', 'admin
             });
         }
 
-        // Update record payment status if both paid
-        if (transaction.farmer_payment_status === 'paid' && transaction.trader_payment_status === 'paid') {
-            await Record.findByIdAndUpdate(transaction.record_id, { payment_status: 'paid' });
-        }
+        // Sync record payment status based on both payment statuses
+        await syncRecordPaymentStatus(transaction);
 
         res.json(transaction);
     } catch (error) {
@@ -283,10 +294,8 @@ router.patch('/:id/trader-payment', requireAuth, requireRole('committee', 'admin
             });
         }
 
-        // Update record payment status if both paid
-        if (transaction.farmer_payment_status === 'paid' && transaction.trader_payment_status === 'paid') {
-            await Record.findByIdAndUpdate(transaction.record_id, { payment_status: 'paid' });
-        }
+        // Sync record payment status based on both payment statuses
+        await syncRecordPaymentStatus(transaction);
 
         res.json(transaction);
     } catch (error) {
