@@ -89,7 +89,14 @@ export function AuthProvider({ children }) {
         body: JSON.stringify({ phone, otp: token })
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('Failed to parse backend response:', text);
+        throw new Error('Server returned an invalid response (not JSON). Code: ' + response.status);
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Verification failed');

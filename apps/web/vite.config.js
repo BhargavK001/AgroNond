@@ -56,7 +56,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['framer-motion', '@heroui/react', 'lucide-react', 'react-hot-toast'],
+          'ui-vendor': ['framer-motion', 'lucide-react', 'react-hot-toast'],
           'data-vendor': ['@tanstack/react-query'],
           'utils-vendor': ['html2pdf.js']
         },

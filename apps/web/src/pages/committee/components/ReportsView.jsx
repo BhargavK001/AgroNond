@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { FileText, Download, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { DatePicker } from "@heroui/react";
-import { parseDate, getLocalTimeZone, today } from "@internationalized/date";
 
 export default function ReportsView() {
     // Default to today
     const [dateRange, setDateRange] = useState({
-        start: today(getLocalTimeZone()),
-        end: today(getLocalTimeZone())
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
     });
 
     const reports = [
@@ -27,7 +25,7 @@ export default function ReportsView() {
     const handleDownload = (reportTitle, period = 'Custom Range') => {
         const rangeText = period === 'Today'
             ? 'Today'
-            : `${dateRange.start.toString()} to ${dateRange.end.toString()}`;
+            : `${dateRange.start} to ${dateRange.end}`;
 
         toast.success(`Downloading ${reportTitle} for ${rangeText}`);
 
@@ -98,29 +96,29 @@ export default function ReportsView() {
                     </div>
 
                     <div className="space-y-4">
-                        <DatePicker
-                            label="From Date"
-                            className="w-full"
-                            value={dateRange.start}
-                            onChange={(date) => setDateRange(prev => ({ ...prev, start: date }))}
-                            popoverProps={{
-                                className: "bg-white shadow-xl border border-slate-200"
-                            }}
-                        />
-
-                        <div className="flex justify-center text-slate-400">
-                            <ArrowRight className="w-7 h-4 rotate-90" />
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">From Date</label>
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                                value={dateRange.start}
+                                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                            />
                         </div>
 
-                        <DatePicker
-                            label="To Date"
-                            className="w-full"
-                            value={dateRange.end}
-                            onChange={(date) => setDateRange(prev => ({ ...prev, end: date }))}
-                            popoverProps={{
-                                className: "bg-white shadow-xl border border-slate-200"
-                            }}
-                        />
+                        <div className="flex justify-center text-slate-400">
+                            <ArrowRight className="w-5 h-5 rotate-90" />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-slate-700">To Date</label>
+                            <input
+                                type="date"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                                value={dateRange.end}
+                                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                            />
+                        </div>
 
                         <div className="pt-4 border-t border-slate-100 mt-4 space-y-3">
                             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Download for Range</p>

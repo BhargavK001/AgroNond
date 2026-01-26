@@ -1,60 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../../lib/api';
 import { motion } from 'framer-motion';
 import { FileText, Download, Filter, Calendar, Users, ShoppingBag } from 'lucide-react';
 
-// Mock billing data
-const farmerBillingData = [
-  { id: 1, date: '2026-01-21', name: 'Ramesh Kumar', crop: 'Tomato', qty: 500, baseAmount: 20000, commission: 800, finalAmount: 19200, status: 'Paid' },
-  { id: 2, date: '2026-01-20', name: 'Suresh Patel', crop: 'Onion', qty: 1200, baseAmount: 18000, commission: 720, finalAmount: 17280, status: 'Pending' },
-  { id: 3, date: '2026-01-19', name: 'Mahesh Singh', crop: 'Potato', qty: 800, baseAmount: 17600, commission: 704, finalAmount: 16896, status: 'Paid' },
-  { id: 4, date: '2026-01-18', name: 'Dinesh Yadav', crop: 'Cabbage', qty: 600, baseAmount: 7200, commission: 288, finalAmount: 6912, status: 'Paid' },
-  { id: 5, date: '2026-01-17', name: 'Ganesh Thakur', crop: 'Cauliflower', qty: 400, baseAmount: 12000, commission: 480, finalAmount: 11520, status: 'Pending' },
-];
-
-const traderBillingData = [
-  { id: 1, date: '2026-01-21', name: 'Sharma Traders', crop: 'Tomato', qty: 500, baseAmount: 20000, commission: 1800, finalAmount: 21800, status: 'Paid' },
-  { id: 2, date: '2026-01-20', name: 'Gupta & Sons', crop: 'Onion', qty: 1200, baseAmount: 18000, commission: 1620, finalAmount: 19620, status: 'Pending' },
-  { id: 3, date: '2026-01-19', name: 'Fresh Mart', crop: 'Potato', qty: 800, baseAmount: 17600, commission: 1584, finalAmount: 19184, status: 'Paid' },
-  { id: 4, date: '2026-01-18', name: 'Sharma Traders', crop: 'Cabbage', qty: 600, baseAmount: 7200, commission: 648, finalAmount: 7848, status: 'Paid' },
-  { id: 5, date: '2026-01-17', name: 'City Grocers', crop: 'Cauliflower', qty: 400, baseAmount: 12000, commission: 1080, finalAmount: 13080, status: 'Pending' },
-];
-
+// State management
 export default function BillingReports() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('farmers');
   const [dateFilter, setDateFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const rawData = activeTab === 'farmers' ? farmerBillingData : traderBillingData;
-  const commissionLabel = activeTab === 'farmers' ? '4%' : '9%';
-  const commissionColor = activeTab === 'farmers' ? 'blue' : 'purple';
+  useEffect(() => {
+    fetchRecords();
+  }, [activeTab, dateFilter, page]);
 
-  const getFilteredData = () => {
-    if (dateFilter === 'all') return rawData;
+  const fetchRecords = async () => {
+    try {
+      setLoading(true);
+      // Fetch billing records
+      const response = await api.finance.billingRecords.list({
+        limit: 20,
+        page,
+        period: dateFilter
+      });
 
-    const today = new Date('2026-01-21'); // Using fixed date for mock data context
-
-    return rawData.filter(item => {
-      const itemDate = new Date(item.date);
-
-      if (dateFilter === 'today') {
-        return itemDate.toDateString() === today.toDateString();
+      if (response && response.records) {
+        setData(response.records);
+        setTotalPages(response.totalPages);
       }
-
-      if (dateFilter === 'week') {
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        return itemDate >= weekAgo && itemDate <= today;
-      }
-
-      if (dateFilter === 'month') {
-        return itemDate.getMonth() === today.getMonth() &&
-          itemDate.getFullYear() === today.getFullYear();
-      }
-
-      return true;
-    });
+    } catch (error) {
+      console.error("Failed to fetch billing records:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const currentData = getFilteredData();
+  const processRecord = (record) => {
+    const baseAmount = record.sale_amount || 0;
+    const totalCommission = record.commission || 0;
+
+    // Split commission logic (Mock split: 4 parts Farmer, 9 parts Trader)
+    const farmerComm = Math.round(totalCommission * (4 / 13));
+    const traderComm = Math.round(totalCommission * (9 / 13));
+
+    if (activeTab === 'farmers') {
+      return {
+        id: record._id,
+        date: record.sold_at || record.createdAt,
+        name: record.farmer_id?.full_name || 'Unknown Farmer',
+        crop: record.vegetable,
+        qty: record.qtySold || record.quantity,
+        baseAmount: baseAmount,
+        commission: farmerComm, // Deducted
+        finalAmount: baseAmount - farmerComm, // Net Payable
+        status: record.payment_status === 'paid' ? 'Paid' : 'Pending'
+      };
+    } else {
+      return {
+        id: record._id,
+        date: record.sold_at || record.createdAt,
+        name: record.trader_id?.business_name || record.trader_id?.full_name || 'Unknown Trader',
+        crop: record.vegetable,
+        qty: record.qtySold || record.quantity,
+        baseAmount: baseAmount,
+        commission: traderComm, // Added
+        finalAmount: baseAmount + traderComm, // Total Receivable
+        status: record.payment_status === 'paid' ? 'Paid' : 'Pending'
+      };
+    }
+  };
+
+  const currentData = data.map(processRecord);
+  const commissionLabel = activeTab === 'farmers' ? '4%' : '9%';
+  const commissionColor = activeTab === 'farmers' ? 'blue' : 'purple';
 
   const totalBase = currentData.reduce((acc, item) => acc + item.baseAmount, 0);
   const totalCommission = currentData.reduce((acc, item) => acc + item.commission, 0);
@@ -81,8 +101,8 @@ export default function BillingReports() {
         <button
           onClick={() => setActiveTab('farmers')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${activeTab === 'farmers'
-              ? 'bg-white shadow-sm text-emerald-700'
-              : 'text-slate-600 hover:text-slate-800'
+            ? 'bg-white shadow-sm text-emerald-700'
+            : 'text-slate-600 hover:text-slate-800'
             }`}
         >
           <Users className="w-4 h-4" />
@@ -91,8 +111,8 @@ export default function BillingReports() {
         <button
           onClick={() => setActiveTab('traders')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${activeTab === 'traders'
-              ? 'bg-white shadow-sm text-emerald-700'
-              : 'text-slate-600 hover:text-slate-800'
+            ? 'bg-white shadow-sm text-emerald-700'
+            : 'text-slate-600 hover:text-slate-800'
             }`}
         >
           <ShoppingBag className="w-4 h-4" />
@@ -207,8 +227,8 @@ export default function BillingReports() {
                 <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{item.finalAmount.toLocaleString()}</td>
                 <td className="px-6 py-4 text-center">
                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${item.status === 'Paid'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-amber-100 text-amber-700'
                     }`}>
                     {item.status}
                   </span>
@@ -245,8 +265,8 @@ export default function BillingReports() {
                 </span>
               </div>
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid'
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : 'bg-amber-100 text-amber-700'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-amber-100 text-amber-700'
                 }`}>
                 {item.status}
               </span>

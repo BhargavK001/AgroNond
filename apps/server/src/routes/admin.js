@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import Record from '../models/Record.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -15,22 +16,50 @@ const requireAdmin = (req, res, next) => {
 
 /**
  * GET /api/admin/metrics
- * Get system-wide metrics (User counts)
+ * Get system-wide metrics (User counts & aggregated Record stats)
  */
 router.get('/metrics', requireAuth, requireAdmin, async (req, res) => {
   try {
-    // Get counts for different roles
-    const [totalFarmers, totalTraders, totalUsers] = await Promise.all([
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [
+      totalFarmers,
+      totalTraders,
+      totalUsers,
+      pendingWeights,
+      activeAuctions, // "Weighed" status means ready for auction
+      completedToday
+    ] = await Promise.all([
       User.countDocuments({ role: 'farmer' }),
       User.countDocuments({ role: 'trader' }),
-      User.countDocuments({})
+      User.countDocuments({}),
+      Record.countDocuments({ status: 'Pending' }),
+      Record.countDocuments({ status: 'Weighed' }),
+      Record.countDocuments({
+        status: { $in: ['Sold', 'Completed'] },
+        updatedAt: { $gte: today }
+      })
     ]);
+
+    // Financial aggregation for "Total Volume" (All time)
+    const financialStats = await Record.aggregate([
+      { $match: { status: { $in: ['Sold', 'Completed'] } } },
+      { $group: { _id: null, totalVolume: { $sum: '$sale_amount' }, totalCommission: { $sum: '$commission' } } }
+    ]);
+
+    const totalVolume = financialStats[0]?.totalVolume || 0;
+    const totalCommission = financialStats[0]?.totalCommission || 0;
 
     res.json({
       totalFarmers,
       totalTraders,
       totalUsers,
-      activeToday: 0 // Placeholder
+      totalVolume,
+      totalCommission,
+      pendingWeights,
+      activeAuctions,
+      completedToday
     });
   } catch (error) {
     console.error('Metrics error:', error);
@@ -39,8 +68,98 @@ router.get('/metrics', requireAuth, requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/admin/farmers
+ * List all farmers with details
+ */
+router.get('/farmers', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const farmers = await User.find({ role: 'farmer' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    res.json(farmers);
+  } catch (error) {
+    console.error('Fetch farmers error:', error);
+    res.status(500).json({ error: 'Failed to fetch farmers' });
+  }
+});
+
+/**
+ * GET /api/admin/traders
+ * List all traders with details
+ */
+router.get('/traders', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const traders = await User.find({ role: 'trader' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    res.json(traders);
+  } catch (error) {
+    console.error('Fetch traders error:', error);
+    res.status(500).json({ error: 'Failed to fetch traders' });
+  }
+});
+
+/**
+ * GET /api/admin/weight-records
+ * Fetch all weight records (Pending & Weighed)
+ */
+router.get('/weight-records', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const records = await Record.find({})
+      .populate('farmer_id', 'full_name farmerId phone')
+      .populate('weighed_by', 'full_name') // Staff who weighed it
+      .sort({ createdAt: -1 })
+      .limit(100); // Limit to recent 100 for performance
+    res.json(records);
+  } catch (error) {
+    console.error('Fetch weight records error:', error);
+    res.status(500).json({ error: 'Failed to fetch weight records' });
+  }
+});
+
+/**
+ * GET /api/admin/lilav-bids
+ * Fetch all auction activity (Sold/Completed records)
+ */
+router.get('/lilav-bids', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const records = await Record.find({ status: { $in: ['Sold', 'Completed'] } })
+      .populate('farmer_id', 'full_name farmerId')
+      .populate('trader_id', 'full_name customId business_name')
+      .populate('sold_by', 'full_name') // Auctioneer/Staff
+      .sort({ sold_at: -1 })
+      .limit(100);
+    res.json(records);
+  } catch (error) {
+    console.error('Fetch lilav bids error:', error);
+    res.status(500).json({ error: 'Failed to fetch auction records' });
+  }
+});
+
+/**
+ * GET /api/admin/committee-records
+ * Fetch financial/commission records
+ */
+router.get('/committee-records', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    // Return all completed sales with commission details
+    const records = await Record.find({ status: { $in: ['Sold', 'Completed'] } })
+      .populate('farmer_id', 'full_name farmerId')
+      .populate('trader_id', 'full_name customId business_name')
+      .select('commission total_amount sale_amount vegetable market createdAt sold_at')
+      .sort({ sold_at: -1 })
+      .limit(100);
+
+    res.json(records);
+  } catch (error) {
+    console.error('Fetch committee records error:', error);
+    res.status(500).json({ error: 'Failed to fetch committee records' });
+  }
+});
+
+/**
  * GET /api/admin/users
- * List all users with pagination and filtering
+ * List all users with pagination and filtering (Generic User Management)
  */
 router.get('/users', requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -81,7 +200,7 @@ router.patch('/users/:id/role', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight_staff', 'accounting'];
+    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'lilav', 'accounting'];
 
     if (!validRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
@@ -116,7 +235,7 @@ router.post('/users', requireAuth, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Phone and role are required' });
     }
 
-    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'accounting'];
+    const validRoles = ['farmer', 'trader', 'committee', 'admin', 'weight', 'lilav', 'accounting'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
@@ -139,8 +258,6 @@ router.post('/users', requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
-
-// ... existing code ...
 
 /**
  * GET /api/admin/commission-rules

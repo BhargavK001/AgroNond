@@ -19,6 +19,8 @@ import statusRouter from './routes/status.js';
 import dailyRatesRouter from './routes/dailyRates.js';
 import traderRouter from './routes/trader.js';
 import weightRouter from './routes/weight.js';
+import searchRouter from './routes/search.js';
+import committeeRouter from './routes/committee.js';
 import connectDB from './config/db.js';
 
 // Connect to Database
@@ -79,6 +81,8 @@ app.use('/api/status', statusRouter);
 app.use('/api/daily-rates', dailyRatesRouter);
 app.use('/api/trader', traderRouter);
 app.use('/api/weight', weightRouter);
+app.use('/api/search', searchRouter);
+app.use('/api/committee', committeeRouter);
 
 // 404 handler
 app.use((req, res) => {
@@ -96,8 +100,9 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, HOST, () => {
-  console.log(`🚀 AgroNond Server running on http://${HOST}:${PORT}`);
-  console.log(`📡 Health check: http://${HOST}:${PORT}/api/health`);
+  const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+  console.log(`🚀 AgroNond Server running on http://${displayHost}:${PORT}`);
+  console.log(`📡 Health check: http://${displayHost}:${PORT}/api/health`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Allowed origins: ${getAllowedOrigins().join(', ')}`);
 });

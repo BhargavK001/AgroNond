@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import api from "../../lib/api"; // <--- Ensure this imports your API helper
+import api from "../../lib/api";
+import UniversalSearch from '../common/UniversalSearch';
 
 export default function FarmerNavbar() {
   const { user, signOut } = useAuth();
@@ -326,6 +327,9 @@ export default function FarmerNavbar() {
 
           {/* Right Side - Notifications & Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden md:block mr-2">
+              <UniversalSearch placeholder="Search your records..." />
+            </div>
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button

@@ -43,6 +43,12 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const UserManagement = lazy(() => import('./pages/admin/UserManagement'));
 const CommissionRules = lazy(() => import('./pages/admin/CommissionRules'));
 const TransactionHistory = lazy(() => import('./pages/admin/TransactionHistory'));
+// NEW Admin Pages
+const FarmerManagement = lazy(() => import('./pages/admin/FarmerManagement'));
+const TraderManagement = lazy(() => import('./pages/admin/TraderManagement'));
+const WeightManagement = lazy(() => import('./pages/admin/WeightManagement'));
+const LilavManagement = lazy(() => import('./pages/admin/LilavManagement'));
+const CommitteeManagement = lazy(() => import('./pages/admin/CommitteeManagement'));
 
 // Committee Dashboard
 const CommitteeDashboard = lazy(() => import('./pages/committee/CommitteeDashboard'));
@@ -58,9 +64,6 @@ const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
 
 const AccountingOverview = lazy(() => import('./pages/committee/AccountingOverview'));
 const AccountingTransactions = lazy(() => import('./pages/committee/AccountingTransactions'));
-const AccountingTraders = lazy(() => import('./pages/committee/AccountingTraders'));
-const AccountingFarmers = lazy(() => import('./pages/committee/AccountingFarmers'));
-const AccountingReports = lazy(() => import('./pages/committee/AccountingReports'));
 const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
 const CommitteeTransactionHistory = lazy(() => import('./pages/committee/TransactionHistory'));
@@ -189,9 +192,6 @@ function App() {
                   {/* Moved Accounting Section */}
                   <Route path="accounting" element={<AccountingOverview />} />
                   <Route path="accounting/transactions" element={<AccountingTransactions />} />
-                  <Route path="accounting/traders" element={<AccountingTraders />} />
-                  <Route path="accounting/farmers" element={<AccountingFarmers />} />
-                  <Route path="accounting/reports" element={<AccountingReports />} />
 
                   {/* Lilav (Auction) Section */}
                   <Route path="lilav" element={<LilavEntry />} />
@@ -219,6 +219,12 @@ function App() {
                   <Route path="users" element={<UserManagement />} />
                   <Route path="commission" element={<CommissionRules />} />
                   <Route path="transactions" element={<TransactionHistory />} />
+                  {/* New Management Routes */}
+                  <Route path="farmers" element={<FarmerManagement />} />
+                  <Route path="traders" element={<TraderManagement />} />
+                  <Route path="weight" element={<WeightManagement />} />
+                  <Route path="lilav" element={<LilavManagement />} />
+                  <Route path="committee" element={<CommitteeManagement />} />
                 </Route>
 
                 {/* FIXED: Smart redirect based on user role - Prevents infinite loop */}

@@ -2,11 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Loading, { PageLoading } from '../ui/Loading';
 
-/**
- * ProtectedRoute component
- * Wraps routes that require authentication
- * Redirects to login if not authenticated
- */
+
 export default function ProtectedRoute({ children, requireRole = null }) {
   const { user, profile, loading, profileLoading } = useAuth();
   const location = useLocation();

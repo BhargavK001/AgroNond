@@ -126,6 +126,11 @@ export const api = {
   // Admin
   admin: {
     metrics: () => apiRequest('/api/admin/metrics', { method: 'GET' }),
+    farmers: () => apiRequest('/api/admin/farmers', { method: 'GET' }),
+    traders: () => apiRequest('/api/admin/traders', { method: 'GET' }),
+    weightRecords: () => apiRequest('/api/admin/weight-records', { method: 'GET' }),
+    lilavBids: () => apiRequest('/api/admin/lilav-bids', { method: 'GET' }),
+    committeeRecords: () => apiRequest('/api/admin/committee-records', { method: 'GET' }),
     configs: {
       list: () => apiRequest('/api/admin/configs', { method: 'GET' }),
       update: (data) => apiRequest('/api/admin/configs', { method: 'POST', body: JSON.stringify(data) }),
@@ -162,6 +167,7 @@ export const api = {
       create: (data) => apiRequest('/api/finance/payments', { method: 'POST', body: JSON.stringify(data) }),
     },
     stats: () => apiRequest('/api/finance/stats', { method: 'GET' }),
+    cashflow: () => apiRequest('/api/finance/cashflow', { method: 'GET' }),
   },
 
   // Trader
@@ -172,6 +178,7 @@ export const api = {
       return apiRequest(`/api/trader/transactions${query ? '?' + query : ''}`, { method: 'GET' });
     },
     seed: () => apiRequest('/api/trader/seed', { method: 'POST' }),
+    inventory: () => apiRequest('/api/trader/inventory', { method: 'GET' }),
   },
   weight: {
     stats: () => apiRequest('/api/weight/stats', { method: 'GET' }),

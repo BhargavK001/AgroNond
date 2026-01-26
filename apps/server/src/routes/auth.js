@@ -108,10 +108,18 @@ router.post('/verify', async (req, res) => {
         // If not, create new user
         if (!user) {
             console.log('[Verify] Creating new user...');
-            user = await User.create({
-                phone, // Save with the format used during login
-            });
-            console.log('[Verify] User created:', user._id);
+            try {
+                user = await User.create({
+                    phone, // Save with the format used during login
+                });
+                console.log('[Verify] User created:', user._id);
+            } catch (creatError) {
+                console.error('[Verify] Critical Error creating user:', creatError);
+                return res.status(500).json({
+                    error: 'Failed to create user account',
+                    details: creatError.message
+                });
+            }
         }
 
         // Generate Token
@@ -119,7 +127,7 @@ router.post('/verify', async (req, res) => {
         const token = generateToken(user._id);
         console.log('[Verify] Token generated.');
 
-        res.json({
+        return res.json({
             message: 'Login successful',
             token,
             user: {
@@ -136,10 +144,10 @@ router.post('/verify', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Auth Verify Error:', error);
+        console.error('Auth Verify Critical Error:', error);
         // Send a simple string if JSON fails
         if (!res.headersSent) {
-            res.status(500).json({ error: 'Server error: ' + error.message });
+            return res.status(500).json({ error: 'Server error during verification: ' + error.message });
         }
     }
 });

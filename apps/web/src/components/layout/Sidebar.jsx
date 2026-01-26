@@ -15,7 +15,8 @@ import {
     ChevronsRight,
     IndianRupee,
     Gavel,
-    Scale
+    Scale,
+    Building2
 } from 'lucide-react';
 
 const NAV_ITEMS = {
@@ -26,6 +27,8 @@ const NAV_ITEMS = {
         { label: 'Weight', path: '/dashboard/committee/weight', icon: Scale },
         { label: 'Lilav Entry', path: '/dashboard/committee/lilav', icon: Gavel },
         { label: 'Accounting', path: '/dashboard/committee/accounting', icon: Wallet },
+        { label: 'Transactions', path: '/dashboard/committee/accounting/transactions', icon: Receipt },
+        { label: 'Cash Flow', path: '/dashboard/committee/cashflow', icon: IndianRupee },
         { label: 'Reports', path: '/dashboard/committee/billing', icon: FileText },
     ],
     trader: [
@@ -35,9 +38,14 @@ const NAV_ITEMS = {
     ],
     admin: [
         { label: 'Overview', path: '/dashboard/admin', icon: LayoutDashboard },
-        { label: 'Users', path: '/dashboard/admin/users', icon: Users },
+        { label: 'Farmers', path: '/dashboard/admin/farmers', icon: Users },
+        { label: 'Traders', path: '/dashboard/admin/traders', icon: Store },
+        { label: 'Weight Station', path: '/dashboard/admin/weight', icon: Scale },
+        { label: 'Lilav (Auction)', path: '/dashboard/admin/lilav', icon: Gavel },
+        { label: 'Committee', path: '/dashboard/admin/committee', icon: Building2 }, // Note: Need to import Building2
         { label: 'Commission', path: '/dashboard/admin/commission', icon: ShieldCheck },
         { label: 'Transactions', path: '/dashboard/admin/transactions', icon: Receipt },
+        { label: 'Users', path: '/dashboard/admin/users', icon: Users },
     ],
     lilav: [
         { label: 'Auction Entry', path: '/dashboard/lilav', icon: Gavel },
