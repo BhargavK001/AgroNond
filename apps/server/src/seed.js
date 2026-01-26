@@ -48,7 +48,7 @@ const seedUsers = async () => {
             },
             {
                 phone: '2222222222',
-                role: 'weight', // 'weight' is the role key used in Frontend based on previous context
+                role: 'weight', 
                 full_name: 'Weight Staff Test',
             },
             {
