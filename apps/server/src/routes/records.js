@@ -33,7 +33,7 @@ router.get('/my-records', requireAuth, async (req, res) => {
  */
 router.get('/my-purchases', requireAuth, async (req, res) => {
     try {
-        const records = await Record.find({ trader_id: req.user._id, status: 'Completed' })
+        const records = await Record.find({ trader_id: req.user._id, status: { $in: ['Sold', 'Completed'] } })
             .select('-farmer_id -farmer_payment_ref -farmer_payment_mode -farmer_payment_status -net_payable_to_farmer -farmer_commission') // Exclude farmer info
             .sort({ sold_at: -1 });
         res.json(records);
@@ -155,6 +155,7 @@ router.post('/add', requireAuth, async (req, res) => {
             market: market,
             vegetable: item.vegetable,
             quantity: item.quantity,
+            carat: item.carat || 0,
             status: 'Pending',
             qtySold: 0,
             rate: 0,
@@ -181,11 +182,11 @@ router.post('/add', requireAuth, async (req, res) => {
  */
 router.put('/:id', requireAuth, async (req, res) => {
     try {
-        const { market, quantity } = req.body;
+        const { market, quantity, carat } = req.body;
 
         const record = await Record.findOneAndUpdate(
             { _id: req.params.id, farmer_id: req.user._id },
-            { market, quantity },
+            { market, quantity, carat: carat || 0 },
             { new: true }
         );
 
@@ -223,16 +224,17 @@ router.delete('/:id', requireAuth, async (req, res) => {
 router.patch('/:id/weight', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { official_qty } = req.body;
+        const { official_qty, official_carat } = req.body;
 
-        if (official_qty == null) {
-            return res.status(400).json({ error: 'Weight required' });
+        if (official_qty == null && official_carat == null) {
+            return res.status(400).json({ error: 'Weight or Carat required' });
         }
 
         const record = await Record.findByIdAndUpdate(
             id,
             {
                 official_qty,
+                official_carat: official_carat || 0,
                 status: 'Weighed',
                 weighed_by: req.user._id,
                 weighed_at: new Date()
@@ -305,7 +307,7 @@ router.get('/all-weighed', requireAuth, async (req, res) => {
 router.patch('/:id/sell', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { trader_id, sale_rate } = req.body;
+        const { trader_id, sale_rate, sale_unit } = req.body;
 
         if (!trader_id || sale_rate == null) {
             return res.status(400).json({ error: 'Trader and sale rate required' });
@@ -321,7 +323,21 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Record must be weighed before sale' });
         }
 
-        const sale_amount = record.official_qty * sale_rate;
+        let sale_amount = 0;
+
+        // Calculate Amount based on Sale Unit (Carat or Kg)
+        if (sale_unit === 'carat') {
+            if (!record.official_carat || record.official_carat <= 0) {
+                return res.status(400).json({ error: 'Cannot sell by carat: Official carat is 0' });
+            }
+            sale_amount = record.official_carat * sale_rate;
+        } else {
+            // Default to KG
+            if (!record.official_qty || record.official_qty <= 0) {
+                return res.status(400).json({ error: 'Cannot sell by kg: Official weight is 0' });
+            }
+            sale_amount = record.official_qty * sale_rate;
+        }
 
         // Calculate Commissions
         const farmer_commission = Math.round(sale_amount * 0.04);
@@ -336,8 +352,9 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             {
                 trader_id,
                 sale_rate,
+                sale_unit: sale_unit || 'kg',
                 sale_amount,
-                status: 'Completed',
+                status: 'Sold',
                 sold_by: req.user._id,
                 sold_at: new Date(),
 
@@ -374,7 +391,7 @@ router.get('/completed', requireAuth, async (req, res) => {
     try {
         const { date } = req.query;
 
-        let query = { status: 'Completed' };
+        let query = { status: { $in: ['Sold', 'Completed'] } };
 
         if (date) {
             const startDate = new Date(date);

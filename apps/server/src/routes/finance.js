@@ -1,5 +1,6 @@
 import express from 'express';
 import { requireAuth } from '../middleware/auth.js';
+import Record from '../models/Record.js';
 
 const router = express.Router();
 // Middleware to require auth
@@ -82,44 +83,72 @@ router.get('/stats', async (req, res) => {
 
         const [
             totalCommission,
-            pendingReceivables,
+            pendingReceivables, // Amount
             collectedToday,
-            totalCount
+            totalCount,
+            // New Aggregations
+            totalBaseAmount,
+            receivedPayments,
+            farmerPaymentsPaid,
+            farmerPaymentsDue,
+            pendingCount // Count of pending trader payments
         ] = await Promise.all([
-            // Total Revenue (Commission)
+            // 1. Total Commission
             Record.aggregate([
                 { $match: { status: { $in: ['Sold', 'Completed'] } } },
                 { $group: { _id: null, total: { $sum: '$commission' } } }
             ]),
-            // Pending Payments from Traders (Receivables)
+            // 2. Pending Receivables (Traders) - Amount
             Record.aggregate([
-                {
-                    $match: {
-                        status: { $in: ['Sold', 'Completed'] },
-                        trader_payment_status: 'Pending'
-                    }
-                },
+                { $match: { status: { $in: ['Sold', 'Completed'] }, trader_payment_status: 'Pending' } },
                 { $group: { _id: null, total: { $sum: '$net_receivable_from_trader' } } }
             ]),
-            // Collected Today (Commission from Paid Traders)
+            // 3. Collected Today (Commission Only?) - Maybe keep as is
             Record.aggregate([
-                {
-                    $match: {
-                        status: { $in: ['Sold', 'Completed'] },
-                        trader_payment_status: 'Paid',
-                        trader_payment_date: { $gte: today }
-                    }
-                },
+                { $match: { status: { $in: ['Sold', 'Completed'] }, trader_payment_status: 'Paid', trader_payment_date: { $gte: today } } },
                 { $group: { _id: null, total: { $sum: '$commission' } } }
             ]),
-            Record.countDocuments({ status: { $in: ['Sold', 'Completed'] } })
+            // 4. Total Count
+            Record.countDocuments({ status: { $in: ['Sold', 'Completed'] } }),
+
+            // 5. Total Base Amount (Sale Amount)
+            Record.aggregate([
+                { $match: { status: { $in: ['Sold', 'Completed'] } } },
+                { $group: { _id: null, total: { $sum: '$sale_amount' } } }
+            ]),
+            // 6. Received Payments (Traders) - Total Amount Received
+            Record.aggregate([
+                { $match: { status: { $in: ['Sold', 'Completed'] }, trader_payment_status: 'Paid' } },
+                { $group: { _id: null, total: { $sum: '$net_receivable_from_trader' } } }
+            ]),
+            // 7. Farmer Payments Paid
+            Record.aggregate([
+                { $match: { status: { $in: ['Sold', 'Completed'] }, farmer_payment_status: 'Paid' } },
+                { $group: { _id: null, total: { $sum: '$net_payable_to_farmer' } } }
+            ]),
+            // 8. Farmer Payments Due
+            Record.aggregate([
+                { $match: { status: { $in: ['Sold', 'Completed'] }, farmer_payment_status: 'Pending' } },
+                { $group: { _id: null, total: { $sum: '$net_payable_to_farmer' } } }
+            ]),
+            // 9. Pending Count (Traders)
+            Record.countDocuments({ status: { $in: ['Sold', 'Completed'] }, trader_payment_status: 'Pending' })
         ]);
 
         res.json({
-            totalRevenue: totalCommission[0]?.total || 0,
-            pendingPayments: Math.round(pendingReceivables[0]?.total || 0), // UI calls it "Pending Payments", context implies Receivables
+            totalRevenue: totalCommission[0]?.total || 0, // Keep for compatibility if used elsewhere
+            totalCommission: totalCommission[0]?.total || 0,
+            pendingPayments: Math.round(pendingReceivables[0]?.total || 0),
             collectedToday: collectedToday[0]?.total || 0,
-            transactionsCount: totalCount
+            transactionsCount: totalCount,
+
+            // New Fields for AccountingOverview
+            totalBaseAmount: totalBaseAmount[0]?.total || 0,
+            totalTransactions: totalCount,
+            receivedPayments: receivedPayments[0]?.total || 0,
+            farmerPaymentsPaid: farmerPaymentsPaid[0]?.total || 0,
+            farmerPaymentsDue: farmerPaymentsDue[0]?.total || 0,
+            pendingCount: pendingCount || 0
         });
     } catch (error) {
         console.error("Finance stats error:", error);

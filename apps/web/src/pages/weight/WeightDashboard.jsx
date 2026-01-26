@@ -52,8 +52,11 @@ const WeightDashboard = () => {
     recordRefId: '', // ID from the original records table
     farmerId: '',
     item: '',
+    item: '',
     estWeight: '',
-    updatedWeight: ''
+    estCarat: '', // ✅ NEW
+    updatedWeight: '',
+    updatedCarat: '' // ✅ NEW
   });
 
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -105,7 +108,9 @@ const WeightDashboard = () => {
         farmer_id: r.farmer_id?.farmerId || r.farmer_id || 'Unknown',
         item: r.vegetable,
         est_weight: r.quantity,
+        est_carat: r.carat, // ✅ NEW
         updated_weight: r.official_qty,
+        updated_carat: r.official_carat, // ✅ NEW
         status: r.status,
         record_ref_id: r._id
       });
@@ -133,6 +138,7 @@ const WeightDashboard = () => {
         farmer_id: r.farmer_id?.farmerId || 'Unknown',
         item: r.vegetable,
         est_qty: r.quantity,
+        est_carat: r.carat, // ✅ NEW
         date: r.createdAt
       }));
       setMarketData(mapped);
@@ -155,7 +161,9 @@ const WeightDashboard = () => {
         recordRefId: selectedItem.id,
         farmerId: selectedItem.farmer_id,
         item: selectedItem.item,
-        estWeight: selectedItem.est_qty || 0 // Assuming est_qty is the column name in 'records'
+        item: selectedItem.item,
+        estWeight: selectedItem.est_qty || 0,
+        estCarat: selectedItem.est_carat || 0 // ✅ NEW
       }));
       toast.success("Auto-fetched details!");
     }
@@ -205,7 +213,10 @@ const WeightDashboard = () => {
         farmerId: formData.farmerId,
         item: formData.item,
         estWeight: parseFloat(formData.estWeight || 0),
+        // ✅ NEW: Carat
+        estCarat: parseFloat(formData.estCarat || 0),
         updatedWeight: formData.updatedWeight ? parseFloat(formData.updatedWeight) : null,
+        updatedCarat: formData.updatedCarat ? parseFloat(formData.updatedCarat) : null,
         recordRefId: formData.recordRefId // Important for linking to existing pending record
       });
 
@@ -217,7 +228,9 @@ const WeightDashboard = () => {
         farmerId: '',
         item: '',
         estWeight: '',
-        updatedWeight: ''
+        estCarat: '',
+        updatedWeight: '',
+        updatedCarat: ''
       });
       setModals(prev => ({ ...prev, addWeight: false }));
 
@@ -237,6 +250,7 @@ const WeightDashboard = () => {
     try {
       await api.weight.updateRecord(selectedRecord.id, {
         updatedWeight: formData.updatedWeight ? parseFloat(formData.updatedWeight) : 0,
+        official_carat: formData.updatedCarat ? parseFloat(formData.updatedCarat) : 0, // ✅ Send official_carat
         date: formData.date
       });
 
@@ -271,7 +285,9 @@ const WeightDashboard = () => {
       farmerId: record.farmer_id,
       item: record.item,
       estWeight: record.est_weight.toString(),
-      updatedWeight: record.updated_weight ? record.updated_weight.toString() : ''
+      estCarat: record.est_carat ? record.est_carat.toString() : '',
+      updatedWeight: record.updated_weight ? record.updated_weight.toString() : '',
+      updatedCarat: record.updated_carat ? record.updated_carat.toString() : ''
     });
     setModals(prev => ({ ...prev, editWeight: true }));
   };
@@ -438,9 +454,13 @@ const WeightDashboard = () => {
                       <div className="text-right">
                         <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Official Qty</p>
                         <p className={`text-lg font-bold ${record.updated_weight ? 'text-green-600' : 'text-gray-400'}`}>
-                          {record.updated_weight ? `${record.updated_weight} kg` : '---'}
+                          {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '---')}
                         </p>
-                        <p className="text-[10px] text-gray-400">Est: {record.est_weight} kg</p>
+                        {/* ✅ NEW: Show Carat */}
+                        <p className={`text-sm font-bold ${record.updated_carat ? 'text-purple-600' : 'text-gray-400'}`}>
+                          {record.updated_carat ? `${record.updated_carat} Crt` : ''}
+                        </p>
+                        <p className="text-[10px] text-gray-400">Est: {record.est_weight} kg | {record.est_carat} Crt</p>
                       </div>
                     </div>
 
@@ -510,8 +530,12 @@ const WeightDashboard = () => {
                       <td className="px-6 py-4 text-gray-500 font-medium">{record.est_weight} kg</td>
                       <td className="px-6 py-4">
                         <span className={`text-base font-bold ${record.updated_weight ? 'text-green-600' : 'text-gray-400'}`}>
-                          {record.updated_weight ? `${record.updated_weight} kg` : '-'}
+                          {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '-')}
                         </span>
+                        {/* ✅ NEW: Show Carat */}
+                        <div className={`text-xs font-bold ${record.updated_carat ? 'text-purple-600' : 'text-gray-400'}`}>
+                          {record.updated_carat ? `${record.updated_carat} Crt` : ''}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
@@ -638,12 +662,35 @@ const WeightDashboard = () => {
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 font-bold focus:outline-none cursor-not-allowed"
               />
             </div>
+            {/* ✅ NEW: Carat Display */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wide">Est. Carat</label>
+              <input
+                type="number"
+                value={formData.estCarat}
+                readOnly
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 font-bold focus:outline-none cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Qty (Kg)</label>
               <input
                 type="number"
                 value={formData.updatedWeight}
                 onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
+              />
+            </div>
+            {/* ✅ NEW: Official Carat Input */}
+            <div>
+              <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Carat</label>
+              <input
+                type="number"
+                value={formData.updatedCarat}
+                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
                 placeholder="0.00"
                 className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
               />
@@ -687,21 +734,33 @@ const WeightDashboard = () => {
             </div>
             <div>
               <p className="text-xs text-gray-500 font-bold uppercase">Est. Weight</p>
-              <p className="font-bold text-gray-900">{formData.estWeight} kg</p>
+              <p className="font-bold text-gray-900">{formData.estWeight} kg | {formData.estCarat} Crt</p>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-900 mb-2">Updated Official Weight (Kg)</label>
-            <input
-              type="number"
-              value={formData.updatedWeight}
-              onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
-              placeholder="0.00"
-              autoFocus
-              className="w-full px-4 py-4 rounded-xl border-2 border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-white text-green-700 text-3xl font-bold text-center"
-            />
-            <p className="text-center text-xs text-gray-500 mt-2">Update to mark as Done, clear to mark as Pending</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Official Weight (Kg)</label>
+              <input
+                type="number"
+                value={formData.updatedWeight}
+                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
+                placeholder="0.00"
+                autoFocus
+                className="w-full px-4 py-4 rounded-xl border-2 border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-white text-green-700 text-3xl font-bold text-center"
+              />
+            </div>
+            {/* ✅ NEW: Edit Official Carat */}
+            <div>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Official Carat</label>
+              <input
+                type="number"
+                value={formData.updatedCarat}
+                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
+                placeholder="0.00"
+                className="w-full px-4 py-4 rounded-xl border-2 border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-white text-green-700 text-3xl font-bold text-center"
+              />
+            </div>
           </div>
 
           <div className="pt-2">

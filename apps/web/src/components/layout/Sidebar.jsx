@@ -27,15 +27,12 @@ const NAV_ITEMS = {
         { label: 'Weight', path: '/dashboard/committee/weight', icon: Scale },
         { label: 'Lilav Entry', path: '/dashboard/committee/lilav', icon: Gavel },
         { label: 'Payments', path: '/dashboard/committee/payments', icon: IndianRupee },
-        { label: 'Accounting', path: '/dashboard/committee/accounting', icon: Wallet },
-        { label: 'Transactions', path: '/dashboard/committee/accounting/transactions', icon: Receipt },
-        { label: 'Cash Flow', path: '/dashboard/committee/cashflow', icon: IndianRupee },
         { label: 'Reports', path: '/dashboard/committee/billing', icon: FileText },
     ],
     trader: [
         { label: 'Dashboard', path: '/dashboard/trader', icon: LayoutDashboard },
         { label: 'Transactions', path: '/dashboard/trader/transactions', icon: Receipt },
-        { label: 'Inventory', path: '/dashboard/trader/inventory', icon: Package },
+
     ],
     admin: [
         { label: 'Overview', path: '/dashboard/admin', icon: LayoutDashboard },

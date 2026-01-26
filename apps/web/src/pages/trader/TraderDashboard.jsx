@@ -70,18 +70,7 @@ export default function TraderDashboard() {
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">Trader Dashboard</h1>
         <p className="text-sm text-slate-500 mt-1">Overview of your market activity and finances</p>
-        <button
-          onClick={async () => {
-            try {
-              await api.trader.seed();
-              toast.success('Dummy data added successfully');
-              window.location.reload();
-            } catch (e) { console.error(e); toast.error('Seeding failed'); }
-          }}
-          className="mt-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
-        >
-          Add Dummy Data (Dev)
-        </button>
+
       </div>
 
       {/* Stats Grid - Professional Clean Look */}

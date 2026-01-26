@@ -1,39 +1,34 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Package, Download } from 'lucide-react';
+import { X, Package, Download, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
-import html2pdf from 'html2pdf.js';
+import { pdf } from '@react-pdf/renderer';
 import TransactionInvoice from './TransactionInvoice';
 
 export default function TransactionDetailsModal({ transaction, onClose }) {
     const [isDownloading, setIsDownloading] = useState(false);
-    const invoiceRef = useRef(null);
 
     if (!transaction) return null;
 
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
-        // Small delay to ensure component renders
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        if (invoiceRef.current) {
-            const opt = {
-                margin: 0,
-                filename: `Invoice_${new Date(transaction.date).toISOString().split('T')[0]}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            };
-
-            try {
-                await html2pdf().set(opt).from(invoiceRef.current).save();
-                toast.success('Invoice downloaded successfully!');
-            } catch (error) {
-                console.error('PDF generation failed:', error);
-                toast.error('Failed to generate PDF');
-            }
+        try {
+            const blob = await pdf(<TransactionInvoice transaction={transaction} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Invoice_${transaction.lotId || 'Ref'}_${new Date(transaction.date).toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            toast.success('Invoice downloaded successfully!');
+        } catch (error) {
+            console.error('PDF generation failed:', error);
+            toast.error('Failed to generate PDF');
+        } finally {
+            setIsDownloading(false);
         }
-        setIsDownloading(false);
     };
 
     return (
@@ -151,11 +146,6 @@ export default function TransactionDetailsModal({ transaction, onClose }) {
                     </div>
                 </motion.div>
             </motion.div>
-
-            {/* Hidden Invoice for PDF Generation */}
-            <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-                <TransactionInvoice ref={invoiceRef} transaction={transaction} />
-            </div>
         </AnimatePresence>
     );
 }

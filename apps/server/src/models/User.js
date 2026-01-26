@@ -28,39 +28,30 @@ const userSchema = new mongoose.Schema({
 
     email: {
         type: String,
-        default: '',
     },
     location: {
         type: String,
-        default: '',
     },
     profile_picture: {
         type: String, // Base64 or URL
-        default: '',
     },
     business_name: {
         type: String,
-        default: '',
     },
     gst_number: {
         type: String,
-        default: '',
     },
     license_number: {
         type: String,
-        default: '',
     },
     business_address: {
         type: String,
-        default: '',
     },
     adhaar_number: {
         type: String,
-        default: '',
     },
     operating_locations: {
         type: [String],
-        default: [],
     },
     customId: {
         type: String,

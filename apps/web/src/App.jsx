@@ -34,7 +34,7 @@ const FarmerDashboard = lazy(() => import('./pages/farmer/FarmerDashboard'));
 const WeightDashboard = lazy(() => import('./pages/weight/WeightDashboard'));
 
 const TraderDashboardContent = lazy(() => import('./pages/trader/TraderDashboard'));
-const InventoryManager = lazy(() => import('./pages/trader/InventoryManager'));
+
 const TraderTransactions = lazy(() => import('./pages/trader/TraderTransactions'));
 const TraderProfile = lazy(() => import('./pages/trader/TraderProfile'));
 
@@ -53,21 +53,15 @@ const CommitteeManagement = lazy(() => import('./pages/admin/CommitteeManagement
 // Committee Dashboard
 const CommitteeDashboard = lazy(() => import('./pages/committee/CommitteeDashboard'));
 const FarmersList = lazy(() => import('./pages/committee/FarmersList'));
-const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
-
-const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
-const CashFlow = lazy(() => import('./pages/committee/CashFlow'));
-const PaymentManagement = lazy(() => import('./pages/committee/PaymentManagement'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
 const WeightList = lazy(() => import('./pages/committee/WeightList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
 const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
+const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 
-const AccountingOverview = lazy(() => import('./pages/committee/AccountingOverview'));
-const AccountingTransactions = lazy(() => import('./pages/committee/AccountingTransactions'));
-const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
+const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
+const PaymentManagement = lazy(() => import('./pages/committee/PaymentManagement'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
-const CommitteeTransactionHistory = lazy(() => import('./pages/committee/TransactionHistory'));
 // const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
@@ -169,7 +163,7 @@ function App() {
                 >
                   <Route index element={<TraderDashboardContent />} />
                   <Route path="transactions" element={<TraderTransactions />} />
-                  <Route path="inventory" element={<InventoryManager />} />
+
                   <Route path="profile" element={<TraderProfile />} />
                 </Route>
 
@@ -188,13 +182,7 @@ function App() {
                   <Route path="activity" element={<MarketActivity />} />
 
                   <Route path="billing" element={<BillingReports />} />
-                  <Route path="billing" element={<BillingReports />} />
-                  <Route path="cashflow" element={<CashFlow />} />
                   <Route path="payments" element={<PaymentManagement />} />
-
-                  {/* Moved Accounting Section */}
-                  <Route path="accounting" element={<AccountingOverview />} />
-                  <Route path="accounting/transactions" element={<AccountingTransactions />} />
 
                   {/* Lilav (Auction) Section */}
                   <Route path="lilav" element={<LilavEntry />} />
@@ -208,7 +196,6 @@ function App() {
                 }
                 >
                   <Route index element={<LilavEntry />} />
-                  <Route path="transactions" element={<CommitteeTransactionHistory />} />
                 </Route>
 
                 {/* Admin Dashboard */}
