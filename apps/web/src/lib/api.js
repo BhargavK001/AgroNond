@@ -44,6 +44,13 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 export const api = {
+  // Auth
+  auth: {
+    login: (phone) => apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ phone }) }),
+    verify: (phone, otp) => apiRequest('/api/auth/verify', { method: 'POST', body: JSON.stringify({ phone, otp }) }),
+    logout: () => apiRequest('/api/auth/logout', { method: 'POST' }),
+  },
+
   // --- GENERIC METHODS (Fixes "api.get is not a function" error) ---
   get: (endpoint, options) => apiRequest(endpoint, { ...options, method: 'GET' }),
   post: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
