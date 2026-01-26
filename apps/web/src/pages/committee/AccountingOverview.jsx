@@ -21,23 +21,23 @@ export default function AccountingOverview() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsResponse, transactionsResponse] = await Promise.all([
+        const [statsResponse, billingData] = await Promise.all([
           api.finance.stats(),
-          api.committee.transactions()
+          api.finance.billingRecords.list({ limit: 10 })
         ]);
 
         setSummary(statsResponse);
 
-        const formattedTransactions = transactionsResponse.map(t => ({
-          id: t.id,
-          date: new Date(t.date).toISOString().split('T')[0],
-          farmer: { name: t.farmer },
-          trader: { name: t.trader },
-          crop: t.crop,
-          quantity: t.qty,
-          rate: t.rate,
-          baseAmount: t.amount,
-          paymentStatus: t.status === 'Paid' ? 'Completed' : t.status
+        const formattedTransactions = billingData.records.map(t => ({
+          id: t._id,
+          date: new Date(t.sold_at || t.createdAt).toISOString().split('T')[0],
+          farmer: { name: t.farmer_id?.full_name || 'Unknown' },
+          trader: { name: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown' },
+          crop: t.vegetable,
+          quantity: t.official_qty,
+          rate: t.sale_rate,
+          baseAmount: t.sale_amount,
+          paymentStatus: t.trader_payment_status === 'Paid' ? 'Completed' : t.status
         }));
 
         setTransactions(formattedTransactions);

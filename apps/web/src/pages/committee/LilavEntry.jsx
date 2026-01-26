@@ -35,7 +35,7 @@ export default function LilavEntry() {
 
     // Sale modal state
     const [saleModal, setSaleModal] = useState({ open: false, record: null });
-    const [saleForm, setSaleForm] = useState({ trader_id: '', sale_rate: 0 });
+    const [saleForm, setSaleForm] = useState({ trader_id: '', sale_rate: 0, sale_unit: 'kg' }); // ✅ Added sale_unit
 
     useEffect(() => {
         fetchInitialData();
@@ -89,7 +89,8 @@ export default function LilavEntry() {
 
         setSaleForm({
             trader_id: '',
-            sale_rate: todayRate?.rate || 0
+            sale_rate: todayRate?.rate || '',
+            sale_unit: (record.official_carat && record.official_carat > 0) ? 'carat' : 'kg' // ✅ Default to carat if available
         });
         setSaleModal({ open: true, record });
     };
@@ -109,7 +110,8 @@ export default function LilavEntry() {
 
             await api.patch(`/api/records/${saleModal.record._id}/sell`, {
                 trader_id: saleForm.trader_id,
-                sale_rate: saleForm.sale_rate
+                sale_rate: saleForm.sale_rate,
+                sale_unit: saleForm.sale_unit // ✅ Send unit
             });
 
             toast.success('Sale completed successfully!');
@@ -304,6 +306,7 @@ export default function LilavEntry() {
                                                             <span className="flex items-center gap-1">
                                                                 <Scale className="w-3 h-3 sm:w-4 sm:h-4" />
                                                                 {record.official_qty} kg
+                                                                {record.official_carat > 0 && <span className="text-purple-600 ml-1">| {record.official_carat} Crt</span>}
                                                             </span>
                                                             {todayRate && (
                                                                 <span className="flex items-center gap-1">
@@ -364,31 +367,74 @@ export default function LilavEntry() {
                             className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden my-8"
                         >
                             {/* Header */}
-                            <div className="bg-emerald-600 px-6 py-5 flex items-center justify-between">
-                                <div className="text-white">
-                                    <h2 className="text-xl font-bold">Complete Sale</h2>
-                                    <p className="text-emerald-100 text-sm">Review transaction details before confirming</p>
+                            <div className="bg-white px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Complete Sale</h2>
+                                    <p className="text-gray-500 text-sm">Enter sale details for this lot</p>
                                 </div>
                                 <button
                                     onClick={() => setSaleModal({ open: false, record: null })}
-                                    className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition text-white"
+                                    className="p-2 hover:bg-gray-100 rounded-full transition text-gray-500"
                                 >
                                     <X size={20} />
                                 </button>
                             </div>
 
                             <div className="p-6 space-y-6">
+                                {/* Vegetable Details Summary */}
+                                <div className="flex items-center gap-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                    <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
+                                        <Package size={24} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider">Lot Details</p>
+                                        <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                                            {saleModal.record.vegetable}
+                                            <span className="text-gray-500 font-medium text-sm ml-2">
+                                                ({saleForm.sale_unit === 'carat' ? `${saleModal.record.official_carat} Carat` : `${saleModal.record.official_qty} Kg`})
+                                            </span>
+                                        </h3>
+                                        <div className="text-sm text-gray-500 mt-0.5">
+                                            Farmer: <span className="font-medium text-gray-900">{selectedFarmer?.full_name}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ✅ NEW: Sale Unit Toggle */}
+                                {saleModal.record.official_carat > 0 && (
+                                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'carat' }))}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'carat' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        >
+                                            Sell by Carat ({saleModal.record.official_carat} Crt)
+                                        </button>
+                                        <button
+                                            onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'kg' }))}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'kg' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        >
+                                            Sell by Weight ({saleModal.record.official_qty} kg)
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Inputs Row */}
                                 <div className="grid sm:grid-cols-2 gap-6">
                                     <div className="space-y-4">
-                                        <label className="block text-sm font-semibold text-gray-700">Sale Rate (₹/kg)</label>
+                                        <label className="block text-sm font-semibold text-gray-700">
+                                            Sale Rate (₹/{saleForm.sale_unit === 'carat' ? 'Carat' : 'Kg'})
+                                        </label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 value={saleForm.sale_rate}
-                                                onChange={(e) => setSaleForm(prev => ({ ...prev, sale_rate: parseFloat(e.target.value) || 0 }))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setSaleForm(prev => ({ ...prev, sale_rate: val === '' ? '' : parseFloat(val) }));
+                                                }}
+                                                placeholder="0"
                                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none"
                                             />
                                         </div>
@@ -430,60 +476,7 @@ export default function LilavEntry() {
                                     ))}
                                 </div>
 
-                                {/* Financial Breakdown Card */}
-                                <div className="bg-gray-50 p-5 rounded-2xl border border-gray-200">
-                                    <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                        <AlertCircle size={16} className="text-emerald-600" />
-                                        Financial Summary
-                                    </h3>
 
-                                    {(() => {
-                                        const qty = saleModal.record.official_qty || 0;
-                                        const rate = saleForm.sale_rate || 0;
-                                        const baseAmount = qty * rate;
-                                        const farmerComm = Math.round(baseAmount * 0.04);
-                                        const traderComm = Math.round(baseAmount * 0.09);
-                                        const farmerPayable = baseAmount - farmerComm;
-                                        const traderPayable = baseAmount + traderComm;
-
-                                        return (
-                                            <div className="space-y-3 text-sm">
-                                                <div className="flex justify-between py-2 border-b border-gray-200">
-                                                    <span className="text-gray-600">Base Amount ({qty}kg × ₹{rate})</span>
-                                                    <span className="font-bold text-gray-900">₹{baseAmount.toLocaleString()}</span>
-                                                </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    {/* Farmer Side */}
-                                                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                                                        <p className="text-xs font-bold text-blue-800 uppercase mb-2">Farmer Side</p>
-                                                        <div className="flex justify-between text-xs mb-1">
-                                                            <span className="text-gray-500">Commission (4%)</span>
-                                                            <span className="text-red-500 font-medium">- ₹{farmerComm}</span>
-                                                        </div>
-                                                        <div className="flex justify-between font-bold text-blue-900 pt-2 border-t border-blue-200">
-                                                            <span>Net Payable</span>
-                                                            <span>₹{farmerPayable.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Trader Side */}
-                                                    <div className="bg-purple-50/50 p-3 rounded-xl border border-purple-100">
-                                                        <p className="text-xs font-bold text-purple-800 uppercase mb-2">Trader Side</p>
-                                                        <div className="flex justify-between text-xs mb-1">
-                                                            <span className="text-gray-500">Commission (9%)</span>
-                                                            <span className="text-gray-700 font-medium">+ ₹{traderComm}</span>
-                                                        </div>
-                                                        <div className="flex justify-between font-bold text-purple-900 pt-2 border-t border-purple-200">
-                                                            <span>Total Due</span>
-                                                            <span>₹{traderPayable.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
                             </div>
 
                             <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">

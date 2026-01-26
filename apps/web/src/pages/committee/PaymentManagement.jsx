@@ -102,9 +102,7 @@ const PaymentManagement = () => {
 
     return (
         <div className="min-h-screen bg-slate-50">
-            <CommitteeNavbar />
-
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 mt-16">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
                 {/* Header Section */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -153,8 +151,8 @@ const PaymentManagement = () => {
                                     key={f}
                                     onClick={() => setFilter(f)}
                                     className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${filter === f
-                                            ? 'bg-white text-emerald-700 shadow-sm'
-                                            : 'text-slate-600 hover:text-slate-900'
+                                        ? 'bg-white text-emerald-700 shadow-sm'
+                                        : 'text-slate-600 hover:text-slate-900'
                                         }`}
                                 >
                                     {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -337,8 +335,8 @@ const PaymentManagement = () => {
                                 onClick={handleProcessPayment}
                                 disabled={isProcessing}
                                 className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2 ${actionType === 'receive-trader'
-                                        ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
-                                        : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                                    ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
+                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
                                     }`}
                             >
                                 {isProcessing ? <RefreshCw className="animate-spin" /> : <CheckCircle />}

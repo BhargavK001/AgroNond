@@ -14,7 +14,7 @@ const PAGE_TITLES = {
   '/dashboard/committee/traders': 'Traders',
   '/dashboard/committee/daily-rates': 'Daily Rates',
   '/dashboard/committee/lilav': 'Lilav Entry',
-  '/dashboard/committee/accounting': 'Accounting',
+  '/dashboard/committee/payments': 'Payments',
   '/dashboard/committee/billing': 'Reports',
 
 };

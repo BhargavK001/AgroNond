@@ -58,7 +58,7 @@ router.get('/pending', requireAuth, async (req, res) => {
 // POST /api/weight/record (Add/Update)
 router.post('/record', requireAuth, async (req, res) => {
     try {
-        const { recordRefId, farmerId, item, estWeight, updatedWeight, date } = req.body;
+        const { recordRefId, farmerId, item, estWeight, estCarat, updatedWeight, updatedCarat, date } = req.body;
 
         let record;
 
@@ -68,7 +68,8 @@ router.post('/record', requireAuth, async (req, res) => {
             if (!record) return res.status(404).json({ error: 'Record not found' });
 
             record.official_qty = updatedWeight;
-            record.status = updatedWeight ? 'Weighed' : 'Pending';
+            record.official_carat = updatedCarat || 0; // ✅ NEW
+            record.status = (updatedWeight || updatedCarat) ? 'Weighed' : 'Pending';
             record.weighed_by = req.user._id;
             record.weighed_at = new Date();
             if (date) {
@@ -99,8 +100,10 @@ router.post('/record', requireAuth, async (req, res) => {
                 farmer_id: farmerObjectId,
                 vegetable: item,
                 quantity: estWeight || 0,
+                carat: estCarat || 0, // ✅ NEW
                 official_qty: updatedWeight || 0,
-                status: updatedWeight ? 'Weighed' : 'Pending',
+                official_carat: updatedCarat || 0, // ✅ NEW
+                status: (updatedWeight || updatedCarat) ? 'Weighed' : 'Pending',
                 weighed_by: req.user._id,
                 weighed_at: new Date(),
                 market: 'Manual',
@@ -118,10 +121,11 @@ router.post('/record', requireAuth, async (req, res) => {
 // PUT /api/weight/record/:id (Update existing weight record)
 router.put('/record/:id', requireAuth, async (req, res) => {
     try {
-        const { updatedWeight } = req.body;
+        const { updatedWeight, official_carat } = req.body;
         const record = await Record.findByIdAndUpdate(req.params.id, {
             official_qty: updatedWeight,
-            status: updatedWeight ? 'Weighed' : 'Pending',
+            official_carat: official_carat || 0,
+            status: (updatedWeight || official_carat) ? 'Weighed' : 'Pending',
             weighed_by: req.user._id,
             weighed_at: new Date()
         }, { new: true });

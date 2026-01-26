@@ -2,32 +2,40 @@ import React from 'react';
 import { Wallet, PieChart, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 export default function OverviewStats({ summary }) {
+    const formatCurrency = (amount) => {
+        if (!amount) return '₹0';
+        if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(2)}Cr`;
+        if (amount >= 100000) return `₹${(amount / 100000).toFixed(2)}L`;
+        if (amount >= 1000) return `₹${(amount / 1000).toFixed(1)}k`;
+        return `₹${amount.toLocaleString('en-IN')}`;
+    };
+
     const stats = [
         {
             label: 'Total Volume',
-            value: `₹${(summary.totalBaseAmount / 100000).toFixed(2)}L`,
+            value: formatCurrency(summary.totalBaseAmount),
             subtext: `${summary.totalTransactions} transactions`,
             icon: Wallet,
             trend: 'neutral'
         },
         {
             label: 'Total Commission',
-            value: `₹${(summary.totalCommission / 1000).toFixed(1)}K`,
+            value: formatCurrency(summary.totalCommission),
             subtext: `13% blended avg`,
             icon: PieChart,
             trend: 'positive'
         },
         {
             label: 'Received (Traders)',
-            value: `₹${(summary.receivedPayments / 100000).toFixed(2)}L`,
+            value: formatCurrency(summary.receivedPayments),
             subtext: `${summary.pendingCount} pending`,
             icon: ArrowDownRight,
             trend: 'neutral'
         },
         {
             label: 'Paid (Farmers)',
-            value: `₹${(summary.farmerPaymentsPaid / 100000).toFixed(2)}L`,
-            subtext: `₹${(summary.farmerPaymentsDue / 1000).toFixed(1)}K due`,
+            value: formatCurrency(summary.farmerPaymentsPaid),
+            subtext: `${formatCurrency(summary.farmerPaymentsDue)} due`,
             icon: ArrowUpRight,
             trend: 'neutral'
         }

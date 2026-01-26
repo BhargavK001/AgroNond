@@ -16,7 +16,7 @@ import {
   ReceiptText,
   Eye
 } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+import { pdf } from '@react-pdf/renderer';
 import { api } from '../../lib/api';
 import TransactionDetailsModal from '../../components/trader/TransactionDetailsModal';
 import TransactionInvoice from '../../components/trader/TransactionInvoice';
@@ -36,8 +36,6 @@ export default function TraderTransactions() {
   const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
-  const [invoiceTransaction, setInvoiceTransaction] = useState(null);
-  const invoiceRef = useRef(null);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -56,7 +54,7 @@ export default function TraderTransactions() {
           grossAmount: t.sale_amount,
           commission: t.trader_commission || Math.round((t.sale_amount || 0) * 0.09),
           totalCost: t.net_receivable_from_trader || t.total_amount || (t.sale_amount + (t.trader_commission || Math.round((t.sale_amount || 0) * 0.09))),
-          status: 'completed',
+          status: t.status,
           paymentStatus: t.trader_payment_status || t.payment_status || 'pending'
         }));
 
@@ -128,28 +126,21 @@ export default function TraderTransactions() {
   };
 
   const handleDownloadPDF = async (txn) => {
-    setInvoiceTransaction(txn);
-    // Small delay to ensure component renders
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    if (invoiceRef.current) {
-      const opt = {
-        margin: 0,
-        filename: `Invoice_${txn.lotId}_${new Date(txn.date).toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      };
-
-      try {
-        await html2pdf().set(opt).from(invoiceRef.current).save();
-        toast.success('Invoice downloaded successfully!');
-      } catch (error) {
-        console.error('PDF generation failed:', error);
-        toast.error('Failed to generate PDF');
-      }
+    try {
+      const blob = await pdf(<TransactionInvoice transaction={txn} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice_${txn.lotId || 'Ref'}_${new Date(txn.date).toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Invoice downloaded successfully!');
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      toast.error('Failed to generate PDF');
     }
-    setInvoiceTransaction(null);
   };
 
   const clearFilters = () => {
@@ -403,7 +394,7 @@ export default function TraderTransactions() {
             <tbody className="divide-y divide-slate-100">
               {filteredTransactions.map((txn, index) => (
                 <motion.tr
-                  key={txn.id}
+                  key={`txn-${txn.id || index}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.03 }}
@@ -476,7 +467,7 @@ export default function TraderTransactions() {
         <div className="md:hidden space-y-3 p-4">
           {filteredTransactions.map((txn, index) => (
             <motion.div
-              key={txn.id}
+              key={`mobile-txn-${txn.id || index}`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
@@ -573,13 +564,6 @@ export default function TraderTransactions() {
         transaction={selectedTransaction}
         onClose={() => setSelectedTransaction(null)}
       />
-
-      {/* Hidden Invoice for PDF Generation */}
-      {invoiceTransaction && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <TransactionInvoice ref={invoiceRef} transaction={invoiceTransaction} />
-        </div>
-      )}
     </div>
   );
 }

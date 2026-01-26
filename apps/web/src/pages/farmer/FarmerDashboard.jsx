@@ -160,6 +160,9 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     quintal: ''
   });
 
+  // ✅ NEW: Carat field state
+  const [carat, setCarat] = useState('');
+
   const [addedItems, setAddedItems] = useState([]);
 
   // Fetch Market Info (Committee)
@@ -231,6 +234,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     setSelectedVegetable('');
     setSearchTerm('');
     setQuantities({ kg: '', ton: '', quintal: '' });
+    setCarat(''); // ✅ Clear carat field
     setIsDropdownOpen(false);
   };
 
@@ -267,8 +271,17 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
   };
 
   const handleAddItem = () => {
-    if (!selectedVegetable || !quantities.kg || parseFloat(quantities.kg) <= 0) {
-      toast.error('Please select a vegetable and enter valid quantity');
+    if (!selectedVegetable) {
+      toast.error('Please select a vegetable');
+      return;
+    }
+
+    // ✅ VALIDATION: At least one field must be filled (quantity OR carat)
+    const hasQuantity = quantities.kg && parseFloat(quantities.kg) > 0;
+    const hasCarat = carat && parseFloat(carat) > 0;
+
+    if (!hasQuantity && !hasCarat) {
+      toast.error('Please enter either Quantity (Kg) or Carat');
       return;
     }
 
@@ -281,7 +294,8 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     const newItem = {
       id: Date.now(),
       vegetable: selectedVegetable,
-      quantity: parseFloat(quantities.kg)
+      quantity: parseFloat(quantities.kg) || 0, // Default to 0 if not filled
+      carat: parseFloat(carat) || 0 // ✅ Store carat value
     };
 
     setAddedItems([...addedItems, newItem]);
@@ -366,7 +380,10 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                     <div key={item.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-green-200 shadow-sm">
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{item.vegetable}</p>
-                        <p className="text-xs text-gray-600">{item.quantity} kg</p>
+                        <div className="text-xs text-gray-600 space-y-0.5">
+                          {item.quantity > 0 && <p>Qty: {item.quantity} kg</p>}
+                          {item.carat > 0 && <p>Carat: {item.carat}</p>}
+                        </div>
                       </div>
                       <button
                         onClick={() => handleRemoveItem(item.id)}
@@ -493,10 +510,10 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
             {/* Quantity Inputs */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Optional if Carat is filled)</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg) *</label>
+                  <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
                   <input
                     type="number"
                     value={quantities.kg}
@@ -536,8 +553,22 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               </div>
             </div>
 
+            {/* ✅ NEW: Carat Field */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Optional if Quantity is filled)</label>
+              <input
+                type="number"
+                value={carat}
+                onChange={(e) => setCarat(e.target.value)}
+                placeholder="Enter carat (e.g., 1, 2, 3...)"
+                step="0.01"
+                min="0"
+                className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-green-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
+              />
+            </div>
+
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-              <p><strong>Note:</strong> Enter quantity in any box, others will calculate automatically. Records are saved in Kg.</p>
+              <p><strong>Note:</strong> You must fill at least one field - either <strong>Quantity (Kg)</strong> or <strong>Carat</strong>, or both. For quantity, enter in any box and others will calculate automatically.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -598,39 +629,39 @@ const FarmerDashboard = () => {
     id: null,
     market: '',
     vegetable: '',
-    quantities: { kg: '', ton: '', quintal: '' }
+    quantities: { kg: '', ton: '', quintal: '' },
+    carat: '' // ✅ Add carat to edit form
   });
 
   // --- FETCH DATA FROM BACKEND ---
+  const [markets, setMarkets] = useState([]); // ✅ State for markets list
+
   const fetchRecords = async () => {
     try {
       setIsLoading(true);
-      const recordsData = await api.get('/api/records/my-records');
+      const data = await api.records.myRecords();
 
-      if (Array.isArray(recordsData)) {
-        setRecords(recordsData);
-      } else {
-        console.error("Expected array but got:", recordsData);
-        setRecords([]);
-      }
+      let allRecords = data;
+      // If the API returns an object { records: [...] } handle it
+      if (data.records) allRecords = data.records;
+
+      setRecords(allRecords);
     } catch (error) {
-      console.error('Failed to fetch records:', error);
-      toast.error('Failed to load records');
+      console.error(error);
+      toast.error('Failed to fetch records');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchRecords();
-
+  const loadProfile = () => {
     const prof = localStorage.getItem('farmer-profile');
     if (prof) {
       const p = JSON.parse(prof);
       setProfile(p);
       setProfileForm(p);
     }
-  }, []);
+  };
 
   useEffect(() => {
     const handleOpenEditProfile = () => {
@@ -641,7 +672,7 @@ const FarmerDashboard = () => {
   }, []);
 
   // --- COMPUTED VALUES ---
-  const soldRecords = records.filter(r => r.status === 'Sold');
+  const soldRecords = records.filter(r => ['Sold', 'Completed'].includes(r.status));
   const pendingRecords = records.filter(r => r.status === 'Pending');
 
   const totalGross = soldRecords.reduce((sum, r) => sum + (r.sale_amount || 0), 0);
@@ -706,10 +737,11 @@ const FarmerDashboard = () => {
       market: record.market,
       vegetable: record.vegetable,
       quantities: {
-        kg: qty.toString(),
-        ton: (qty / 1000).toFixed(3),
-        quintal: (qty / 100).toFixed(2)
-      }
+        kg: qty > 0 ? qty.toString() : '',
+        ton: qty > 0 ? (qty / 1000).toFixed(3) : '',
+        quintal: qty > 0 ? (qty / 100).toFixed(2) : ''
+      },
+      carat: record.carat ? record.carat.toString() : '' // ✅ Load carat value
     });
     setModals({ ...modals, editRecord: true });
   };
@@ -753,10 +785,12 @@ const FarmerDashboard = () => {
   };
 
   const handleUpdateRecord = async () => {
-    const newKg = parseFloat(editFormData.quantities.kg);
+    const newKg = parseFloat(editFormData.quantities.kg) || 0;
+    const newCarat = parseFloat(editFormData.carat) || 0;
 
-    if (isNaN(newKg) || newKg <= 0) {
-      toast.error("Please enter a valid quantity");
+    // ✅ VALIDATION: At least one field must be filled
+    if (newKg <= 0 && newCarat <= 0) {
+      toast.error("Please enter either Quantity (Kg) or Carat");
       return;
     }
 
@@ -768,7 +802,8 @@ const FarmerDashboard = () => {
     try {
       await api.put(`/api/records/${editFormData.id}`, {
         market: editFormData.market,
-        quantity: newKg
+        quantity: newKg,
+        carat: newCarat // ✅ Send carat to backend
       });
 
       toast.success("Record updated successfully!");
@@ -790,6 +825,14 @@ const FarmerDashboard = () => {
     const recordDate = new Date(record.createdAt).toLocaleDateString('en-GB');
     const recordTime = formatTime(record.createdAt);
     const invoiceId = record._id.toString().slice(-6).toUpperCase();
+
+    // ✅ Display both Quantity and Carat in invoice
+    let quantityDisplay = '';
+    if (record.quantity > 0) quantityDisplay += `${record.quantity} kg`;
+    if (record.carat > 0) {
+      if (quantityDisplay) quantityDisplay += ' | ';
+      quantityDisplay += `${record.carat} carat`;
+    }
 
     const invoiceContent = `
       <!DOCTYPE html>
@@ -860,9 +903,9 @@ const FarmerDashboard = () => {
             <tbody>
               <tr>
                 <td>${record.vegetable}</td>
-                <td style="text-align: center;">${record.quantity} kg</td>
-                <td style="text-align: right;">${record.status === 'Sold' ? '₹' + record.rate : '-'}</td>
-                <td style="text-align: right;">${record.status === 'Sold' ? '₹' + (record.sale_amount || (record.rate * record.quantity) || 0).toLocaleString('en-IN') : '-'}</td>
+                <td style="text-align: center;">${quantityDisplay || 'N/A'}</td>
+                <td style="text-align: right;">${['Sold', 'Completed'].includes(record.status) ? '₹' + record.rate : '-'}</td>
+                <td style="text-align: right;">${['Sold', 'Completed'].includes(record.status) ? '₹' + (record.sale_amount || (record.rate * record.quantity) || 0).toLocaleString('en-IN') : '-'}</td>
               </tr>
             </tbody>
           </table>
@@ -1350,11 +1393,13 @@ const FarmerDashboard = () => {
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
             >
               <option value="">Select Market</option>
-              <option>Pune APMC</option>
-              <option>Mumbai Market</option>
-              <option>Nashik Mandi</option>
-              <option>Nagpur Market</option>
-              <option>Aurangabad Market</option>
+              {markets.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+              {/* Fallback if the saved market isn't in the list */}
+              {!markets.includes(editFormData.market) && editFormData.market && (
+                <option value={editFormData.market}>{editFormData.market}</option>
+              )}
             </select>
           </div>
 
@@ -1401,6 +1446,21 @@ const FarmerDashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* ✅ NEW: Carat Edit Field */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1 font-medium">Carat</label>
+              <input
+                type="number"
+                value={editFormData.carat}
+                onChange={(e) => setEditFormData({ ...editFormData, carat: e.target.value })}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-green-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
+              />
+            </div>
+
           </div>
 
           <button

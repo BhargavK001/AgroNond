@@ -33,34 +33,55 @@ router.get('/stats', requireAuth, requireTrader, async (req, res) => {
                 $group: {
                     _id: null,
                     totalQuantity: { $sum: '$official_qty' },
-                    totalSpend: { $sum: '$sale_amount' }, // Does not include commission
+                    // Use net_receivable_from_trader if available (new logic), else fallback
+                    // We need to be careful with summing calculated fields if they are 0 in old records
+                    // Better approach: sum(sale_amount) + sum(commission) is generally safer if net_receivable isn't populated on old records
+                    totalBaseSpend: { $sum: '$sale_amount' },
                     totalCommission: { $sum: '$commission' },
                 }
             }
         ]);
 
-        // Calculate pending payments (Completed records where payment_status is pending or overdue)
+        // Calculate pending payments
+        // Logic: active traders have 'trader_payment_status' as 'Pending'
+        // Logic backup: check 'payment_status' for legacy compatibility
         const pendingStats = await Record.aggregate([
             {
                 $match: {
                     trader_id: new mongoose.Types.ObjectId(userId),
                     status: 'Completed',
-                    payment_status: { $in: ['pending', 'overdue'] }
+                    $or: [
+                        { trader_payment_status: 'Pending' },
+                        { payment_status: { $in: ['pending', 'overdue'] } }
+                    ]
                 }
             },
             {
                 $group: {
                     _id: null,
-                    totalPending: { $sum: '$total_amount' } // Full amount including commission
+                    // Total pending is the sum of what they owe (net_receivable_from_trader)
+                    // If net_receivable is 0 (legacy), use sale_amount + commission
+                    totalPending: {
+                        $sum: {
+                            $cond: {
+                                if: { $gt: ['$net_receivable_from_trader', 0] },
+                                then: '$net_receivable_from_trader',
+                                else: { $add: ['$sale_amount', '$commission'] }
+                            }
+                        }
+                    }
                 }
             }
         ]);
 
+        const totalBase = stats[0]?.totalBaseSpend || 0;
+        const totalComm = stats[0]?.totalCommission || 0;
+
         const result = {
             totalQuantity: stats[0]?.totalQuantity || 0,
-            totalBaseSpend: stats[0]?.totalSpend || 0,
-            totalCommission: stats[0]?.totalCommission || 0,
-            totalSpend: (stats[0]?.totalSpend || 0) + (stats[0]?.totalCommission || 0),
+            totalBaseSpend: totalBase,
+            totalCommission: totalComm,
+            totalSpend: totalBase + totalComm,
             pendingPayments: pendingStats[0]?.totalPending || 0
         };
 
@@ -98,7 +119,18 @@ router.get('/transactions', requireAuth, requireTrader, async (req, res) => {
         }
 
         if (payment_status && payment_status !== 'All Status') {
-            query.payment_status = payment_status;
+            if (payment_status === 'Pending') {
+                // Check both fields for robustness
+                query.$or = [
+                    { trader_payment_status: 'Pending' },
+                    { payment_status: { $in: ['pending', 'overdue'] } }
+                ];
+            } else {
+                query.$or = [
+                    { trader_payment_status: payment_status },
+                    { payment_status: payment_status } // Legacy Check
+                ];
+            }
         }
 
         const transactions = await Record.find(query)
@@ -111,122 +143,6 @@ router.get('/transactions', requireAuth, requireTrader, async (req, res) => {
     } catch (error) {
         console.error('Trader transactions error:', error);
         res.status(500).json({ error: 'Failed to fetch transactions' });
-    }
-});
-
-/**
- * GET /api/trader/inventory
- * Get inventory items (Completed records bought by trader)
- */
-router.get('/inventory', requireAuth, requireTrader, async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        // Fetch all completed records bought by this trader
-        const records = await Record.find({
-            trader_id: userId,
-            status: 'Completed'
-        })
-            .populate('farmer_id', 'full_name') // To get farmer name if needed for location/origin
-            .sort({ sold_at: -1 });
-
-        // Map records to Inventory format
-        const inventory = records.map(record => {
-            // Calculate days in storage
-            const soldDate = new Date(record.sold_at);
-            const now = new Date();
-            const daysInStorage = Math.floor((now - soldDate) / (1000 * 60 * 60 * 24));
-
-            // Determine status based on age
-            let status = 'good';
-            if (daysInStorage > 10) status = 'critical';
-            else if (daysInStorage > 5) status = 'low';
-
-            // Determine location (Default to market or user location)
-            // Ideally this would be a real field in a future "move stock" feature
-            const location = record.market || (req.user.operating_locations && req.user.operating_locations[0]) || 'Warehouse A';
-
-            return {
-                id: record._id,
-                crop: record.vegetable,
-                batchId: record.lot_id || `LOT-${record._id.toString().substr(-6).toUpperCase()}`,
-                quantity: record.official_qty,
-                maxQuantity: record.official_qty, // Assuming full batch is initially available
-                unit: 'kg',
-                location: location,
-                daysInStorage: daysInStorage,
-                status: status,
-                price: record.sale_rate
-            };
-        });
-
-        res.json(inventory);
-    } catch (error) {
-        console.error('Inventory fetch error:', error);
-        res.status(500).json({ error: 'Failed to fetch inventory' });
-    }
-});
-
-// Temporary Seed Route
-import User from '../models/User.js';
-router.post('/seed', requireAuth, requireTrader, async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        // Find any farmer to associate with
-        const farmer = await User.findOne({ role: 'farmer' });
-        const farmerId = farmer ? farmer._id : new mongoose.Types.ObjectId();
-
-        const dummyRecords = [
-            {
-                farmer_id: farmerId,
-                vegetable: 'Tomatoes',
-                official_qty: 150,
-                sale_rate: 20,
-                sale_amount: 3000,
-                commission: 270,
-                total_amount: 3270,
-                status: 'Completed',
-                payment_status: 'paid',
-                trader_id: userId,
-                sold_at: new Date(),
-                market: 'Main Market'
-            },
-            {
-                farmer_id: farmerId,
-                vegetable: 'Onions',
-                official_qty: 500,
-                sale_rate: 15,
-                sale_amount: 7500,
-                commission: 675,
-                total_amount: 8175,
-                status: 'Completed',
-                payment_status: 'pending',
-                trader_id: userId,
-                sold_at: new Date(Date.now() - 86400000), // Yesterday
-                market: 'Main Market'
-            },
-            {
-                farmer_id: farmerId,
-                vegetable: 'Potatoes',
-                official_qty: 1200,
-                sale_rate: 12,
-                sale_amount: 14400,
-                commission: 1296,
-                total_amount: 15696,
-                status: 'Completed',
-                payment_status: 'pending',
-                trader_id: userId,
-                sold_at: new Date(Date.now() - (86400000 * 6)), // 6 days ago (Low stock warning)
-                market: 'Main Market'
-            }
-        ];
-
-        await Record.insertMany(dummyRecords);
-        res.json({ message: 'Dummy data seeded successfully' });
-    } catch (error) {
-        console.error('Seed error:', error);
-        res.status(500).json({ error: 'Failed to seed data' });
     }
 });
 

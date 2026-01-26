@@ -37,7 +37,6 @@ const recordSchema = new mongoose.Schema({
     // Logistics
     trader: {
         type: String,
-        default: '-'
     },
     status: {
         type: String,
@@ -124,25 +123,35 @@ const recordSchema = new mongoose.Schema({
     },
     farmer_payment_mode: {
         type: String, // 'Cash', 'Cheque', 'Online'
-        default: ''
     },
     trader_payment_mode: {
         type: String,
-        default: ''
     },
     farmer_payment_ref: {
         type: String, // Cheque No / Transaction ID
-        default: ''
     },
     trader_payment_ref: {
         type: String,
-        default: ''
     },
     farmer_payment_date: {
         type: Date
     },
     trader_payment_date: {
         type: Date
+    },
+    // Carat Logic
+    carat: {
+        type: Number,
+        default: 0
+    },
+    official_carat: {
+        type: Number,
+        default: 0
+    },
+    sale_unit: {
+        type: String,
+        enum: ['kg', 'carat'],
+        default: 'kg'
     }
 }, {
     timestamps: true

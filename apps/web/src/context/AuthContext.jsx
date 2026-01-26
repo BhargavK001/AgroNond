@@ -65,11 +65,7 @@ export function AuthProvider({ children }) {
   const signInWithPhone = useCallback(async (phone) => {
     try {
       setLoading(true);
-      await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
-      });
+      await api.auth.login(phone);
       return { error: null };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -83,24 +79,7 @@ export function AuthProvider({ children }) {
   const verifyOtp = useCallback(async (phone, token) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp: token })
-      });
-
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.error('Failed to parse backend response:', text);
-        throw new Error('Server returned an invalid response (not JSON). Code: ' + response.status);
-      }
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Verification failed');
-      }
+      const data = await api.auth.verify(phone, token);
 
       // ✅ FIX 5: Ensure role exists in the user object
       const userWithRole = {
@@ -145,7 +124,7 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       // Call backend logout (optional, but good practice)
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await api.auth.logout();
     } catch (error) {
       console.error('Sign out error:', error);
     } finally {

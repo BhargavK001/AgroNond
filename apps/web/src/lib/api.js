@@ -44,6 +44,13 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 export const api = {
+  // Auth
+  auth: {
+    login: (phone) => apiRequest('/api/auth/login', { method: 'POST', body: JSON.stringify({ phone }) }),
+    verify: (phone, otp) => apiRequest('/api/auth/verify', { method: 'POST', body: JSON.stringify({ phone, otp }) }),
+    logout: () => apiRequest('/api/auth/logout', { method: 'POST' }),
+  },
+
   // --- GENERIC METHODS (Fixes "api.get is not a function" error) ---
   get: (endpoint, options) => apiRequest(endpoint, { ...options, method: 'GET' }),
   post: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
@@ -100,21 +107,7 @@ export const api = {
     delete: (id) => apiRequest(`/api/records/${id}`, { method: 'DELETE' }),
   },
 
-  // Inventory
-  inventory: {
-    list: (params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return apiRequest(`/api/inventory${query ? '?' + query : ''}`, { method: 'GET' });
-    },
-    get: (id) => apiRequest(`/api/inventory/${id}`, { method: 'GET' }),
-    create: (data) => apiRequest('/api/inventory', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id, data) => apiRequest(`/api/inventory/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    adjust: (id, adjustment, reason) => apiRequest(`/api/inventory/${id}/adjust`, {
-      method: 'PATCH',
-      body: JSON.stringify({ adjustment, reason })
-    }),
-    delete: (id) => apiRequest(`/api/inventory/${id}`, { method: 'DELETE' }),
-  },
+
 
   // User Profile
   users: {
@@ -183,8 +176,8 @@ export const api = {
       const query = new URLSearchParams(params).toString();
       return apiRequest(`/api/records/my-purchases${query ? '?' + query : ''}`, { method: 'GET' });
     },
-    seed: () => apiRequest('/api/trader/seed', { method: 'POST' }),
-    inventory: () => apiRequest('/api/trader/inventory', { method: 'GET' }),
+
+
   },
   weight: {
     stats: () => apiRequest('/api/weight/stats', { method: 'GET' }),
