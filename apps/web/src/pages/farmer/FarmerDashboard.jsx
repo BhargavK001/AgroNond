@@ -615,9 +615,13 @@ const FarmerDashboard = () => {
   // --- COMPUTED VALUES ---
   const soldRecords = records.filter(r => r.status === 'Sold');
   const pendingRecords = records.filter(r => r.status === 'Pending');
+  const completedRecords = records.filter(r => r.status === 'Completed');
 
-  const totalGross = soldRecords.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
   const totalQuantity = records.reduce((sum, r) => sum + r.quantity, 0);
+  
+  // Calculate farmer earnings (after 4% commission deduction)
+  const totalFarmerPayable = completedRecords.reduce((sum, r) => sum + (r.farmer_payable_amount || r.sale_amount || 0), 0);
+  const totalCommissionDeducted = completedRecords.reduce((sum, r) => sum + (r.farmer_commission_amount || 0), 0);
 
   const filteredRecords = filterStatus === 'All'
     ? records
@@ -919,11 +923,11 @@ const FarmerDashboard = () => {
               <div className="p-3 sm:p-4 bg-green-100 rounded-2xl text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
                 <TrendingUp size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full">+12%</span>
+              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full">{completedRecords.length} sales</span>
             </div>
             <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Total Earnings</p>
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalGross.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-gray-500">Gross Income</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalFarmerPayable.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-gray-500">After 4% commission</p>
           </div>
 
           <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
@@ -931,11 +935,11 @@ const FarmerDashboard = () => {
               <div className="p-3 sm:p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                 <Package size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">{soldRecords.length} sales</span>
+              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">-₹{totalCommissionDeducted.toLocaleString('en-IN')}</span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Total Sales</p>
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalGross.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-gray-500">All transactions</p>
+            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Commission Paid</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalCommissionDeducted.toLocaleString('en-IN')}</h3>
+            <p className="text-xs text-gray-500">4% market commission</p>
           </div>
 
           <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-orange-200 hover:shadow-lg transition-all duration-300">
@@ -1172,6 +1176,82 @@ const FarmerDashboard = () => {
             </>
           )}
         </div>
+
+        {/* Sales History with Commission Details */}
+        {completedRecords.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden mt-8">
+            <div className="p-4 sm:px-8 sm:py-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Completed Sales</h2>
+                  <p className="text-sm text-gray-600 mt-1">Your earnings after market commission</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Total Payable</p>
+                  <p className="text-2xl font-bold text-emerald-600">₹{totalFarmerPayable.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-gray-500">After 4% commission (₹{totalCommissionDeducted.toLocaleString('en-IN')})</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {completedRecords.map((record) => (
+                <div key={record._id} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col sm:flex-row justify-between gap-4">
+                    {/* Left: Product Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                          <Package size={20} className="text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-gray-900">{record.vegetable}</h3>
+                          <p className="text-xs text-gray-500">{record.lot_id} • {new Date(record.sold_at || record.createdAt).toLocaleDateString('en-IN')}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-4 text-sm text-gray-600 mt-2">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={14} />
+                          {record.market}
+                        </span>
+                        <span>{record.official_qty || record.quantity} kg × ₹{record.sale_rate}/kg</span>
+                      </div>
+                    </div>
+                    
+                    {/* Right: Financial Breakdown */}
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 sm:items-center">
+                      <div className="flex justify-between sm:block text-center">
+                        <p className="text-xs text-gray-500 sm:mb-1">Base Amount</p>
+                        <p className="font-semibold text-gray-700">₹{(record.sale_amount || 0).toLocaleString('en-IN')}</p>
+                      </div>
+                      
+                      <div className="flex justify-between sm:block text-center">
+                        <p className="text-xs text-red-500 sm:mb-1">Commission (4%)</p>
+                        <p className="font-semibold text-red-600">-₹{(record.farmer_commission_amount || 0).toLocaleString('en-IN')}</p>
+                      </div>
+                      
+                      <div className="flex justify-between sm:block text-center p-2 sm:p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                        <p className="text-xs text-emerald-700 font-semibold sm:mb-1">Your Payable</p>
+                        <p className="text-lg font-bold text-emerald-700">₹{(record.farmer_payable_amount || record.sale_amount || 0).toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Payment Status */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      record.payment_status === 'paid' 
+                        ? 'bg-green-100 text-green-700 border border-green-200' 
+                        : 'bg-amber-100 text-amber-700 border border-amber-200'
+                    }`}>
+                      {record.payment_status === 'paid' ? 'Payment Received' : 'Payment Pending'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Details Modal */}

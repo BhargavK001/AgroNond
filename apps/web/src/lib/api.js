@@ -190,6 +190,37 @@ export const api = {
     getProfile: () => apiRequest('/api/weight/profile', { method: 'GET' }),
     updateProfile: (data) => apiRequest('/api/weight/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
+
+  // Bills
+  bills: {
+    myBills: () => apiRequest('/api/bills/my-bills', { method: 'GET' }),
+    all: (params = {}) => {
+      const cleanParams = Object.fromEntries(
+        Object.entries(params).filter(([_, v]) => v != null)
+      );
+      const query = new URLSearchParams(cleanParams).toString();
+      return apiRequest(`/api/bills/all${query ? '?' + query : ''}`, { method: 'GET' });
+    },
+    get: (id) => apiRequest(`/api/bills/${id}`, { method: 'GET' }),
+    updatePayment: (id, data) => apiRequest(`/api/bills/${id}/payment`, { method: 'PATCH', body: JSON.stringify(data) }),
+    stats: () => apiRequest('/api/bills/stats/summary', { method: 'GET' }),
+  },
+
+  // Transactions
+  transactions: {
+    list: (params = {}) => {
+      const cleanParams = Object.fromEntries(
+        Object.entries(params).filter(([_, v]) => v != null)
+      );
+      const query = new URLSearchParams(cleanParams).toString();
+      return apiRequest(`/api/transactions${query ? '?' + query : ''}`, { method: 'GET' });
+    },
+    stats: () => apiRequest('/api/transactions/stats', { method: 'GET' }),
+    get: (id) => apiRequest(`/api/transactions/${id}`, { method: 'GET' }),
+    updateFarmerPayment: (id, data) => apiRequest(`/api/transactions/${id}/farmer-payment`, { method: 'PATCH', body: JSON.stringify(data) }),
+    updateTraderPayment: (id, data) => apiRequest(`/api/transactions/${id}/trader-payment`, { method: 'PATCH', body: JSON.stringify(data) }),
+    pendingPayments: (type) => apiRequest(`/api/transactions/payments/pending${type ? '?type=' + type : ''}`, { method: 'GET' }),
+  },
 };
 
 export default api;

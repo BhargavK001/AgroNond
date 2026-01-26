@@ -107,19 +107,21 @@ export default function LilavEntry() {
         try {
             setProcessingId(saleModal.record._id);
 
-            await api.patch(`/api/records/${saleModal.record._id}/sell`, {
+            const response = await api.patch(`/api/records/${saleModal.record._id}/sell`, {
                 trader_id: saleForm.trader_id,
                 sale_rate: saleForm.sale_rate
             });
 
-            toast.success('Sale completed successfully!');
+            // Show success with transaction details
+            const txnNumber = response.transaction?.transaction_number || '';
+            toast.success(`Sale completed! ${txnNumber}`);
 
             // Remove from list
             setWeighedRecords(prev => prev.filter(r => r._id !== saleModal.record._id));
             setSaleModal({ open: false, record: null });
         } catch (error) {
             console.error('Error completing sale:', error);
-            toast.error(error.response?.data?.error || 'Failed to complete sale');
+            toast.error(error.message || 'Failed to complete sale');
         } finally {
             setProcessingId(null);
         }
@@ -434,18 +436,61 @@ export default function LilavEntry() {
                                     </div>
                                 </div>
 
-                                {/* Total */}
-                                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-medium text-emerald-700">Total Amount</span>
-                                        <span className="text-2xl font-bold text-emerald-700">
-                                            ₹{calculateAmount(saleModal.record.official_qty, saleForm.sale_rate).toLocaleString()}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-emerald-600 mt-1">
-                                        {saleModal.record.official_qty} kg × ₹{saleForm.sale_rate}/kg
-                                    </p>
-                                </div>
+                                {/* Commission Breakdown */}
+                                {(() => {
+                                    const baseAmount = calculateAmount(saleModal.record.official_qty, saleForm.sale_rate);
+                                    const farmerCommission = Math.round((baseAmount * 4 / 100) * 100) / 100;
+                                    const traderCommission = Math.round((baseAmount * 9 / 100) * 100) / 100;
+                                    const farmerPayable = baseAmount - farmerCommission;
+                                    const traderReceivable = baseAmount + traderCommission;
+                                    
+                                    return (
+                                        <div className="space-y-3">
+                                            {/* Base Amount */}
+                                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-medium text-slate-600">Base Amount</span>
+                                                    <span className="text-xl font-bold text-slate-800">
+                                                        ₹{baseAmount.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    {saleModal.record.official_qty} kg × ₹{saleForm.sale_rate}/kg
+                                                </p>
+                                            </div>
+                                            
+                                            {/* Commission Details */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {/* Farmer */}
+                                                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+                                                    <p className="text-xs font-semibold text-blue-700 mb-2">Farmer Gets</p>
+                                                    <p className="text-lg font-bold text-blue-800">₹{farmerPayable.toLocaleString()}</p>
+                                                    <p className="text-[10px] text-blue-600 mt-1">After 4% (₹{farmerCommission}) deduction</p>
+                                                </div>
+                                                
+                                                {/* Trader */}
+                                                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                                                    <p className="text-xs font-semibold text-amber-700 mb-2">Trader Pays</p>
+                                                    <p className="text-lg font-bold text-amber-800">₹{traderReceivable.toLocaleString()}</p>
+                                                    <p className="text-[10px] text-amber-600 mt-1">Incl. 9% (₹{traderCommission}) commission</p>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Total Commission */}
+                                            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-medium text-emerald-700">Market Commission (Total)</span>
+                                                    <span className="text-lg font-bold text-emerald-700">
+                                                        ₹{(farmerCommission + traderCommission).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-emerald-600 mt-1">
+                                                    4% from farmer + 9% from trader = 13% of ₹{baseAmount.toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {/* Modal Footer */}

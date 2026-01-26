@@ -67,6 +67,7 @@ const AccountingTransactions = lazy(() => import('./pages/committee/AccountingTr
 const DailyRates = lazy(() => import('./pages/committee/DailyRates'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
 const CommitteeTransactionHistory = lazy(() => import('./pages/committee/TransactionHistory'));
+const PaymentManagement = lazy(() => import('./pages/committee/PaymentManagement'));
 // const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
@@ -188,6 +189,9 @@ function App() {
 
                   <Route path="billing" element={<BillingReports />} />
                   <Route path="cashflow" element={<CashFlow />} />
+
+                  {/* Payment Management */}
+                  <Route path="payments" element={<PaymentManagement />} />
 
                   {/* Moved Accounting Section */}
                   <Route path="accounting" element={<AccountingOverview />} />

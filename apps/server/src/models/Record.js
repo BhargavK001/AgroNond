@@ -93,6 +93,36 @@ const recordSchema = new mongoose.Schema({
     total_amount: {
         type: Number,
         default: 0
+    },
+    // Commission breakdown fields
+    farmer_commission_amount: {
+        type: Number,
+        default: 0
+    },
+    farmer_payable_amount: {
+        type: Number,
+        default: 0
+    },
+    trader_commission_amount: {
+        type: Number,
+        default: 0
+    },
+    trader_receivable_amount: {
+        type: Number,
+        default: 0
+    },
+    // Bill references
+    transaction_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction'
+    },
+    farmer_bill_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Bill'
+    },
+    trader_bill_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Bill'
     }
 }, {
     timestamps: true

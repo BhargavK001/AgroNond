@@ -1,9 +1,15 @@
 import express from 'express';
 import Record from '../models/Record.js';
 import User from '../models/User.js';
+import Transaction from '../models/Transaction.js';
+import Bill from '../models/Bill.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Commission rates (in percentage)
+const FARMER_COMMISSION_RATE = 4; // 4% deducted from farmer
+const TRADER_COMMISSION_RATE = 9; // 9% added for trader
 
 // ==========================================
 //  1. SPECIFIC GET ROUTES (Must come first)
@@ -236,7 +242,7 @@ router.get('/all-weighed', requireAuth, async (req, res) => {
 
 /**
  * PATCH /api/records/:id/sell
- * Complete a sale (Lilav auction)
+ * Complete a sale (Lilav auction) with commission calculation and bill generation
  */
 router.patch('/:id/sell', requireAuth, async (req, res) => {
     try {
@@ -257,24 +263,129 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Record must be weighed before sale' });
         }
 
-        const sale_amount = record.official_qty * sale_rate;
+        // Calculate amounts
+        const quantity = record.official_qty;
+        const base_amount = quantity * sale_rate;
+        
+        // Farmer commission (4% deducted from base)
+        const farmer_commission = Math.round((base_amount * FARMER_COMMISSION_RATE / 100) * 100) / 100;
+        const farmer_payable = base_amount - farmer_commission;
+        
+        // Trader commission (9% added to base)
+        const trader_commission = Math.round((base_amount * TRADER_COMMISSION_RATE / 100) * 100) / 100;
+        const trader_receivable = base_amount + trader_commission;
 
+        // Create Transaction record
+        const transaction = new Transaction({
+            record_id: record._id,
+            farmer_id: record.farmer_id,
+            trader_id: trader_id,
+            vegetable: record.vegetable,
+            quantity: quantity,
+            rate: sale_rate,
+            base_amount: base_amount,
+            farmer_commission_rate: FARMER_COMMISSION_RATE,
+            farmer_commission: farmer_commission,
+            trader_commission_rate: TRADER_COMMISSION_RATE,
+            trader_commission: trader_commission,
+            farmer_payable: farmer_payable,
+            trader_receivable: trader_receivable,
+            market: record.market,
+            sold_by: req.user._id
+        });
+        
+        await transaction.save();
+
+        // Create Farmer Bill
+        const farmerBill = new Bill({
+            bill_for: 'farmer',
+            user_id: record.farmer_id,
+            transaction_id: transaction._id,
+            record_id: record._id,
+            vegetable: record.vegetable,
+            quantity: quantity,
+            rate: sale_rate,
+            base_amount: base_amount,
+            commission_rate: FARMER_COMMISSION_RATE,
+            commission_amount: farmer_commission,
+            final_amount: farmer_payable,
+            market: record.market
+        });
+        
+        await farmerBill.save();
+
+        // Create Trader Bill
+        const traderBill = new Bill({
+            bill_for: 'trader',
+            user_id: trader_id,
+            transaction_id: transaction._id,
+            record_id: record._id,
+            vegetable: record.vegetable,
+            quantity: quantity,
+            rate: sale_rate,
+            base_amount: base_amount,
+            commission_rate: TRADER_COMMISSION_RATE,
+            commission_amount: trader_commission,
+            final_amount: trader_receivable,
+            market: record.market
+        });
+        
+        await traderBill.save();
+
+        // Update transaction with bill references
+        transaction.farmer_bill_id = farmerBill._id;
+        transaction.trader_bill_id = traderBill._id;
+        await transaction.save();
+
+        // Update the original record with all data
         const updatedRecord = await Record.findByIdAndUpdate(
             id,
             {
                 trader_id,
                 sale_rate,
-                sale_amount,
+                sale_amount: base_amount,
                 status: 'Completed',
                 sold_by: req.user._id,
-                sold_at: new Date()
+                sold_at: new Date(),
+                // Commission breakdown
+                farmer_commission_amount: farmer_commission,
+                farmer_payable_amount: farmer_payable,
+                trader_commission_amount: trader_commission,
+                trader_receivable_amount: trader_receivable,
+                // Total commission (sum for market committee)
+                commission: farmer_commission + trader_commission,
+                total_amount: trader_receivable,
+                // References
+                transaction_id: transaction._id,
+                farmer_bill_id: farmerBill._id,
+                trader_bill_id: traderBill._id
             },
             { new: true }
         )
             .populate('farmer_id', 'full_name phone')
             .populate('trader_id', 'full_name phone business_name');
 
-        res.json(updatedRecord);
+        res.json({
+            record: updatedRecord,
+            transaction: {
+                transaction_number: transaction.transaction_number,
+                base_amount,
+                farmer_commission,
+                farmer_payable,
+                trader_commission,
+                trader_receivable
+            },
+            bills: {
+                farmer: {
+                    bill_number: farmerBill.bill_number,
+                    final_amount: farmer_payable
+                },
+                trader: {
+                    bill_number: traderBill.bill_number,
+                    final_amount: trader_receivable
+                }
+            }
+        });
     } catch (error) {
         console.error('Sell record error:', error);
         res.status(500).json({ error: 'Failed to complete sale' });
