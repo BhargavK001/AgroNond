@@ -224,4 +224,61 @@ router.post('/set-role', requireAuth, async (req, res) => {
   }
 });
 
+
+/**
+ * PATCH /api/users/:id
+ * Update a specific user (Admin/Committee)
+ */
+router.patch('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Prevent updating critical fields like password directly here if needed
+    delete updates.password;
+    delete updates._id;
+
+    // Auto-generate initials if name changes
+    if (updates.full_name) {
+      const nameParts = updates.full_name.trim().split(' ');
+      if (nameParts.length >= 2) {
+        updates.initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+      } else if (nameParts.length === 1) {
+        updates.initials = nameParts[0].slice(0, 2).toUpperCase();
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(id, updates, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User updated successfully', user });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+/**
+ * DELETE /api/users/:id
+ * Delete a user (Admin/Committee)
+ */
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 export default router;

@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Filter, ChevronRight, Phone, Plus, Users } from 'lucide-react';
+import { Search, Filter, Phone, Plus, Users } from 'lucide-react';
 import AddFarmerModal from '../../components/committee/AddFarmerModal';
+import FarmerDetailsModal from '../../components/committee/FarmerDetailsModal'; // New Import
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function FarmersList() {
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [farmers, setFarmers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
+
+  // New State for Details Modal
+  const [selectedFarmer, setSelectedFarmer] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   // Fetch farmers from API
   const fetchFarmers = async () => {
@@ -45,8 +48,9 @@ export default function FarmersList() {
     setFarmers(prev => [newFarmer, ...prev]);
   };
 
-  const handleFarmerClick = (farmerId) => {
-    navigate(`/dashboard/committee/farmers/${farmerId}`);
+  const handleFarmerClick = (farmer) => {
+    setSelectedFarmer(farmer);
+    setIsDetailsModalOpen(true);
   };
 
   return (
@@ -221,7 +225,7 @@ export default function FarmersList() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 + index * 0.03 }}
-                  onClick={() => handleFarmerClick(farmer._id || farmer.id)}
+                  onClick={() => handleFarmerClick(farmer)}
                   className="hover:bg-slate-50/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-4">
@@ -263,7 +267,7 @@ export default function FarmersList() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 + index * 0.05 }}
-              onClick={() => handleFarmerClick(farmer._id || farmer.id)}
+              onClick={() => handleFarmerClick(farmer)}
               className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
             >
               <div className="flex items-start justify-between mb-3">
@@ -297,6 +301,13 @@ export default function FarmersList() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handleAddFarmer}
+      />
+
+      {/* Details Modal */}
+      <FarmerDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        farmer={selectedFarmer}
       />
     </div>
   );

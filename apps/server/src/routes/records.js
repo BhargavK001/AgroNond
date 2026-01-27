@@ -225,6 +225,8 @@ router.patch('/:id/weight', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
         const { official_qty, official_carat } = req.body;
+        // Import notification service dynamically to avoid circular dependencies if any
+        const { createNotification } = await import('../services/notificationService.js');
 
         if (official_qty == null && official_carat == null) {
             return res.status(400).json({ error: 'Weight or Carat required' });
@@ -246,10 +248,88 @@ router.patch('/:id/weight', requireAuth, async (req, res) => {
             return res.status(404).json({ error: 'Record not found' });
         }
 
+        // TRIGGER NOTIFICATION: Weight Recorded
+        if (record.farmer_id) {
+            await createNotification({
+                recipient: record.farmer_id,
+                type: 'info',
+                title: 'Weight Recorded',
+                message: `Your produce (${record.vegetable}) has been weighed: ${record.official_qty} kg / ${record.official_carat} carat.`,
+                data: { recordId: record._id, type: 'weight' }
+            });
+        }
+
         res.json(record);
     } catch (error) {
         console.error('Update weight error:', error);
         res.status(500).json({ error: 'Failed to update weight' });
+    }
+});
+
+
+/**
+ * GET /api/records/farmer/:farmerId/history
+ * Get all history for a specific farmer (Committee View)
+ */
+router.get('/farmer/:farmerId/history', requireAuth, async (req, res) => {
+    try {
+        const { farmerId } = req.params;
+
+        // Fetch all records for this farmer
+        const records = await Record.find({ farmer_id: farmerId })
+            .populate('trader_id', 'full_name business_name phone')
+            .sort({ createdAt: -1 });
+
+        // Calculate Stats
+        let totalRevenue = 0;
+        let totalQuantity = 0;
+        let pendingPayment = 0;
+        const vegetableStats = {};
+
+        records.forEach(record => {
+            // Only count Sold items for revenue
+            if (record.status === 'Sold' || record.status === 'Completed') {
+                totalRevenue += record.total_amount || 0;
+
+                // Track pending payments
+                if (record.farmer_payment_status === 'Pending') {
+                    pendingPayment += record.net_payable_to_farmer || 0;
+                }
+            }
+
+            // Count quantity (official weight preferred, else estimated)
+            const qty = record.official_qty || record.quantity || 0;
+            totalQuantity += qty;
+
+            // Vegetable stats
+            if (!vegetableStats[record.vegetable]) {
+                vegetableStats[record.vegetable] = {
+                    name: record.vegetable,
+                    quantity: 0,
+                    count: 0,
+                    revenue: 0
+                };
+            }
+            vegetableStats[record.vegetable].quantity += qty;
+            vegetableStats[record.vegetable].count += 1;
+            if (record.status === 'Sold') {
+                vegetableStats[record.vegetable].revenue += record.total_amount || 0;
+            }
+        });
+
+        res.json({
+            records,
+            stats: {
+                totalRevenue,
+                totalQuantity,
+                pendingPayment,
+                vegetableSummary: Object.values(vegetableStats)
+            }
+        });
+
+    } catch (error) {
+        console.error('Fetch farmer history error:', error);
+        res.status(500).json({ error: 'Failed to fetch farmer history' });
     }
 });
 
@@ -375,6 +455,20 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
         )
             .populate('farmer_id', 'full_name phone')
             .populate('trader_id', 'full_name phone business_name');
+
+        // Import notification service dynamically
+        const { createNotification } = await import('../services/notificationService.js');
+
+        // TRIGGER NOTIFICATION: Item Sold
+        if (updatedRecord.farmer_id) {
+            await createNotification({
+                recipient: updatedRecord.farmer_id._id, // Populated
+                type: 'success',
+                title: 'Produce Sold',
+                message: `Your ${updatedRecord.vegetable} has been sold at ₹${updatedRecord.sale_rate}/${updatedRecord.sale_unit}. Total: ₹${updatedRecord.total_amount}.`,
+                data: { recordId: updatedRecord._id, type: 'sold' }
+            });
+        }
 
         res.json(updatedRecord);
     } catch (error) {

@@ -21,6 +21,7 @@ import traderRouter from './routes/trader.js';
 import weightRouter from './routes/weight.js';
 import searchRouter from './routes/search.js';
 import committeeRouter from './routes/committee.js';
+import notificationRoutes from './routes/notifications.js';
 import connectDB from './config/db.js';
 
 // Connect to Database
@@ -83,6 +84,7 @@ app.use('/api/trader', traderRouter);
 app.use('/api/weight', weightRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/committee', committeeRouter);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use((req, res) => {

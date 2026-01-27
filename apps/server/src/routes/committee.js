@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Record from '../models/Record.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -17,7 +18,6 @@ const requireCommitteeAccess = (req, res, next) => {
 
 /**
  * GET /api/committee/stats
- * Get high-level statistics for the dashboard
  */
 router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
     try {
@@ -28,41 +28,21 @@ router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
             paymentStats,
             commissionStats
         ] = await Promise.all([
-            // 1. Total Farmers
             User.countDocuments({ role: 'farmer' }),
-
-            // 2. Total Traders
             User.countDocuments({ role: 'trader' }),
-
-            // 3. Total Volume (Sum of confirmed sold quantities or sale amounts? Dashboard implies "Volume" might be qty or amount.
-            // Usually Volume = Quantity. Let's assume Total Volume means Total Quantity Sold (Kg) based on context, 
-            // but the mockup showed 28,50,000 which looks like currency. Let's check `mockMetrics`.
-            // `totalVolume: 2850000` -> If this is rupees, it's low. If it's Kg, it's high. 
-            // Wait, `mockMetrics` has `totalVolume` and `receivedPayments`.
-            // Let's assume Total Volume usually refers to Quantity in ag-tech, but here it might be Total Transaction Value.
-            // Let's calculate both and return what fits.
-            // Actually, looking at `admin.js`, "Total Volume" was `totalVolume: { $sum: '$sale_amount' }`. So it's currency (Total Turnover). 
             Record.aggregate([
                 { $match: { status: { $in: ['Sold', 'Completed'] } } },
                 { $group: { _id: null, totalamount: { $sum: '$sale_amount' } } }
             ]),
-
-            // 4. Payment Status (Pending vs Received)
-            // 'paid' vs 'pending' in payment_status
             Record.aggregate([
                 { $match: { status: { $in: ['Sold', 'Completed'] } } },
                 {
                     $group: {
                         _id: '$payment_status',
-                        total: { $sum: '$total_amount' } // total_amount includes commission etc? or just sale_amount?
-                        // Usually payment to farmer is (sale_amount - commission).
-                        // `Record.js` has `total_amount` and `sale_amount`. 
-                        // Let's us `total_amount` as the final payable/paid amount.
+                        total: { $sum: '$total_amount' }
                     }
                 }
             ]),
-
-            // 5. Commission Stats
             Record.aggregate([
                 { $match: { status: { $in: ['Sold', 'Completed'] } } },
                 { $group: { _id: null, totalCommission: { $sum: '$commission' } } }
@@ -72,7 +52,6 @@ router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
         const totalVolume = totalVolumeStats[0]?.totalamount || 0;
         const totalCommission = commissionStats[0]?.totalCommission || 0;
 
-        // Process payment stats
         let pendingPayments = 0;
         let receivedPayments = 0;
 
@@ -84,13 +63,6 @@ router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
             }
         });
 
-        // Mock breakdown for commission split if not stored separately
-        // Assuming 4% from Farmer and 9% from Trader is the rule (approx 30% / 70% split of commission?)
-        // Or just simple percentage of the Total Commission.
-        // Dashboard says: "From Farmers (4%), From Traders (9%)".
-        // 4 + 9 = 13 total.
-        // So Farmer part = (4/13) * TotalCommission
-        // Trader part = (9/13) * TotalCommission
         const farmerCommission = Math.round(totalCommission * (4 / 13));
         const traderCommission = Math.round(totalCommission * (9 / 13));
 
@@ -113,14 +85,13 @@ router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
 
 /**
  * GET /api/committee/transactions
- * Get recent transactions for the dashboard
  */
 router.get('/transactions', requireAuth, requireCommitteeAccess, async (req, res) => {
     try {
         const records = await Record.find({ status: { $in: ['Sold', 'Completed'] } })
             .populate('farmer_id', 'full_name')
             .populate('trader_id', 'full_name business_name')
-            .sort({ sold_at: -1 }) // Most recent first
+            .sort({ sold_at: -1 })
             .limit(10);
 
         const formattedTransactions = records.map(record => ({
@@ -130,9 +101,10 @@ router.get('/transactions', requireAuth, requireCommitteeAccess, async (req, res
             trader: record.trader_id?.business_name || record.trader_id?.full_name || 'Unknown Trader',
             crop: record.vegetable,
             qty: record.qtySold || record.quantity,
+            carat: record.official_carat || record.carat || 0,
             rate: record.sale_rate || record.rate,
             amount: record.sale_amount,
-            status: record.payment_status === 'paid' ? 'Paid' : 'Pending' // Map backend status to UI status
+            status: record.payment_status === 'paid' ? 'Paid' : 'Pending'
         }));
 
         res.json(formattedTransactions);
@@ -144,7 +116,6 @@ router.get('/transactions', requireAuth, requireCommitteeAccess, async (req, res
 
 /**
  * GET /api/committee/reports/daily
- * Get daily sales and commission stats
  */
 router.get('/reports/daily', requireAuth, requireCommitteeAccess, async (req, res) => {
     try {
@@ -180,7 +151,6 @@ router.get('/reports/daily', requireAuth, requireCommitteeAccess, async (req, re
 
 /**
  * GET /api/committee/reports/monthly
- * Get monthly sales and commission stats for the current year
  */
 router.get('/reports/monthly', requireAuth, requireCommitteeAccess, async (req, res) => {
     try {
@@ -210,6 +180,111 @@ router.get('/reports/monthly', requireAuth, requireCommitteeAccess, async (req, 
     } catch (error) {
         console.error('Monthly reports error:', error);
         res.status(500).json({ error: 'Failed to fetch monthly reports' });
+    }
+});
+
+
+/**
+ * GET /api/committee/traders/:id/history
+ */
+router.get('/traders/:id/history', requireAuth, requireCommitteeAccess, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const traderId = new mongoose.Types.ObjectId(id);
+
+        const traderUser = await User.findById(traderId);
+        if (!traderUser) {
+            return res.status(404).json({ error: 'Trader not found' });
+        }
+
+        const matchStage = {
+            $match: {
+                $or: [
+                    { trader_id: traderId },
+                    { trader: traderUser.business_name },
+                    { trader: traderUser.full_name }
+                ],
+                status: { $in: ['Sold', 'Completed'] }
+            }
+        };
+
+        // 1. Get Stats
+        const statsAggregation = await Record.aggregate([
+            matchStage,
+            {
+                $group: {
+                    _id: null,
+                    totalPurchaseValue: { $sum: '$sale_amount' },
+                    totalQuantity: { $sum: '$official_qty' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // 2. Calculate Pending Payments
+        const pendingAggregation = await Record.aggregate([
+            matchStage,
+            {
+                $match: {
+                    $or: [
+                        { trader_payment_status: 'Pending' },
+                        { payment_status: { $in: ['pending', 'overdue'] } }
+                    ]
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalPending: {
+                        $sum: {
+                            $cond: {
+                                if: { $gt: ['$net_receivable_from_trader', 0] },
+                                then: '$net_receivable_from_trader',
+                                else: { $add: ['$sale_amount', '$commission'] }
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+
+        // 3. Vegetable Summary
+        const vegetableSummary = await Record.aggregate([
+            matchStage,
+            {
+                $group: {
+                    _id: '$vegetable',
+                    quantity: { $sum: '$official_qty' },
+                    amount: { $sum: '$sale_amount' },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { quantity: -1 } }
+        ]);
+
+        // 4. Recent Transactions
+        const records = await Record.find(matchStage.$match)
+            .sort({ sold_at: -1 })
+            .limit(50)
+            .populate('farmer_id', 'full_name farmerId');
+
+        const stats = {
+            totalPurchaseValue: statsAggregation[0]?.totalPurchaseValue || 0,
+            totalQuantity: statsAggregation[0]?.totalQuantity || 0,
+            pendingPayment: pendingAggregation[0]?.totalPending || 0,
+            vegetableSummary: vegetableSummary.map(v => ({
+                name: v._id,
+                quantity: v.quantity,
+                amount: v.amount,
+                count: v.count
+            }))
+        };
+
+        res.json({ stats, records });
+
+    } catch (error) {
+        console.error('Trader history error:', error);
+        res.status(500).json({ error: 'Failed to fetch trader history' });
     }
 });
 
