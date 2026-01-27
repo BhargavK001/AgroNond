@@ -114,16 +114,32 @@ export default function TransactionDetailsModal({ transaction, onClose }) {
 
                         {/* Status */}
                         <div className="pt-2">
-                            <div className={`p-3 rounded-xl border flex items-center gap-3 ${transaction.paymentStatus === 'paid'
-                                ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                : 'bg-amber-50 border-amber-100 text-amber-700'
-                                }`}>
-                                <div className={`w-2 h-2 rounded-full ${transaction.paymentStatus === 'paid' ? 'bg-emerald-500' : 'bg-amber-500'
-                                    }`} />
-                                <span className="font-medium capitalize">
-                                    Payment Status: {transaction.paymentStatus}
-                                </span>
-                            </div>
+                            {(() => {
+                                const status = (transaction.paymentStatus || '').toLowerCase();
+                                const isPaid = status === 'paid';
+                                const isPending = status === 'pending';
+
+                                const colorClasses = isPaid
+                                    ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                    : isPending
+                                        ? 'bg-amber-50 border-amber-100 text-amber-700'
+                                        : 'bg-red-50 border-red-100 text-red-700';
+
+                                const dotClasses = isPaid
+                                    ? 'bg-emerald-500'
+                                    : isPending
+                                        ? 'bg-amber-500'
+                                        : 'bg-red-500';
+
+                                return (
+                                    <div className={`p-3 rounded-xl border flex items-center gap-3 ${colorClasses}`}>
+                                        <div className={`w-2 h-2 rounded-full ${dotClasses}`} />
+                                        <span className="font-medium capitalize">
+                                            Payment Status: {transaction.paymentStatus}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
 
