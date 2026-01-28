@@ -17,7 +17,8 @@ export default function TransactionDetailsModal({ transaction, onClose }) {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Invoice_${transaction.lotId || 'Ref'}_${new Date(transaction.date).toISOString().split('T')[0]}.pdf`;
+            // Removed Lot ID from filename
+            link.download = `Invoice_${new Date(transaction.date).toISOString().split('T')[0]}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

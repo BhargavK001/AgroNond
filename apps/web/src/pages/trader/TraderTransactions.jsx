@@ -1,13 +1,11 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  Calendar,
   Download,
   Filter,
   Package,
-  ChevronDown,
   ChevronLeft,
   ArrowUpDown,
   X,
@@ -46,7 +44,7 @@ export default function TraderTransactions() {
         // Transform data to match component expectation
         const formattedData = data.map(t => ({
           id: t._id,
-          lotId: t.lot_id,
+          // lotId removed here
           date: t.sold_at || t.createdAt,
           crop: t.vegetable,
           quantity: t.official_qty,
@@ -77,7 +75,7 @@ export default function TraderTransactions() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(t =>
-        (t.lotId && t.lotId.toLowerCase().includes(query)) ||
+        // Lot ID search logic removed, now searching only by crop
         (t.crop && t.crop.toLowerCase().includes(query))
       );
     }
@@ -131,7 +129,8 @@ export default function TraderTransactions() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Invoice_${txn.lotId || 'Ref'}_${new Date(txn.date).toISOString().split('T')[0]}.pdf`;
+      // Removed Lot ID from filename, using date as unique identifier
+      link.download = `Invoice_${new Date(txn.date).toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -151,11 +150,13 @@ export default function TraderTransactions() {
   };
 
   const handleExport = () => {
-    const headers = ['Lot ID', 'Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
+    // Removed 'Lot ID' from headers
+    const headers = ['Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const csvContent = [
       headers.join(','),
       ...filteredTransactions.map(t =>
-        [t.lotId, t.date, t.crop, t.quantity, t.rate, t.grossAmount, t.totalCost, t.paymentStatus].join(',')
+        // Removed t.lotId from data rows
+        [t.date, t.crop, t.quantity, t.rate, t.grossAmount, t.totalCost, t.paymentStatus].join(',')
       )
     ].join('\n');
 
@@ -266,7 +267,8 @@ export default function TraderTransactions() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by Lot ID or crop..."
+                // Updated placeholder text
+                placeholder="Search by crop..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-sm"
@@ -567,5 +569,3 @@ export default function TraderTransactions() {
     </div>
   );
 }
-
-

@@ -33,19 +33,19 @@ export const mockUsers = [
   { id: 'F005', name: 'Anil Shinde', phone: '9876543214', role: 'farmer', village: 'Daund', status: 'suspended', joinedDate: '2025-05-10', totalSales: 42000 },
   { id: 'F006', name: 'Meena Kale', phone: '9876543215', role: 'farmer', village: 'Junnar', status: 'active', joinedDate: '2025-09-12', totalSales: 78000 },
   { id: 'F007', name: 'Prakash Gaikwad', phone: '9876543216', role: 'farmer', village: 'Haveli', status: 'pending', joinedDate: '2026-01-18', totalSales: 0 },
-  
+
   // Traders
   { id: 'T001', name: 'Rajesh Agarwal', phone: '9988776655', role: 'trader', businessName: 'Agarwal Traders', status: 'active', joinedDate: '2025-04-10', totalPurchases: 890000 },
   { id: 'T002', name: 'Suresh Gupta', phone: '9988776656', role: 'trader', businessName: 'Gupta Vegetables', status: 'active', joinedDate: '2025-05-15', totalPurchases: 650000 },
   { id: 'T003', name: 'Amit Sharma', phone: '9988776657', role: 'trader', businessName: 'Sharma Fresh Foods', status: 'pending', joinedDate: '2026-01-12', totalPurchases: 0 },
   { id: 'T004', name: 'Deepak Jain', phone: '9988776658', role: 'trader', businessName: 'Jain Agro Traders', status: 'active', joinedDate: '2025-06-20', totalPurchases: 420000 },
   { id: 'T005', name: 'Manoj Bansal', phone: '9988776659', role: 'trader', businessName: 'Bansal Exports', status: 'suspended', joinedDate: '2025-03-05', totalPurchases: 180000 },
-  
+
   // Staff
   { id: 'S001', name: 'Sunil Kamble', phone: '9123456789', role: 'weight_staff', department: 'Weighing', status: 'active', joinedDate: '2025-02-10' },
   { id: 'S002', name: 'Priya Deshmukh', phone: '9123456790', role: 'accountant', department: 'Accounts', status: 'active', joinedDate: '2025-03-15' },
   { id: 'S003', name: 'Rahul Pawar', phone: '9123456791', role: 'weight_staff', department: 'Weighing', status: 'pending', joinedDate: '2026-01-05' },
-  
+
   // Admin
   { id: 'A001', name: 'Admin User', phone: '9999999999', role: 'admin', department: 'Administration', status: 'active', joinedDate: '2025-01-01' }
 ];
@@ -54,7 +54,6 @@ export const mockUsers = [
 export const mockTransactions = [
   {
     id: 'TXN001',
-    lotId: 'LOT-2026-001',
     date: '2026-01-20',
     farmerId: 'F001',
     farmerName: 'Ramesh Patil',
@@ -73,7 +72,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN002',
-    lotId: 'LOT-2026-002',
     date: '2026-01-20',
     farmerId: 'F002',
     farmerName: 'Sunita Jadhav',
@@ -92,7 +90,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN003',
-    lotId: 'LOT-2026-003',
     date: '2026-01-19',
     farmerId: 'F004',
     farmerName: 'Lakshmi Devi',
@@ -111,7 +108,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN004',
-    lotId: 'LOT-2026-004',
     date: '2026-01-19',
     farmerId: 'F006',
     farmerName: 'Meena Kale',
@@ -130,7 +126,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN005',
-    lotId: 'LOT-2026-005',
     date: '2026-01-18',
     farmerId: 'F001',
     farmerName: 'Ramesh Patil',
@@ -149,7 +144,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN006',
-    lotId: 'LOT-2026-006',
     date: '2026-01-18',
     farmerId: 'F002',
     farmerName: 'Sunita Jadhav',
@@ -168,7 +162,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN007',
-    lotId: 'LOT-2026-007',
     date: '2026-01-17',
     farmerId: 'F004',
     farmerName: 'Lakshmi Devi',
@@ -187,7 +180,6 @@ export const mockTransactions = [
   },
   {
     id: 'TXN008',
-    lotId: 'LOT-2026-008',
     date: '2026-01-16',
     farmerId: 'F006',
     farmerName: 'Meena Kale',
@@ -224,11 +216,11 @@ export const getDashboardStats = () => {
   const pendingUsers = mockUsers.filter(u => u.status === 'pending');
   const todayTransactions = mockTransactions.filter(t => t.date === '2026-01-20');
   const pendingBillings = mockTransactions.filter(t => t.paymentStatus === 'pending');
-  
+
   const todayVolume = todayTransactions.reduce((sum, t) => sum + t.quantity, 0);
   const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.grossAmount, 0);
   const pendingAmount = pendingBillings.reduce((sum, t) => sum + t.grossAmount, 0);
-  
+
   return {
     totalFarmers: farmers.length,
     activeFarmers: farmers.filter(f => f.status === 'active').length,

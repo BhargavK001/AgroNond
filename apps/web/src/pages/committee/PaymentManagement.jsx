@@ -79,7 +79,7 @@ const PaymentManagement = () => {
         // Text Search
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch =
-            record.lot_id?.toLowerCase().includes(searchLower) ||
+            // Removed lot_id search logic
             record.farmer_id?.full_name?.toLowerCase().includes(searchLower) ||
             record.trader_id?.business_name?.toLowerCase().includes(searchLower);
 
@@ -164,7 +164,8 @@ const PaymentManagement = () => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search Lot ID, Farmer, Trader..."
+                                // Removed Lot ID from placeholder
+                                placeholder="Search Farmer, Trader..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -177,7 +178,8 @@ const PaymentManagement = () => {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
                                 <tr>
-                                    <th className="px-6 py-4">Date / Lot ID</th>
+                                    {/* Updated Header */}
+                                    <th className="px-6 py-4">Date</th>
                                     <th className="px-6 py-4">Parties</th>
                                     <th className="px-6 py-4 text-right">Amounts</th>
                                     <th className="px-6 py-4 text-center">Status (Farmer)</th>
@@ -194,9 +196,12 @@ const PaymentManagement = () => {
                                     filteredRecords.map(record => (
                                         <tr key={record._id} className="hover:bg-slate-50/50 transition">
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-900">{record.lot_id}</div>
-                                                <div className="text-xs text-slate-500">
+                                                {/* Removed lot_id display, kept date */}
+                                                <div className="font-bold text-slate-900">
                                                     {new Date(record.createdAt).toLocaleDateString()}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                    {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">

@@ -168,7 +168,7 @@ export default function TraderDashboard() {
                             // Normalize data for the modal
                             setSelectedTransaction({
                               id: item._id,
-                              lotId: item.lot_id,
+                              // lotId removed from here
                               date: item.sold_at || item.createdAt,
                               crop: item.vegetable,
                               quantity: item.official_qty || 0,
@@ -209,7 +209,10 @@ export default function TraderDashboard() {
                 <div key={item._id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h3 className="font-bold text-sm text-slate-800">{item.lot_id}</h3>
+                      {/* Replaced item.lot_id with Date since Lot ID is removed */}
+                      <h3 className="font-bold text-sm text-slate-800">
+                        {item.sold_at ? new Date(item.sold_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                      </h3>
                       <p className="text-xs text-slate-500">{item.vegetable}</p>
                     </div>
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
