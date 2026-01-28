@@ -153,6 +153,7 @@ export default function TraderTransactions() {
   const handleExport = () => {
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // Removed 'Lot ID' from headers
     const headers = ['Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const csvContent = [
@@ -163,6 +164,8 @@ export default function TraderTransactions() {
       )
     ].join('\n');
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
     const headers = ['Lot ID', 'Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
@@ -177,6 +180,9 @@ export default function TraderTransactions() {
       t.paymentStatus
     ]);
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
