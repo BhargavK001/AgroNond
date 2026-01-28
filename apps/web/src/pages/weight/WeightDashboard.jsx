@@ -43,7 +43,6 @@ const WeightDashboard = () => {
   const [modals, setModals] = useState({
     addWeight: false,
     editWeight: false,
-    editWeight: false,
     editProfile: false,
     details: false,
     delete: false
