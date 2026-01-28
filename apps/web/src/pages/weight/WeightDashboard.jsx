@@ -474,14 +474,14 @@ const WeightDashboard = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Official Qty</p>
-                          <p className={`text-lg font-bold ${record.updated_weight ? 'text-green-600' : 'text-gray-400'}`}>
+                          {/* ✅ UPDATED: Shows only one value (Kg OR Crt) with correct color */}
+                          <p className={`text-lg font-bold ${record.updated_weight ? 'text-green-600' : (record.updated_carat ? 'text-purple-600' : 'text-gray-400')}`}>
                             {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '---')}
                           </p>
-                          {/* ✅ NEW: Show Carat */}
-                          <p className={`text-sm font-bold ${record.updated_carat ? 'text-purple-600' : 'text-gray-400'}`}>
-                            {record.updated_carat ? `${record.updated_carat} Crt` : ''}
+
+                          <p className="text-[10px] text-gray-400">
+                            Est: {record.est_weight > 0 ? `${record.est_weight} kg` : ''}{record.est_weight > 0 && record.est_carat > 0 ? ' | ' : ''}{record.est_carat > 0 ? `${record.est_carat} Crt` : ''}
                           </p>
-                          <p className="text-[10px] text-gray-400">Est: {record.est_weight} kg | {record.est_carat} Crt</p>
                         </div>
                       </div>
 
@@ -565,15 +565,18 @@ const WeightDashboard = () => {
                             {record.item}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-500 font-medium">{record.est_weight} kg</td>
+                        <td className="px-6 py-4 text-gray-500 font-medium">
+                          {record.est_weight > 0
+                            ? `${record.est_weight} kg`
+                            : record.est_carat > 0
+                              ? `${record.est_carat} Crt`
+                              : '-'}
+                        </td>
                         <td className="px-6 py-4">
-                          <span className={`text-base font-bold ${record.updated_weight ? 'text-green-600' : 'text-gray-400'}`}>
+                          {/* ✅ UPDATED: Shows only one value (Kg OR Crt) */}
+                          <span className={`text-base font-bold ${record.updated_weight ? 'text-green-600' : (record.updated_carat ? 'text-purple-600' : 'text-gray-400')}`}>
                             {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '-')}
                           </span>
-                          {/* ✅ NEW: Show Carat */}
-                          <div className={`text-xs font-bold ${record.updated_carat ? 'text-purple-600' : 'text-gray-400'}`}>
-                            {record.updated_carat ? `${record.updated_carat} Crt` : ''}
-                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${['Done', 'Sold', 'Weighed'].includes(record.status)
@@ -840,7 +843,8 @@ const WeightDashboard = () => {
               <input
                 type="number"
                 value={formData.updatedWeight}
-                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
+                // ✅ CHANGED: Clears updatedCarat when typing in updatedWeight
+                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
                 placeholder="0.00"
                 autoFocus
                 disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
@@ -855,7 +859,8 @@ const WeightDashboard = () => {
               <input
                 type="number"
                 value={formData.updatedCarat}
-                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
+                // ✅ CHANGED: Clears updatedWeight when typing in updatedCarat
+                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
                 placeholder="0.00"
                 disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
                 className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)
