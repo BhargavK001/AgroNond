@@ -663,6 +663,12 @@ const FarmerDashboard = () => {
     }
   };
 
+  // ✅ NEW: Fetch records on mount
+  useEffect(() => {
+    fetchRecords();
+    loadProfile();
+  }, []);
+
   useEffect(() => {
     const handleOpenEditProfile = () => {
       setModals(prev => ({ ...prev, editProfile: true }));
