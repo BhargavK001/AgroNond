@@ -41,13 +41,22 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
         license_number: formData.licenseNo,
       });
 
-      toast.success('Trader added successfully!');
-      onAdd(response.data.user);
-      setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
-      onClose();
+      // FIX: robustly handle whether response IS the user or HAS the user
+      const newTrader = response?.user || response;
+
+      if (newTrader) {
+        onAdd(newTrader);
+        toast.success('Trader added successfully!');
+        setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
+        onClose();
+      } else {
+        throw new Error("Invalid response received from server");
+      }
+
     } catch (error) {
       console.error('Failed to add trader:', error);
-      const message = error.response?.data?.error || 'Failed to add trader';
+      // Better error message handling
+      const message = error.response?.data?.error || error.message || 'Failed to add trader';
       toast.error(message);
     } finally {
       setIsSubmitting(false);

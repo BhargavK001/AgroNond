@@ -43,13 +43,21 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
         adhaar_number: formData.aadhaar,
       });
 
-      toast.success('Farmer added successfully!');
-      onAdd(response.data.user);
-      setFormData({ name: '', phone: '', village: '', aadhaar: '' });
-      onClose();
+      // FIX: robustly handle whether response IS the user or HAS the user
+      const newUser = response?.user || response;
+
+      if (newUser) {
+        onAdd(newUser);
+        toast.success('Farmer added successfully!');
+        setFormData({ name: '', phone: '', village: '', aadhaar: '' });
+        onClose();
+      } else {
+        throw new Error("Invalid response received from server");
+      }
+
     } catch (error) {
       console.error('Failed to add farmer:', error);
-      const message = error.response?.data?.error || 'Failed to add farmer';
+      const message = error.response?.data?.error || error.message || 'Failed to add farmer';
       toast.error(message);
     } finally {
       setIsSubmitting(false);

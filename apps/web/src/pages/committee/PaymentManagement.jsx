@@ -198,7 +198,7 @@ const PaymentManagement = () => {
                     </button>
                     <button
                         onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-200"
+                        className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all"
                     >
                         <IndianRupee size={18} />
                         Bulk Receive
