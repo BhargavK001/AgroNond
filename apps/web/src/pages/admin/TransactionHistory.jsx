@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -7,9 +7,12 @@ import {
   ChevronDown,
   ArrowUpDown
 } from 'lucide-react';
-import { mockTransactions } from '../../data/mockData';
+import { api } from '../../lib/api';
+import { exportToCSV } from '../../lib/csvExport';
 
 export default function TransactionHistory() {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -17,8 +20,38 @@ export default function TransactionHistory() {
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
 
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const data = await api.purchases.list({ limit: 500 }); // Fetch sufficient history
+
+      const formattedData = data.map(t => ({
+        id: t._id,
+        date: t.sold_at || t.date || t.createdAt,
+        farmerName: t.farmer_id?.full_name || 'Unknown Farmer',
+        traderName: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown Trader',
+        crop: t.vegetable,
+        quantity: t.official_qty || t.quantity || 0,
+        rate: t.sale_rate || t.rate || 0,
+        grossAmount: t.sale_amount || t.amount || 0,
+        commission: (t.farmer_commission || 0) + (t.trader_commission || 0),
+        paymentStatus: t.payment_status || 'pending'
+      }));
+
+      setTransactions(formattedData);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredTransactions = useMemo(() => {
-    let result = [...mockTransactions];
+    let result = [...transactions];
 
     // Search filter (removed lotId, searching by names and crop only)
     if (searchQuery) {
@@ -32,10 +65,10 @@ export default function TransactionHistory() {
 
     // Date range filter
     if (dateFrom) {
-      result = result.filter(txn => txn.date >= dateFrom);
+      result = result.filter(txn => new Date(txn.date) >= new Date(dateFrom));
     }
     if (dateTo) {
-      result = result.filter(txn => txn.date <= dateTo);
+      result = result.filter(txn => new Date(txn.date) <= new Date(dateTo));
     }
 
     // Payment status filter
@@ -72,7 +105,7 @@ export default function TransactionHistory() {
     });
 
     return result;
-  }, [searchQuery, dateFrom, dateTo, paymentFilter, sortField, sortDirection]);
+  }, [transactions, searchQuery, dateFrom, dateTo, paymentFilter, sortField, sortDirection]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -88,33 +121,41 @@ export default function TransactionHistory() {
       totalTransactions: filteredTransactions.length,
       totalVolume: filteredTransactions.reduce((sum, t) => sum + t.quantity, 0),
       totalAmount: filteredTransactions.reduce((sum, t) => sum + t.grossAmount, 0),
-      totalCommission: filteredTransactions.reduce((sum, t) => sum + t.farmerCommission + t.traderCommission, 0)
+      totalCommission: filteredTransactions.reduce((sum, t) => sum + t.commission, 0)
     };
   }, [filteredTransactions]);
 
   const handleExport = () => {
+<<<<<<< Updated upstream
     // CSV export without Lot ID
     const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
     const rows = filteredTransactions.map(txn => [
       txn.date,
+=======
+    const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
+    const data = filteredTransactions.map(txn => [
+      new Date(txn.date).toLocaleDateString('en-IN'),
+>>>>>>> Stashed changes
       txn.farmerName,
       txn.traderName,
       txn.crop,
       txn.quantity,
       txn.rate,
       txn.grossAmount,
-      txn.farmerCommission + txn.traderCommission,
+      txn.commission,
       txn.paymentStatus
     ]);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+    exportToCSV(data, headers, `transactions_${new Date().toISOString().split('T')[0]}.csv`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -122,7 +163,11 @@ export default function TransactionHistory() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Transaction History</h1>
+<<<<<<< Updated upstream
           <p className="text-gray-500 mt-1">View and search all entries</p>
+=======
+          <p className="text-gray-500 mt-1">View and search all transactions</p>
+>>>>>>> Stashed changes
         </div>
         <button
           onClick={handleExport}
@@ -285,7 +330,7 @@ export default function TransactionHistory() {
                       ₹{txn.grossAmount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right text-emerald-600 font-medium text-sm">
-                      ₹{(txn.farmerCommission + txn.traderCommission).toLocaleString()}
+                      ₹{txn.commission.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border
@@ -306,7 +351,7 @@ export default function TransactionHistory() {
         {/* Table Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
           <p className="text-sm text-slate-500">
-            Showing {filteredTransactions.length} of {mockTransactions.length} transactions
+            Showing {filteredTransactions.length} of {transactions.length} transactions
           </p>
         </div>
       </motion.div>

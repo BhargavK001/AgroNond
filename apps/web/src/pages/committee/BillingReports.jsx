@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
+import { exportToCSV } from '../../lib/csvExport';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Download, Filter, Calendar, Users, ShoppingBag, X, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -192,6 +193,26 @@ export default function BillingReports() {
   const totalCommission = currentData.reduce((acc, item) => acc + item.commission, 0);
   const totalFinal = currentData.reduce((acc, item) => acc + item.finalAmount, 0);
 
+
+
+  const handleExport = () => {
+    const headers = ['Date', activeTab === 'farmers' ? 'Farmer' : 'Trader', 'Crop', 'Qty (kg)', 'Base Amt', 'Commission', 'Final Amt', 'Status'];
+
+    // Use currentData which is already processed with calculations
+    const csvData = currentData.map(item => [
+      new Date(item.date).toLocaleDateString('en-IN'),
+      item.name,
+      item.crop,
+      item.qty,
+      item.baseAmount,
+      item.commission,
+      item.finalAmount,
+      item.status
+    ]);
+
+    exportToCSV(csvData, headers, `billing-report-${activeTab}-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   return (
     <div className="space-y-6">
       <PaymentModal
@@ -293,7 +314,10 @@ export default function BillingReports() {
             <option value="month">This Month</option>
           </select>
         </div>
-        <button className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors">
+        <button
+          onClick={handleExport}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors"
+        >
           <Download className="w-4 h-4" />
           Export Report
         </button>
@@ -379,8 +403,8 @@ export default function BillingReports() {
                         {({ loading }) => (
                           <div
                             className={`p-2 rounded-lg transition-all duration-200 border ${loading
-                                ? 'bg-slate-100 text-slate-400 border-slate-200'
-                                : 'bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 border-slate-200 shadow-sm'
+                              ? 'bg-slate-100 text-slate-400 border-slate-200'
+                              : 'bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 border-slate-200 shadow-sm'
                               }`}
                             title="Download Invoice"
                           >

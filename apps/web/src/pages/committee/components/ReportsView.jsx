@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { FileText, Download, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
+import { FileText, Download, Calendar as CalendarIcon, ArrowRight, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { api } from '../../lib/api';
+import { exportToCSV } from '../../lib/csvExport';
 
 export default function ReportsView() {
+    const [loading, setLoading] = useState(false);
     // Default to today
     const [dateRange, setDateRange] = useState({
         start: new Date().toISOString().split('T')[0],
@@ -22,13 +25,75 @@ export default function ReportsView() {
         }
     ];
 
-    const handleDownload = (reportTitle, period = 'Custom Range') => {
-        const rangeText = period === 'Today'
-            ? 'Today'
-            : `${dateRange.start} to ${dateRange.end}`;
+    const handleDownload = async (reportTitle, period = 'Custom Range') => {
+        try {
+            setLoading(true);
+            const rangeText = period === 'Today'
+                ? 'Today'
+                : `${dateRange.start} to ${dateRange.end}`;
 
-        toast.success(`Downloading ${reportTitle} for ${rangeText}`);
+            toast.loading(`Fetching ${reportTitle}...`, { id: 'export-toast' });
 
+            // Fetch data
+            const params = {
+                startDate: period === 'Today' ? new Date().toISOString().split('T')[0] : dateRange.start,
+                endDate: period === 'Today' ? new Date().toISOString().split('T')[0] : dateRange.end,
+                limit: 5000 // Ensure we get all records
+            };
+
+            // Use purchases.list (records/completed) as source of truth
+            const data = await api.purchases.list(params);
+
+            if (!data || data.length === 0) {
+                toast.error('No records found for this period', { id: 'export-toast' });
+                return;
+            }
+
+            let headers = [];
+            let csvData = [];
+            let filename = '';
+
+            if (reportTitle.includes('Commission')) {
+                headers = ['Date', 'Lot ID', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Sale Amount', 'Farmer Commission', 'Trader Commission', 'Total Commission'];
+                csvData = data.map(t => [
+                    new Date(t.sold_at || t.date || t.createdAt).toLocaleDateString('en-IN'),
+                    t.lot_id,
+                    t.farmer_id?.full_name || 'Unknown',
+                    t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown',
+                    t.vegetable,
+                    t.official_qty || t.quantity,
+                    t.sale_amount,
+                    t.farmer_commission || 0,
+                    t.trader_commission || 0,
+                    (t.farmer_commission || 0) + (t.trader_commission || 0)
+                ]);
+                filename = `commission-report-${params.startDate}.csv`;
+            } else {
+                // Transaction Report
+                headers = ['Date', 'Lot ID', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Status'];
+                csvData = data.map(t => [
+                    new Date(t.sold_at || t.date || t.createdAt).toLocaleDateString('en-IN'),
+                    t.lot_id,
+                    t.farmer_id?.full_name || 'Unknown',
+                    t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown',
+                    t.vegetable,
+                    t.official_qty || t.quantity,
+                    t.sale_rate,
+                    t.sale_amount,
+                    t.payment_status || 'Pending'
+                ]);
+                filename = `transaction-report-${params.startDate}.csv`;
+            }
+
+            exportToCSV(csvData, headers, filename);
+            toast.success(`${reportTitle} Downloaded!`, { id: 'export-toast' });
+
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to export report', { id: 'export-toast' });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const todayReports = [
@@ -78,7 +143,7 @@ export default function ReportsView() {
                                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors shadow-sm cursor-pointer"
                             >
                                 <Download className="w-4 h-2" />
-                                Download PDF
+                                Download CSV
                             </button>
                         </div>
                     </div>

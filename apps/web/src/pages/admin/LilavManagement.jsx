@@ -26,42 +26,42 @@ export default function LilavManagement() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
                         <input
                             type="text"
                             placeholder="Search crop, farmer, trader..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 w-full sm:w-64 border border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white shadow-sm"
+                            className="pl-10 pr-4 py-2 w-full sm:w-64 border border-emerald-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-sm"
                         />
                     </div>
-                    <button className="p-2 bg-white border border-purple-100 rounded-xl text-purple-600 hover:bg-purple-50 shadow-sm transition-colors">
+                    <button className="p-2 bg-white border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-50 shadow-sm transition-colors">
                         <Filter size={20} />
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-purple-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-purple-50/50 border-b border-purple-100">
+                        <thead className="bg-emerald-50/50 border-b border-emerald-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">Details</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">Buyer (Trader)</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-purple-800 uppercase tracking-wider">Rate (₹/kg)</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-purple-800 uppercase tracking-wider">Total Amount</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider pl-8">Auctioneer</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Date</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Details</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Buyer (Trader)</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-emerald-800 uppercase tracking-wider">Rate (₹/kg)</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-emerald-800 uppercase tracking-wider">Total Amount</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider pl-8">Auctioneer</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-purple-50">
+                        <tbody className="divide-y divide-emerald-50">
                             {isLoading ? (
                                 <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading auction records...</td></tr>
                             ) : filteredBids?.length === 0 ? (
                                 <tr><td colSpan="6" className="p-8 text-center text-slate-500">No auction records found</td></tr>
                             ) : (
                                 filteredBids?.map((bid) => (
-                                    <tr key={bid._id} className="hover:bg-purple-50/20 transition-colors">
+                                    <tr key={bid._id} className="hover:bg-emerald-50/20 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="text-sm font-medium text-slate-700">{new Date(bid.sold_at).toLocaleDateString()}</div>
                                             <div className="text-xs text-slate-400">{new Date(bid.sold_at).toLocaleTimeString()}</div>
@@ -74,7 +74,7 @@ export default function LilavManagement() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
+                                                <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">
                                                     {bid.trader_id?.business_name?.[0] || 'T'}
                                                 </div>
                                                 <div>

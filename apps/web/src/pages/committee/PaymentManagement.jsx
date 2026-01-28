@@ -97,11 +97,9 @@ const PaymentManagement = () => {
             if (bulkStep === 2 && selectedPendingIds.length === 0) { toast.error("Please select at least one invoice"); return false; }
             if (bulkStep === 3) {
                 if (!paymentForm.mode) { toast.error("Select payment mode"); return false; }
-                // Amount is auto-calculated but we might allow over-ride? 
-                // User said "auto calution amount to recvc". So likely exact amount.
-                // We will set paymentForm.amount to calculatedTotal automatically.
+
+                return true;
             }
-            return true;
         }
         return selectedRecord && actionType;
     };
@@ -189,20 +187,21 @@ const PaymentManagement = () => {
                         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Payment Management</h1>
                         <p className="text-slate-500 mt-1">Track market cashflow and settle accounts</p>
                     </div>
-                    <button
-                        onClick={fetchRecords}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
-                    >
-
-                        Refresh
-                    </button>
-                    <button
-                        onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-200"
-                    >
-                        <IndianRupee size={18} />
-                        Bulk Receive
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={fetchRecords}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
+                        >
+                            Refresh
+                        </button>
+                        <button
+                            onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-200"
+                        >
+                            <IndianRupee size={18} />
+                            Bulk Receive
+                        </button>
+                    </div>
                 </div>
 
                 {/* Stats Cards */}
@@ -365,7 +364,8 @@ const PaymentManagement = () => {
             </main>
 
             {/* Payment Modal */}
-            {selectedRecord && (
+            {/* Payment Modal */}
+            {(selectedRecord || actionType === 'bulk-receive') && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { pdf } from '@react-pdf/renderer';
 import { api } from '../../lib/api';
+import { exportToCSV } from '../../lib/csvExport';
 import TransactionDetailsModal from '../../components/trader/TransactionDetailsModal';
 import TransactionInvoice from '../../components/trader/TransactionInvoice';
 import toast from 'react-hot-toast';
@@ -150,6 +151,7 @@ export default function TraderTransactions() {
   };
 
   const handleExport = () => {
+<<<<<<< Updated upstream
     // Removed 'Lot ID' from headers
     const headers = ['Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const csvContent = [
@@ -159,14 +161,21 @@ export default function TraderTransactions() {
         [t.date, t.crop, t.quantity, t.rate, t.grossAmount, t.totalCost, t.paymentStatus].join(',')
       )
     ].join('\n');
+=======
+    const headers = ['Lot ID', 'Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
+    const data = filteredTransactions.map(t => [
+      t.lotId,
+      new Date(t.date).toLocaleDateString('en-IN'),
+      t.crop,
+      t.quantity,
+      t.rate,
+      t.grossAmount,
+      t.totalCost,
+      t.paymentStatus
+    ]);
+>>>>>>> Stashed changes
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `trader-transactions-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    exportToCSV(data, headers, `trader-transactions-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   // Calculate totals
