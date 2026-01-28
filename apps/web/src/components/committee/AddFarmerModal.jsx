@@ -99,7 +99,7 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
                       <UserPlus className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-800">Add New Farmer</h2>
+                      <h3 className="text-xl font-bold text-slate-800">Add New Farmer</h3>
                       <p className="text-sm text-slate-500">Register a farmer in the system</p>
                     </div>
                   </div>
