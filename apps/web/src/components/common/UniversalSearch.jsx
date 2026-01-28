@@ -200,12 +200,11 @@ export default function UniversalSearch({ placeholder = "Search..." }) {
                                                 <Calculator size={14} />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-sm font-medium text-slate-900 truncate">{record.lot_id}</p>
                                                 <p className="text-xs text-slate-500 truncate">{record.vegetable} • {record.farmer_id?.full_name}</p>
                                             </div>
                                         </div>
                                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${record.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                                record.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                                            record.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
                                             }`}>
                                             {record.status}
                                         </span>

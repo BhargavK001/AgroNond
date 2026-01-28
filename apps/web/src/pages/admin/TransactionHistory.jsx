@@ -4,10 +4,7 @@ import {
   Search,
   Calendar,
   Download,
-  Filter,
-  Package,
   ChevronDown,
-  Eye,
   ArrowUpDown
 } from 'lucide-react';
 import { mockTransactions } from '../../data/mockData';
@@ -23,13 +20,12 @@ export default function TransactionHistory() {
   const filteredTransactions = useMemo(() => {
     let result = [...mockTransactions];
 
-    // Search filter (by trader or farmer name)
+    // Search filter (removed lotId, searching by names and crop only)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(txn =>
         txn.farmerName.toLowerCase().includes(query) ||
         txn.traderName.toLowerCase().includes(query) ||
-        txn.lotId.toLowerCase().includes(query) ||
         txn.crop.toLowerCase().includes(query)
       );
     }
@@ -97,10 +93,9 @@ export default function TransactionHistory() {
   }, [filteredTransactions]);
 
   const handleExport = () => {
-    // Simulate CSV export
-    const headers = ['Lot ID', 'Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
+    // CSV export without Lot ID
+    const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
     const rows = filteredTransactions.map(txn => [
-      txn.lotId,
       txn.date,
       txn.farmerName,
       txn.traderName,
@@ -127,7 +122,7 @@ export default function TransactionHistory() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Transaction History</h1>
-          <p className="text-gray-500 mt-1">View and search all lot entries</p>
+          <p className="text-gray-500 mt-1">View and search all entries</p>
         </div>
         <button
           onClick={handleExport}
@@ -166,7 +161,7 @@ export default function TransactionHistory() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by farmer, trader, or lot ID..."
+              placeholder="Search by farmer, trader..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
@@ -221,7 +216,6 @@ export default function TransactionHistory() {
           <table className="w-full">
             <thead className="bg-slate-50/50">
               <tr>
-                <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Lot ID</th>
                 <th
                   className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4 cursor-pointer hover:text-slate-700 transition-colors"
                   onClick={() => handleSort('date')}
@@ -260,19 +254,13 @@ export default function TransactionHistory() {
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                     No transactions found matching your filters.
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((txn) => (
                   <tr key={txn.id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-slate-400" />
-                        <span className="font-medium text-slate-800 text-sm">{txn.lotId}</span>
-                      </div>
-                    </td>
                     <td className="px-6 py-4 text-slate-600 text-sm">
                       {new Date(txn.date).toLocaleDateString('en-IN', {
                         day: '2-digit',

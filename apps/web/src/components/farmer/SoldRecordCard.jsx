@@ -13,7 +13,6 @@ const SoldRecordCard = ({ record }) => {
     farmer_payment_status,
     farmer_payment_mode,
     // sold_at,
-    lot_id,
     createdAt,
     official_carat // Destructure official_carat
   } = record;
@@ -36,7 +35,7 @@ const SoldRecordCard = ({ record }) => {
     const html = `
       <html>
         <head>
-          <title>Farmer Bill - ${lot_id}</title>
+          <title>Farmer Bill</title>
           <style>
             body { font-family: sans-serif; padding: 40px; }
             .header { border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
@@ -54,9 +53,6 @@ const SoldRecordCard = ({ record }) => {
           
           <div class="row">
             <span>Date:</span> <span>${date.toLocaleDateString()}</span>
-          </div>
-          <div class="row">
-            <span>Lot ID:</span> <span>${lot_id}</span>
           </div>
           <div class="row">
             <span>Vegetable:</span> <span>${vegetable}</span>
@@ -104,8 +100,7 @@ const SoldRecordCard = ({ record }) => {
       {/* Header */}
       <div className="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-gray-700">{lot_id}</span>
-          <span className="text-xs text-gray-400">•</span>
+          {/* Replaced Lot ID with Date */}
           <span className="text-sm text-gray-500">{date.toLocaleDateString()}</span>
         </div>
         <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${isPaid
