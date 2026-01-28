@@ -29,43 +29,43 @@ export default function TraderManagement() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
                         <input
                             type="text"
                             placeholder="Search traders..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 w-full sm:w-64 border border-blue-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm"
+                            className="pl-10 pr-4 py-2 w-full sm:w-64 border border-emerald-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-sm"
                         />
                     </div>
-                    <button className="p-2 bg-white border border-blue-100 rounded-xl text-blue-600 hover:bg-blue-50 shadow-sm transition-colors">
+                    <button className="p-2 bg-white border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-50 shadow-sm transition-colors">
                         <Filter size={20} />
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-blue-50/50 border-b border-blue-100">
+                        <thead className="bg-emerald-50/50 border-b border-emerald-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">Trader Profile</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">Business Info</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">License Status</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Trader Profile</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Business Info</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">License Status</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-emerald-800 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-blue-50">
+                        <tbody className="divide-y divide-emerald-50">
                             {isLoading ? (
                                 <tr><td colSpan="4" className="p-8 text-center text-slate-500">Loading traders...</td></tr>
                             ) : filteredTraders?.length === 0 ? (
                                 <tr><td colSpan="4" className="p-8 text-center text-slate-500">No traders found</td></tr>
                             ) : (
                                 filteredTraders?.map((trader) => (
-                                    <tr key={trader._id} className="hover:bg-blue-50/30 transition-colors group">
+                                    <tr key={trader._id} className="hover:bg-emerald-50/30 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shadow-sm ring-2 ring-white">
+                                                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold shadow-sm ring-2 ring-white">
                                                     {trader.business_name?.[0] || trader.full_name?.[0] || 'T'}
                                                 </div>
                                                 <div>
@@ -104,7 +104,7 @@ export default function TraderManagement() {
                                         <td className="px-6 py-4 text-right">
                                             <button
                                                 onClick={() => setSelectedTrader(trader)}
-                                                className="text-slate-400 hover:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-lg"
+                                                className="text-slate-400 hover:text-emerald-600 transition-colors p-2 hover:bg-emerald-50 rounded-lg"
                                             >
                                                 <ChevronRight size={20} />
                                             </button>
@@ -146,8 +146,8 @@ export default function TraderManagement() {
                             </div>
 
                             <div className="space-y-6">
-                                <div className="flex flex-col items-center p-6 bg-blue-50 rounded-2xl border border-blue-100">
-                                    <div className="w-20 h-20 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold text-2xl shadow-sm mb-3">
+                                <div className="flex flex-col items-center p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                    <div className="w-20 h-20 rounded-full bg-white text-emerald-600 flex items-center justify-center font-bold text-2xl shadow-sm mb-3">
                                         {selectedTrader.business_name?.[0] || 'T'}
                                     </div>
                                     <h3 className="text-lg font-bold text-slate-900">{selectedTrader.business_name}</h3>

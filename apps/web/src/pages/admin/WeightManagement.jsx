@@ -26,42 +26,42 @@ export default function WeightManagement() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
                         <input
                             type="text"
                             placeholder="Search farmer or crop..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 w-full sm:w-64 border border-orange-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white shadow-sm"
+                            className="pl-10 pr-4 py-2 w-full sm:w-64 border border-emerald-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-sm"
                         />
                     </div>
-                    <button className="p-2 bg-white border border-orange-100 rounded-xl text-orange-600 hover:bg-orange-50 shadow-sm transition-colors">
+                    <button className="p-2 bg-white border border-emerald-100 rounded-xl text-emerald-600 hover:bg-emerald-50 shadow-sm transition-colors">
                         <Filter size={20} />
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-orange-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
-                        <thead className="bg-orange-50/50 border-b border-orange-100">
+                        <thead className="bg-emerald-50/50 border-b border-emerald-100">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-orange-800 uppercase tracking-wider">Date & Time</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-orange-800 uppercase tracking-wider">Farmer</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-orange-800 uppercase tracking-wider">Commodity</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-orange-800 uppercase tracking-wider">Weight (kg)</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-orange-800 uppercase tracking-wider pl-8">Status</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-orange-800 uppercase tracking-wider">Weighed By</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Date & Time</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Farmer</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Commodity</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-emerald-800 uppercase tracking-wider">Weight (kg)</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider pl-8">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Weighed By</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-orange-50">
+                        <tbody className="divide-y divide-emerald-50">
                             {isLoading ? (
                                 <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading weight records...</td></tr>
                             ) : filteredRecords?.length === 0 ? (
                                 <tr><td colSpan="6" className="p-8 text-center text-slate-500">No records found</td></tr>
                             ) : (
                                 filteredRecords?.map((record) => (
-                                    <tr key={record._id} className="hover:bg-orange-50/20 transition-colors">
+                                    <tr key={record._id} className="hover:bg-emerald-50/20 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="text-sm font-medium text-slate-700">
                                                 {new Date(record.createdAt).toLocaleDateString()}

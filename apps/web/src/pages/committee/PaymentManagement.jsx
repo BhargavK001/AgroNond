@@ -97,11 +97,9 @@ const PaymentManagement = () => {
             if (bulkStep === 2 && selectedPendingIds.length === 0) { toast.error("Please select at least one invoice"); return false; }
             if (bulkStep === 3) {
                 if (!paymentForm.mode) { toast.error("Select payment mode"); return false; }
-                // Amount is auto-calculated but we might allow over-ride? 
-                // User said "auto calution amount to recvc". So likely exact amount.
-                // We will set paymentForm.amount to calculatedTotal automatically.
+
+                return true;
             }
-            return true;
         }
         return selectedRecord && actionType;
     };
@@ -365,7 +363,8 @@ const PaymentManagement = () => {
             </main>
 
             {/* Payment Modal */}
-            {selectedRecord && (
+            {/* Payment Modal */}
+            {(selectedRecord || actionType === 'bulk-receive') && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
