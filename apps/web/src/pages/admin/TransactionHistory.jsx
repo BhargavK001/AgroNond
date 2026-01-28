@@ -23,6 +23,38 @@ export default function TransactionHistory() {
   useEffect(() => {
     fetchTransactions();
   }, []);
+<<<<<<< Updated upstream
+=======
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const data = await api.purchases.list({ limit: 500 }); // Fetch sufficient history
+
+      const formattedData = data.map(t => ({
+        id: t._id,
+        date: t.sold_at || t.date || t.createdAt,
+        farmerName: t.farmer_id?.full_name || 'Unknown Farmer',
+        traderName: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown Trader',
+        crop: t.vegetable,
+        quantity: t.official_qty || t.quantity || 0,
+        rate: t.sale_rate || t.rate || 0,
+        grossAmount: t.sale_amount || t.amount || 0,
+        commission: (t.farmer_commission || 0) + (t.trader_commission || 0),
+        paymentStatus: t.payment_status || 'pending'
+      }));
+
+      setTransactions(formattedData);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredTransactions = useMemo(() => {
+    let result = [...transactions];
+>>>>>>> Stashed changes
 
   const fetchTransactions = async () => {
     try {
@@ -127,10 +159,16 @@ export default function TransactionHistory() {
 
   const handleExport = () => {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // CSV export without Lot ID
     const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
     const rows = filteredTransactions.map(txn => [
       txn.date,
+=======
+    const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
+    const data = filteredTransactions.map(txn => [
+      new Date(txn.date).toLocaleDateString('en-IN'),
+>>>>>>> Stashed changes
 =======
     const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
     const data = filteredTransactions.map(txn => [
@@ -164,7 +202,11 @@ export default function TransactionHistory() {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Transaction History</h1>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
           <p className="text-gray-500 mt-1">View and search all entries</p>
+=======
+          <p className="text-gray-500 mt-1">View and search all transactions</p>
+>>>>>>> Stashed changes
 =======
           <p className="text-gray-500 mt-1">View and search all transactions</p>
 >>>>>>> Stashed changes

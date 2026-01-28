@@ -152,6 +152,7 @@ export default function TraderTransactions() {
 
   const handleExport = () => {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     // Removed 'Lot ID' from headers
     const headers = ['Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const csvContent = [
@@ -162,6 +163,8 @@ export default function TraderTransactions() {
       )
     ].join('\n');
 =======
+=======
+>>>>>>> Stashed changes
     const headers = ['Lot ID', 'Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const data = filteredTransactions.map(t => [
       t.lotId,
@@ -173,6 +176,9 @@ export default function TraderTransactions() {
       t.totalCost,
       t.paymentStatus
     ]);
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
     exportToCSV(data, headers, `trader-transactions-${new Date().toISOString().split('T')[0]}.csv`);
