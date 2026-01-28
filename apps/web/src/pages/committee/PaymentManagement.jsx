@@ -187,21 +187,20 @@ const PaymentManagement = () => {
                         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Payment Management</h1>
                         <p className="text-slate-500 mt-1">Track market cashflow and settle accounts</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={fetchRecords}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
-                        >
-                            Refresh
-                        </button>
-                        <button
-                            onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-200"
-                        >
-                            <IndianRupee size={18} />
-                            Bulk Receive
-                        </button>
-                    </div>
+                    <button
+                        onClick={fetchRecords}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
+                    >
+
+                        Refresh
+                    </button>
+                    <button
+                        onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
+                        className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all"
+                    >
+                        <IndianRupee size={18} />
+                        Bulk Receive
+                    </button>
                 </div>
 
                 {/* Stats Cards */}

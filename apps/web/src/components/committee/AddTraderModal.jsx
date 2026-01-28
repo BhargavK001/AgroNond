@@ -41,13 +41,22 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
         license_number: formData.licenseNo,
       });
 
-      toast.success('Trader added successfully!');
-      onAdd(response.data.user);
-      setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
-      onClose();
+      // FIX: robustly handle whether response IS the user or HAS the user
+      const newTrader = response?.user || response;
+
+      if (newTrader) {
+        onAdd(newTrader);
+        toast.success('Trader added successfully!');
+        setFormData({ businessName: '', ownerName: '', phone: '', licenseNo: '' });
+        onClose();
+      } else {
+        throw new Error("Invalid response received from server");
+      }
+
     } catch (error) {
       console.error('Failed to add trader:', error);
-      const message = error.response?.data?.error || 'Failed to add trader';
+      // Better error message handling
+      const message = error.response?.data?.error || error.message || 'Failed to add trader';
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -84,7 +93,6 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-              {/* Header */}
               <div className="px-6 pt-6 pb-4 border-b border-slate-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -92,7 +100,7 @@ export default function AddTraderModal({ isOpen, onClose, onAdd }) {
                       <Store className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-800">Add New Trader</h2>
+                      <h3 className="text-xl font-bold text-slate-800">Add New Trader</h3>
                       <p className="text-sm text-slate-500">Register a trader in the system</p>
                     </div>
                   </div>

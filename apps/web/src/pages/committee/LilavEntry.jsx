@@ -13,10 +13,15 @@ import {
     ChevronRight,
     RefreshCw,
     CheckCircle2,
-    X
+    X,
+    Plus // Imported Plus icon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
+
+// Import Modals
+import AddFarmerModal from '../../components/committee/AddFarmerModal';
+import AddTraderModal from '../../components/committee/AddTraderModal';
 
 export default function LilavEntry() {
     // States
@@ -33,9 +38,13 @@ export default function LilavEntry() {
     const [loadingRecords, setLoadingRecords] = useState(false);
     const [processingId, setProcessingId] = useState(null);
 
+    // Modal States
+    const [isFarmerModalOpen, setIsFarmerModalOpen] = useState(false);
+    const [isTraderModalOpen, setIsTraderModalOpen] = useState(false);
+
     // Sale modal state
     const [saleModal, setSaleModal] = useState({ open: false, record: null });
-    const [saleForm, setSaleForm] = useState({ trader_id: '', sale_rate: 0, sale_unit: 'kg' }); // ✅ Added sale_unit
+    const [saleForm, setSaleForm] = useState({ trader_id: '', sale_rate: 0, sale_unit: 'kg' });
 
     useEffect(() => {
         fetchInitialData();
@@ -75,6 +84,18 @@ export default function LilavEntry() {
         }
     };
 
+    // Callback when a new farmer is added
+    const handleAddFarmer = (newFarmer) => {
+        setFarmers(prev => [newFarmer, ...prev]);
+        toast.success(`${newFarmer.full_name} added to list`);
+    };
+
+    // Callback when a new trader is added
+    const handleAddTrader = (newTrader) => {
+        setTraders(prev => [newTrader, ...prev]);
+        toast.success(`${newTrader.full_name} added to list`);
+    };
+
     const handleSelectFarmer = (farmer) => {
         setSelectedFarmer(farmer);
         setFarmerSearch('');
@@ -90,7 +111,7 @@ export default function LilavEntry() {
         setSaleForm({
             trader_id: '',
             sale_rate: todayRate?.rate || '',
-            sale_unit: (record.official_carat && record.official_carat > 0) ? 'carat' : 'kg' // ✅ Default to carat if available
+            sale_unit: (record.official_carat && record.official_carat > 0) ? 'carat' : 'kg'
         });
         setSaleModal({ open: true, record });
     };
@@ -173,13 +194,33 @@ export default function LilavEntry() {
                     <p className="text-sm text-slate-500 mt-1 hidden sm:block">Select farmer, view crops, assign trader and confirm sale</p>
                 </div>
 
-                <button
-                    onClick={fetchInitialData}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 text-sm"
-                >
-                    <RefreshCw className="w-4 h-4" />
-                    <span className="hidden sm:inline">Refresh</span>
-                </button>
+                {/* Actions Row */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                        onClick={fetchInitialData}
+                        className="flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 text-sm font-medium transition-colors"
+                        title="Refresh Data"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        <span className="hidden sm:inline">Refresh</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIsFarmerModalOpen(true)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span className="whitespace-nowrap">Add Farmer</span>
+                    </button>
+
+                    <button
+                        onClick={() => setIsTraderModalOpen(true)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span className="whitespace-nowrap">Add Trader</span>
+                    </button>
+                </div>
             </div>
 
             {/* Step 1: Select Farmer */}
@@ -399,7 +440,7 @@ export default function LilavEntry() {
                                     </div>
                                 </div>
 
-                                {/* ✅ NEW: Sale Unit Toggle */}
+                                {/* Sale Unit Toggle */}
                                 {saleModal.record.official_carat > 0 && (
                                     <div className="flex bg-gray-100 p-1 rounded-xl">
                                         <button
@@ -450,7 +491,6 @@ export default function LilavEntry() {
                                                 onChange={(e) => setTraderSearch(e.target.value)}
                                                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                                             />
-                                            {/* Trader Dropdown would go here or reuse logic */}
                                         </div>
                                     </div>
                                 </div>
@@ -474,8 +514,6 @@ export default function LilavEntry() {
                                         </button>
                                     ))}
                                 </div>
-
-
                             </div>
 
                             <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
@@ -526,6 +564,20 @@ export default function LilavEntry() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Add Farmer Modal */}
+            <AddFarmerModal
+                isOpen={isFarmerModalOpen}
+                onClose={() => setIsFarmerModalOpen(false)}
+                onAdd={handleAddFarmer}
+            />
+
+            {/* Add Trader Modal */}
+            <AddTraderModal
+                isOpen={isTraderModalOpen}
+                onClose={() => setIsTraderModalOpen(false)}
+                onAdd={handleAddTrader}
+            />
         </div>
     );
 }
