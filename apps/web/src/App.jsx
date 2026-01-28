@@ -61,6 +61,7 @@ const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
 const PaymentManagement = lazy(() => import('./pages/committee/PaymentManagement'));
 const LilavEntry = lazy(() => import('./pages/committee/LilavEntry'));
+const LilavTransactions = lazy(() => import('./pages/lilav/LilavTransactions'));
 // const AccountingDashboard = lazy(() => import('./pages/accounting/AccountingDashboard'));
 
 function ScrollToTop() {
@@ -194,6 +195,7 @@ function App() {
                 }
                 >
                   <Route index element={<LilavEntry />} />
+                  <Route path="transactions" element={<LilavTransactions />} />
                 </Route>
 
                 {/* Admin Dashboard */}

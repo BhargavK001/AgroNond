@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Search, CheckCircle, Clock, DollarSign, ArrowUpRight, ArrowDownLeft, X, Filter } from 'lucide-react';
+import { RefreshCw, Search, CheckCircle, Clock, IndianRupee, ArrowUpRight, ArrowDownLeft, X, Filter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
 import CommitteeNavbar from '../../components/navigation/CommitteeNavbar';
@@ -12,9 +12,16 @@ const PaymentManagement = () => {
 
     // Payment Modal
     const [selectedRecord, setSelectedRecord] = useState(null);
-    const [actionType, setActionType] = useState(null); // 'pay-farmer', 'receive-trader'
-    const [paymentForm, setPaymentForm] = useState({ mode: 'Cash', ref: '' });
+    const [actionType, setActionType] = useState(null); // 'pay-farmer', 'receive-trader', 'bulk-receive'
+    const [paymentForm, setPaymentForm] = useState({ mode: 'Cash', ref: '', amount: '' });
     const [isProcessing, setIsProcessing] = useState(false);
+
+    // Bulk Payment State
+    const [traderList, setTraderList] = useState([]);
+    const [selectedTrader, setSelectedTrader] = useState('');
+    const [traderPendings, setTraderPendings] = useState([]);
+    const [selectedPendingIds, setSelectedPendingIds] = useState([]);
+    const [bulkStep, setBulkStep] = useState(1); // 1: Select Trader, 2: Select Invoices, 3: Confirm
 
     useEffect(() => {
         fetchRecords();
@@ -26,6 +33,11 @@ const PaymentManagement = () => {
             const data = await api.finance.billingRecords.list({ limit: 100 }); // increased limit for demo
             if (data && data.records) {
                 setRecords(data.records);
+                // Extract unique traders for bulk payment
+                const traders = [...new Map(data.records
+                    .filter(r => r.trader_id)
+                    .map(item => [item.trader_id._id, item.trader_id])).values()];
+                setTraderList(traders);
             }
         } catch (error) {
             console.error(error);
@@ -36,18 +48,86 @@ const PaymentManagement = () => {
     };
 
     const handleOpenPaymentModal = (record, type) => {
-        setSelectedRecord(record);
-        setActionType(type);
-        setPaymentForm({ mode: 'Cash', ref: '' });
+        if (type === 'bulk-receive') {
+            setSelectedRecord(null);
+            setActionType('bulk-receive');
+            setPaymentForm({ mode: 'Cash', ref: '', amount: '' });
+            setSelectedTrader('');
+            setTraderPendings([]);
+            setSelectedPendingIds([]);
+            setBulkStep(1);
+        } else {
+            setSelectedRecord(record);
+            setActionType(type);
+            setPaymentForm({ mode: 'Cash', ref: '' });
+        }
+    };
+
+    const handleTraderSelect = (traderId) => {
+        setSelectedTrader(traderId);
+        // Find all pending records for this trader
+        const pendings = records.filter(r =>
+            r.trader_id?._id === traderId &&
+            r.trader_payment_status === 'Pending'
+        );
+        setTraderPendings(pendings);
+        setBulkStep(2); // Move to invoice selection
+        // Auto-select all by default? Or none? Let's select all for convenience
+        // setSelectedPendingIds(pendings.map(r => r._id));
+        // UPDATE: User wants checkboxes, so let's start with none or all? 
+        // "side check box auto calution amount" implies interaction. Let's start empty.
+        setSelectedPendingIds([]);
+    };
+
+    const togglePendingRecord = (id) => {
+        setSelectedPendingIds(prev => {
+            if (prev.includes(id)) return prev.filter(pid => pid !== id);
+            return [...prev, id];
+        });
+    };
+
+    // Calculate total layout effect? Or just derived
+    const calculatedTotal = traderPendings
+        .filter(p => selectedPendingIds.includes(p._id))
+        .reduce((sum, p) => sum + (p.net_receivable_from_trader || 0), 0);
+
+    const processValidation = () => {
+        if (actionType === 'bulk-receive') {
+            if (bulkStep === 1 && !selectedTrader) { toast.error("Please select a trader"); return false; }
+            if (bulkStep === 2 && selectedPendingIds.length === 0) { toast.error("Please select at least one invoice"); return false; }
+            if (bulkStep === 3) {
+                if (!paymentForm.mode) { toast.error("Select payment mode"); return false; }
+                // Amount is auto-calculated but we might allow over-ride? 
+                // User said "auto calution amount to recvc". So likely exact amount.
+                // We will set paymentForm.amount to calculatedTotal automatically.
+            }
+            return true;
+        }
+        return selectedRecord && actionType;
     };
 
     const handleProcessPayment = async () => {
-        if (!selectedRecord || !actionType) return;
+        if (!processValidation()) return;
 
         try {
             setIsProcessing(true);
 
-            if (actionType === 'pay-farmer') {
+            if (actionType === 'bulk-receive') {
+                const res = await api.finance.payments.bulkReceiveTrader({
+                    traderId: selectedTrader,
+                    amount: calculatedTotal,
+                    mode: paymentForm.mode,
+                    ref: paymentForm.ref,
+                    recordIds: selectedPendingIds
+                });
+
+                if (res.receipt) {
+                    toast.success(`Receipt Generated! Cleared ${res.processedCount} invoices.`);
+                } else {
+                    toast.success(res.message);
+                }
+
+            } else if (actionType === 'pay-farmer') {
                 await api.finance.payments.payFarmer(selectedRecord._id, {
                     mode: paymentForm.mode,
                     ref: paymentForm.ref
@@ -68,7 +148,7 @@ const PaymentManagement = () => {
 
         } catch (error) {
             console.error(error);
-            toast.error("Transaction failed");
+            toast.error(error.message || "Transaction failed");
         } finally {
             setIsProcessing(false);
         }
@@ -79,9 +159,8 @@ const PaymentManagement = () => {
         // Text Search
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch =
-            record.lot_id?.toLowerCase().includes(searchLower) ||
-            record.farmer_id?.full_name?.toLowerCase().includes(searchLower) ||
-            record.trader_id?.business_name?.toLowerCase().includes(searchLower);
+            (record.farmer_id?.full_name?.toLowerCase().includes(searchLower)) ||
+            (record.trader_id?.business_name?.toLowerCase().includes(searchLower));
 
         if (!matchesSearch) return false;
 
@@ -114,8 +193,15 @@ const PaymentManagement = () => {
                         onClick={fetchRecords}
                         className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
                     >
-                        <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+
                         Refresh
+                    </button>
+                    <button
+                        onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition shadow-lg shadow-emerald-200"
+                    >
+                        <IndianRupee size={18} />
+                        Bulk Receive
                     </button>
                 </div>
 
@@ -164,7 +250,7 @@ const PaymentManagement = () => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="text"
-                                placeholder="Search Lot ID, Farmer, Trader..."
+                                placeholder="Search by Farmer or Trader..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -177,7 +263,7 @@ const PaymentManagement = () => {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
                                 <tr>
-                                    <th className="px-6 py-4">Date / Lot ID</th>
+                                    <th className="px-6 py-4">Date</th>
                                     <th className="px-6 py-4">Parties</th>
                                     <th className="px-6 py-4 text-right">Amounts</th>
                                     <th className="px-6 py-4 text-center">Status (Farmer)</th>
@@ -194,10 +280,7 @@ const PaymentManagement = () => {
                                     filteredRecords.map(record => (
                                         <tr key={record._id} className="hover:bg-slate-50/50 transition">
                                             <td className="px-6 py-4">
-                                                <div className="font-bold text-slate-900">{record.lot_id}</div>
-                                                <div className="text-xs text-slate-500">
-                                                    {new Date(record.createdAt).toLocaleDateString()}
-                                                </div>
+                                                <div className="font-bold text-slate-900">{new Date(record.createdAt).toLocaleDateString()}</div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col gap-1">
@@ -279,69 +362,212 @@ const PaymentManagement = () => {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
                         <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="font-bold text-slate-900">
-                                {actionType === 'receive-trader' ? 'Receive Payment' : 'Process Payout'}
+                                {actionType === 'receive-trader' ? 'Receive Payment' :
+                                    actionType === 'bulk-receive' ? 'Bulk Payment Receive' : 'Process Payout'}
                             </h3>
-                            <button onClick={() => setSelectedRecord(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500">
+                            <button onClick={() => { setSelectedRecord(null); setActionType(null); }} className="p-2 hover:bg-slate-200 rounded-full text-slate-500">
                                 <X size={20} />
                             </button>
                         </div>
 
                         <div className="p-6 space-y-4">
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                <p className="text-sm text-slate-500 mb-1">
-                                    {actionType === 'receive-trader' ? 'Receiving from:' : 'Paying to:'}
-                                </p>
-                                <p className="font-bold text-lg text-slate-900">
-                                    {actionType === 'receive-trader'
-                                        ? selectedRecord.trader_id?.business_name
-                                        : selectedRecord.farmer_id?.full_name}
-                                </p>
-                                <div className="mt-2 pt-2 border-t border-slate-200 flex justify-between items-center">
-                                    <span className="text-sm font-medium text-slate-600">Amount</span>
-                                    <span className={`text-xl font-bold ${actionType === 'receive-trader' ? 'text-green-600' : 'text-blue-600'}`}>
-                                        ₹{actionType === 'receive-trader'
-                                            ? selectedRecord.net_receivable_from_trader
-                                            : selectedRecord.net_payable_to_farmer}
-                                    </span>
-                                </div>
+                                {actionType === 'bulk-receive' ? (
+                                    <>
+                                        {/* Step 1: Select Trader */}
+                                        {bulkStep === 1 && (
+                                            <>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Select Trader</label>
+                                                <select
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-4"
+                                                    onChange={e => handleTraderSelect(e.target.value)}
+                                                    value={selectedTrader}
+                                                >
+                                                    <option value="">-- Select Trader --</option>
+                                                    {traderList.map(t => (
+                                                        <option key={t._id} value={t._id}>{t.business_name} ({t.full_name})</option>
+                                                    ))}
+                                                </select>
+                                                <div className="p-4 bg-blue-50 text-blue-700 rounded-lg text-sm">
+                                                    Select a trader to view and settle their pending invoices.
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* Step 2: Select Invoices */}
+                                        {bulkStep === 2 && (
+                                            <>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <label className="text-sm font-semibold text-slate-700">Pending Invoices</label>
+                                                    <button onClick={() => setBulkStep(1)} className="text-xs text-blue-600 hover:underline">Change Trader</button>
+                                                </div>
+
+                                                <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl bg-white mb-4">
+                                                    <table className="w-full text-sm text-left">
+                                                        <thead className="bg-slate-50 sticky top-0">
+                                                            <tr>
+                                                                <th className="p-3 w-10">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        onChange={(e) => {
+                                                                            if (e.target.checked) setSelectedPendingIds(traderPendings.map(p => p._id));
+                                                                            else setSelectedPendingIds([]);
+                                                                        }}
+                                                                        checked={selectedPendingIds.length === traderPendings.length && traderPendings.length > 0}
+                                                                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                                                                    />
+                                                                </th>
+                                                                <th className="p-3">Date</th>
+                                                                <th className="p-3 text-right">Amount</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {traderPendings.length === 0 ? (
+                                                                <tr><td colSpan="3" className="p-4 text-center text-slate-500">No pending invoices</td></tr>
+                                                            ) : (
+                                                                traderPendings.map(p => (
+                                                                    <tr key={p._id} className={selectedPendingIds.includes(p._id) ? "bg-emerald-50" : ""}>
+                                                                        <td className="p-3">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={selectedPendingIds.includes(p._id)}
+                                                                                onChange={() => togglePendingRecord(p._id)}
+                                                                                className="rounded text-emerald-600 focus:ring-emerald-500"
+                                                                            />
+                                                                        </td>
+                                                                        <td className="p-3">
+                                                                            <div className="font-medium">{new Date(p.createdAt).toLocaleDateString()}</div>
+                                                                        </td>
+                                                                        <td className="p-3 text-right font-bold">₹{p.net_receivable_from_trader}</td>
+                                                                    </tr>
+                                                                ))
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+                                                <div className="flex justify-between items-center p-3 bg-emerald-100 rounded-xl">
+                                                    <span className="text-emerald-800 font-medium">Selected Total:</span>
+                                                    <span className="text-xl font-bold text-emerald-700">₹{calculatedTotal.toLocaleString()}</span>
+                                                </div>
+
+                                                <button
+                                                    className="w-full mt-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-semibold"
+                                                    onClick={() => setBulkStep(3)}
+                                                    disabled={selectedPendingIds.length === 0}
+                                                >
+                                                    Next: Payment Details
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {/* Step 3: Payment Details */}
+                                        {bulkStep === 3 && (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Total Payable</label>
+                                                    <div className="w-full px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
+                                                        <span className="text-2xl font-bold text-emerald-700">₹{calculatedTotal.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mb-4">
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
+                                                    <select
+                                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                        value={paymentForm.mode}
+                                                        onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })}
+                                                    >
+                                                        <option>Cash</option>
+                                                        <option>Bank Transfer</option>
+                                                        <option>UPI</option>
+                                                        <option>Cheque</option>
+                                                    </select>
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Reference (Optional)</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. Transaction ID"
+                                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                        value={paymentForm.ref}
+                                                        onChange={e => setPaymentForm({ ...paymentForm, ref: e.target.value })}
+                                                    />
+                                                </div>
+
+                                                <div className="flex justify-between items-center gap-2">
+                                                    <button onClick={() => setBulkStep(2)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Back</button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-sm text-slate-500 mb-1">
+                                            {actionType === 'receive-trader' ? 'Receiving from:' : 'Paying to:'}
+                                        </p>
+                                        <p className="font-bold text-lg text-slate-900">
+                                            {actionType === 'receive-trader'
+                                                ? selectedRecord?.trader_id?.business_name
+                                                : selectedRecord?.farmer_id?.full_name}
+                                        </p>
+                                        <div className="mt-2 pt-2 border-t border-slate-200 flex justify-between items-center">
+                                            <span className="text-sm font-medium text-slate-600">Amount</span>
+                                            <span className={`text-xl font-bold ${actionType === 'receive-trader' ? 'text-green-600' : 'text-blue-600'}`}>
+                                                ₹{actionType === 'receive-trader'
+                                                    ? selectedRecord?.net_receivable_from_trader
+                                                    : selectedRecord?.net_payable_to_farmer}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
-                                <select
-                                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                    value={paymentForm.mode}
-                                    onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })}
-                                >
-                                    <option>Cash</option>
-                                    <option>Bank Transfer</option>
-                                    <option>UPI</option>
-                                    <option>Cheque</option>
-                                </select>
-                            </div>
+                            {/* Common Footer Actions - Only show if not in bulk flow or at final step of bulk */}
+                            {((actionType !== 'bulk-receive') || (actionType === 'bulk-receive' && bulkStep === 3)) && (
+                                <>
+                                    {actionType !== 'bulk-receive' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Mode</label>
+                                                <select
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                    value={paymentForm.mode}
+                                                    onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })}
+                                                >
+                                                    <option>Cash</option>
+                                                    <option>Bank Transfer</option>
+                                                    <option>UPI</option>
+                                                    <option>Cheque</option>
+                                                </select>
+                                            </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-2">Reference / Note (Optional)</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Transaction ID"
-                                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                    value={paymentForm.ref}
-                                    onChange={e => setPaymentForm({ ...paymentForm, ref: e.target.value })}
-                                />
-                            </div>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">Reference / Note (Optional)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="e.g. Transaction ID"
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                                    value={paymentForm.ref}
+                                                    onChange={e => setPaymentForm({ ...paymentForm, ref: e.target.value })}
+                                                />
+                                            </div>
+                                        </>
+                                    )}
 
-                            <button
-                                onClick={handleProcessPayment}
-                                disabled={isProcessing}
-                                className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2 ${actionType === 'receive-trader'
-                                    ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
-                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
-                                    }`}
-                            >
-                                {isProcessing ? <RefreshCw className="animate-spin" /> : <CheckCircle />}
-                                {actionType === 'receive-trader' ? 'Confirm Receipt' : 'Confirm Payment'}
-                            </button>
+                                    <button
+                                        onClick={handleProcessPayment}
+                                        disabled={isProcessing}
+                                        className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition transform active:scale-95 flex justify-center items-center gap-2 ${actionType === 'bulk-receive' || actionType === 'receive-trader'
+                                            ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
+                                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+                                            }`}
+                                    >
+                                        {isProcessing ? <RefreshCw className="animate-spin" /> : <CheckCircle />}
+                                        {actionType === 'bulk-receive' ? 'Generate Receipt & Save' : (actionType === 'receive-trader' ? 'Confirm Receipt' : 'Confirm Payment')}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

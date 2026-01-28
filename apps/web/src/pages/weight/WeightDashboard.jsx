@@ -43,9 +43,12 @@ const WeightDashboard = () => {
   const [modals, setModals] = useState({
     addWeight: false,
     editWeight: false,
+    editWeight: false,
     editProfile: false,
-    details: false
+    details: false,
+    delete: false
   });
+  const [deleteId, setDeleteId] = useState(null);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -114,10 +117,6 @@ const WeightDashboard = () => {
         record_ref_id: r._id
       });
 
-      // Filter out duplicate pending records just in case logic overlaps, 
-      // but usually records() returns 'Weighed'/'Completed' and pendingRecords() returns 'Pending'
-      // We want all of them in the main table logic? 
-      // The original dashboard showed "Pending" records in the list too.
       const allRecords = [...done, ...pending].map(mapRecord);
 
       setRecords(allRecords);
@@ -127,7 +126,7 @@ const WeightDashboard = () => {
     }
   };
 
-  // 2. Fetch Market Data (Source for Auto-Fill)
+  // 2. Fetch Market Data (Source for Auto-Fill) - Now fetches "RateAssigned" records
   const fetchMarketData = async () => {
     try {
       const data = await api.weight.pendingRecords();
@@ -137,8 +136,9 @@ const WeightDashboard = () => {
         farmer_id: r.farmer_id?.farmerId || 'Unknown',
         item: r.vegetable,
         est_qty: r.quantity,
-        est_carat: r.carat, // ✅ NEW
-        date: r.createdAt
+        est_carat: r.carat,
+        date: r.createdAt,
+        status: r.status // Capture status
       }));
       setMarketData(mapped);
     } catch (err) {
@@ -177,8 +177,8 @@ const WeightDashboard = () => {
   }, []);
 
   // --- CALCULATIONS ---
-  const completedRecords = records.filter(r => r.status === 'Done');
-  const pendingRecords = records.filter(r => r.status === 'Pending');
+  const completedRecords = records.filter(r => r.status === 'Done' || r.status === 'Sold' || r.status === 'Weighed'); // Include Sold/Weighed in "Done" bucket for KPI
+  const pendingRecords = records.filter(r => r.status === 'Pending' || r.status === 'RateAssigned');
   const todayRecords = records.filter(r => {
     const recordDate = new Date(r.date).toLocaleDateString('en-GB');
     const today = new Date().toLocaleDateString('en-GB');
@@ -263,16 +263,22 @@ const WeightDashboard = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
-      try {
-        await api.weight.deleteRecord(id);
-        toast.success('Record deleted');
-        fetchWeightRecords();
-        fetchMarketData();
-      } catch (err) {
-        toast.error('Delete failed');
-      }
+  const handleDelete = (id) => {
+    setDeleteId(id);
+    setModals(prev => ({ ...prev, delete: true }));
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await api.weight.deleteRecord(deleteId);
+      toast.success('Record deleted successfully');
+      fetchWeightRecords();
+      fetchMarketData();
+      setModals((prev) => ({ ...prev, delete: false }));
+    } catch (err) {
+      toast.error('Delete failed');
+      console.error(err);
     }
   };
 
@@ -356,12 +362,13 @@ const WeightDashboard = () => {
           </div>
 
           {/* Remaining Weight */}
+          {/* Remaining Weight */}
           <div className="group bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:border-orange-200 hover:shadow-md transition-all duration-300">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-orange-50 rounded-2xl text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition-colors">
                 <Clock size={24} />
               </div>
-              <span className="text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">Pending</span>
+              <span className="text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">{pendingRecords.length} Pending</span>
             </div>
             <p className="text-gray-500 text-sm font-medium mb-1">Remaining Weight</p>
             <h3 className="text-3xl font-bold text-gray-900">{pendingRecords.length}</h3>
@@ -397,6 +404,8 @@ const WeightDashboard = () => {
                 <option value="All">All Status</option>
                 <option value="Pending">Pending</option>
                 <option value="Done">Completed</option>
+                <option value="Sold">Sold</option>
+                <option value="RateAssigned">Ready to Weight</option>
               </select>
               <select
                 value={sortBy}
@@ -435,11 +444,11 @@ const WeightDashboard = () => {
                           <span className="text-sm font-bold text-gray-900">{record.farmer_id}</span>
                         </div>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${['Done', 'Sold', 'Weighed'].includes(record.status)
                         ? 'bg-green-100 text-green-700'
                         : 'bg-orange-100 text-orange-700'
                         }`}>
-                        {record.status === 'Done' ? <CheckCircle size={10} /> : <Clock size={10} />}
+                        {['Done', 'Sold', 'Weighed'].includes(record.status) ? <CheckCircle size={10} /> : <Clock size={10} />}
                         {record.status}
                       </span>
                     </div>
@@ -536,11 +545,11 @@ const WeightDashboard = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${['Done', 'Sold', 'Weighed'].includes(record.status)
                           ? 'bg-green-100 text-green-700'
                           : 'bg-orange-100 text-orange-700'
                           }`}>
-                          {record.status === 'Done' ? <CheckCircle size={12} /> : <Clock size={12} />}
+                          {['Done', 'Sold', 'Weighed'].includes(record.status) ? <CheckCircle size={12} /> : <Clock size={12} />}
                           {record.status}
                         </span>
                       </td>
@@ -576,9 +585,44 @@ const WeightDashboard = () => {
             </table>
           </div>
         </div>
-      </main>
+      </main >
 
       {/* --- MODALS --- */}
+
+      <Modal
+        isOpen={modals.delete}
+        onClose={() => setModals(prev => ({ ...prev, delete: false }))}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col items-center justify-center text-center p-4 bg-red-50 rounded-2xl border border-red-100">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+              <Trash2 size={32} className="text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-red-900">Delete Record?</h3>
+            <p className="text-sm text-red-600/80 mt-1 max-w-[200px]">
+              This action cannot be undone. Are you sure you want to proceed?
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setModals(prev => ({ ...prev, delete: false }))}
+              className="px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition active:scale-95"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-lg shadow-red-200 active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Trash2 size={18} />
+              Yes, Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Weight Record Modal - UPDATED FOR AUTO FETCH */}
       <Modal
@@ -614,7 +658,7 @@ const WeightDashboard = () => {
                 {marketData.length > 0 ? (
                   marketData.map((mItem) => (
                     <option key={mItem.id} value={mItem.id}>
-                      {mItem.farmer_id} - {mItem.item} ({mItem.est_qty}kg)
+                      {mItem.farmer_id} - {mItem.item} ({mItem.est_qty}kg) {mItem.status === 'RateAssigned' ? '✅ Ready' : ''}
                     </option>
                   ))
                 ) : (
@@ -704,7 +748,7 @@ const WeightDashboard = () => {
             className="w-full mt-4 px-4 py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition shadow-lg shadow-green-200 flex items-center justify-center gap-2"
           >
             <Plus size={20} />
-            Save Record
+            Save & Finalize Sale
           </button>
         </div>
       </Modal>
@@ -906,7 +950,7 @@ const WeightDashboard = () => {
           </button>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 };
 

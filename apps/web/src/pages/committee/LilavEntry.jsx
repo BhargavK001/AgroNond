@@ -64,7 +64,7 @@ export default function LilavEntry() {
     const fetchWeighedRecords = async (farmerId) => {
         try {
             setLoadingRecords(true);
-            const response = await api.get(`/api/records/weighed/${farmerId}`);
+            const response = await api.get(`/api/records/pending/${farmerId}`);
             setWeighedRecords(response || []);
         } catch (error) {
             console.error('Error fetching records:', error);
@@ -111,10 +111,10 @@ export default function LilavEntry() {
             await api.patch(`/api/records/${saleModal.record._id}/sell`, {
                 trader_id: saleForm.trader_id,
                 sale_rate: saleForm.sale_rate,
-                sale_unit: saleForm.sale_unit // ✅ Send unit
+                sale_unit: saleForm.sale_unit
             });
 
-            toast.success('Sale completed successfully!');
+            toast.success('Rate assigned successfully! Sent to weight.');
 
             // Trigger Success Modal
             setSaleModal(prev => ({ ...prev, success: true }));
@@ -264,7 +264,7 @@ export default function LilavEntry() {
                     <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">2</div>
-                            <h2 className="font-bold text-slate-900">Weighed Crops</h2>
+                            <h2 className="font-bold text-slate-900">Pending Crops</h2>
                             <span className="px-2.5 py-1 bg-slate-200 text-slate-600 text-xs font-bold rounded-full">
                                 {weighedRecords.length} items
                             </span>
@@ -279,8 +279,7 @@ export default function LilavEntry() {
                         ) : weighedRecords.length === 0 ? (
                             <div className="text-center py-12">
                                 <Package className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                                <p className="text-slate-500">No weighed crops pending for this farmer</p>
-                                <p className="text-sm text-slate-400 mt-1">Crops need to be weighed first before they can be auctioned</p>
+                                <p className="text-slate-500">No pending crops for this farmer</p>
                             </div>
                         ) : (
                             <div className="grid gap-4">
@@ -336,7 +335,7 @@ export default function LilavEntry() {
                                                     ) : (
                                                         <ShoppingCart className="w-4 h-4" />
                                                     )}
-                                                    Sell
+                                                    Assign Rate
                                                 </button>
                                             </div>
                                         </div>
@@ -369,8 +368,8 @@ export default function LilavEntry() {
                             {/* Header */}
                             <div className="bg-white px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900">Complete Sale</h2>
-                                    <p className="text-gray-500 text-sm">Enter sale details for this lot</p>
+                                    <h2 className="text-xl font-bold text-gray-900">Assign Rate</h2>
+                                    <p className="text-gray-500 text-sm">Set rate and trader for this lot</p>
                                 </div>
                                 <button
                                     onClick={() => setSaleModal({ open: false, record: null })}
@@ -492,7 +491,7 @@ export default function LilavEntry() {
                                     className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
                                     {processingId ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
-                                    Confirm Sale
+                                    Confirm & Send to Weight
                                 </button>
                             </div>
                         </motion.div>
@@ -515,8 +514,8 @@ export default function LilavEntry() {
                             <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <Check size={40} strokeWidth={3} />
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sale Successful!</h2>
-                            <p className="text-gray-500 mb-8">Transaction recorded. Bills have been generated for both parties.</p>
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Rate Assigned!</h2>
+                            <p className="text-gray-500 mb-8">Role and Trader assigned. Record sent to weight station for finalization.</p>
                             <button
                                 onClick={() => setSaleModal({ open: false, record: null, success: false })}
                                 className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition"

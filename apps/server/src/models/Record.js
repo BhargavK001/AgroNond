@@ -40,7 +40,7 @@ const recordSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Pending', 'Weighed', 'Sold', 'Completed'],
+        enum: ['Pending', 'RateAssigned', 'Weighed', 'Sold', 'Completed'],
         default: 'Pending'
     },
     // Official weight checks (for Weight Dashboard)
