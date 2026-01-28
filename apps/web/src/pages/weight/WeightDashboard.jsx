@@ -851,7 +851,7 @@ const WeightDashboard = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated no. of Carats</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Crt)</label>
               <input
                 type="number"
                 value={formData.updatedCarat}
