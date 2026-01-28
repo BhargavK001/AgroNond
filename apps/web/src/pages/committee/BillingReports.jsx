@@ -3,6 +3,8 @@ import api from '../../lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Download, Filter, Calendar, Users, ShoppingBag, X, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import BillingInvoice from '../../components/committee/BillingInvoice';
 
 // Payment Modal Component
 const PaymentModal = ({ isOpen, onClose, onSubmit, type, amount, name }) => {
@@ -353,16 +355,41 @@ export default function BillingReports() {
                     {item.status}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-center">
-                  {item.status !== 'Paid' && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition"
-                    >
-                      {activeTab === 'farmers' ? 'Pay' : 'Receive'}
-                    </button>
-                  )}
-                  {item.status === 'Paid' && <CheckCircle size={18} className="text-emerald-500 mx-auto" />}
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-center gap-3">
+                    {item.status !== 'Paid' ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm"
+                      >
+                        {activeTab === 'farmers' ? 'Pay' : 'Receive'}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                        <CheckCircle size={14} />
+                        <span className="text-xs font-bold">Paid</span>
+                      </div>
+                    )}
+
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <PDFDownloadLink
+                        document={<BillingInvoice data={item} type={activeTab === 'farmers' ? 'farmer' : 'trader'} />}
+                        fileName={`invoice_${item.id.slice(-6)}.pdf`}
+                      >
+                        {({ loading }) => (
+                          <div
+                            className={`p-2 rounded-lg transition-all duration-200 border ${loading
+                                ? 'bg-slate-100 text-slate-400 border-slate-200'
+                                : 'bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 border-slate-200 shadow-sm'
+                              }`}
+                            title="Download Invoice"
+                          >
+                            {loading ? <Download size={16} className="animate-pulse" /> : <Download size={16} />}
+                          </div>
+                        )}
+                      </PDFDownloadLink>
+                    </div>
+                  </div>
                 </td>
               </motion.tr>
             ))}
@@ -418,12 +445,37 @@ export default function BillingReports() {
               </div>
             </div>
             {item.status !== 'Paid' && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
-                className="w-full mt-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg"
-              >
-                {activeTab === 'farmers' ? 'Pay Now' : 'Mark Received'}
-              </button>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
+                  className="flex-1 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg"
+                >
+                  {activeTab === 'farmers' ? 'Pay Now' : 'Mark Received'}
+                </button>
+                <PDFDownloadLink
+                  document={<BillingInvoice data={item} type={activeTab === 'farmers' ? 'farmer' : 'trader'} />}
+                  fileName={`invoice_${item.id.slice(-6)}.pdf`}
+                  className="flex items-center justify-center w-10 bg-slate-100 text-emerald-600 rounded-lg"
+                >
+                  {({ loading }) => <FileText size={18} />}
+                </PDFDownloadLink>
+              </div>
+            )}
+            {item.status === 'Paid' && (
+              <div className="mt-3 flex justify-end">
+                <PDFDownloadLink
+                  document={<BillingInvoice data={item} type={activeTab === 'farmers' ? 'farmer' : 'trader'} />}
+                  fileName={`invoice_${item.id.slice(-6)}.pdf`}
+                  className="flex items-center justify-center px-4 py-2 bg-slate-100 text-emerald-600 text-xs font-bold rounded-lg"
+                >
+                  {({ loading }) => (
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} />
+                      <span>Download Invoice</span>
+                    </div>
+                  )}
+                </PDFDownloadLink>
+              </div>
             )}
           </motion.div>
         ))}

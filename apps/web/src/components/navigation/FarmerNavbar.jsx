@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Phone, MapPin, BadgeCheck, Camera, X, Save, Edit3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from "../../lib/api";
+import NotificationCenter from '../layout/NotificationCenter';
 import UniversalSearch from '../common/UniversalSearch';
 
 export default function FarmerNavbar() {
@@ -19,7 +20,6 @@ export default function FarmerNavbar() {
 
   // Refs for click outside handling
   const dropdownRef = useRef(null);
-  const notificationRef = useRef(null);
   const fileInputRef = useRef(null);
 
   // Profile State
@@ -109,35 +109,7 @@ export default function FarmerNavbar() {
   const hasCompleteProfile =
     farmerProfile.name !== 'Farmer' && farmerProfile.phone && farmerProfile.location;
 
-  // Mock Notifications
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'success',
-      title: 'Sale Confirmed',
-      message: '500kg Tomato sold successfully',
-      time: '2 mins ago',
-      unread: true,
-    },
-    {
-      id: 2,
-      type: 'info',
-      title: 'Market Update',
-      message: 'Onion prices increased by 8%',
-      time: '1 hr ago',
-      unread: true,
-    },
-    {
-      id: 3,
-      type: 'warning',
-      title: 'Payment Reminder',
-      message: 'Commission payment due tomorrow',
-      time: '3 hrs ago',
-      unread: true,
-    },
-  ]);
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
 
   const handleLogout = async () => {
     try {
@@ -154,9 +126,7 @@ export default function FarmerNavbar() {
     }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
-  };
+
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
@@ -257,13 +227,10 @@ export default function FarmerNavbar() {
         setIsDropdownOpen(false);
         setIsEditing(false);
       }
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setIsNotificationOpen(false);
-      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownRef, notificationRef]);
+  }, [dropdownRef]);
 
   // --- RENDER HELPERS ---
   const AvatarDisplay = ({ size = 'sm', showBadge = true }) => {
@@ -331,76 +298,7 @@ export default function FarmerNavbar() {
               <UniversalSearch placeholder="Search your records..." />
             </div>
             {/* Notification Bell */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-              >
-                <Bell size={22} className="sm:w-6 sm:h-6" />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              <AnimatePresence>
-                {isNotificationOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="fixed left-4 right-4 top-20 sm:absolute sm:right-0 sm:top-full sm:left-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
-                  >
-                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900">
-                        Notifications
-                      </h3>
-                      {unreadCount > 0 && (
-                        <span className="text-xs sm:text-sm font-semibold text-green-600">
-                          {unreadCount} New
-                        </span>
-                      )}
-                    </div>
-                    <div className="max-h-64 sm:max-h-96 overflow-y-auto">
-                      {notifications.map((notification) => (
-                        <div
-                          key={notification.id}
-                          className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${notification.unread ? 'bg-green-50/50' : ''}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`w-2 h-2 rounded-full mt-2 shrink-0 ${notification.type === 'success' ? 'bg-green-500' : notification.type === 'info' ? 'bg-blue-500' : 'bg-yellow-500'}`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-900 text-sm truncate">
-                                {notification.title}
-                              </p>
-                              <p className="text-gray-600 text-xs sm:text-sm mt-0.5 line-clamp-2">
-                                {notification.message}
-                              </p>
-                              <p className="text-gray-400 text-[10px] sm:text-xs mt-1">
-                                {notification.time}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {notifications.length > 0 && (
-                      <div className="p-3 bg-gray-50 border-t border-gray-100">
-                        <button
-                          onClick={markAllAsRead}
-                          className="w-full text-center text-sm font-semibold text-green-600 hover: text-green-700"
-                        >
-                          Mark all as read
-                        </button>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <NotificationCenter />
 
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>

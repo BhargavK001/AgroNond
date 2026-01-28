@@ -56,7 +56,6 @@ const FarmersList = lazy(() => import('./pages/committee/FarmersList'));
 const TradersList = lazy(() => import('./pages/committee/TradersList'));
 const WeightList = lazy(() => import('./pages/committee/WeightList'));
 const FarmerDetail = lazy(() => import('./pages/committee/FarmerDetail'));
-const TraderDetail = lazy(() => import('./pages/committee/TraderDetail'));
 const MarketActivity = lazy(() => import('./pages/committee/MarketActivity'));
 
 const BillingReports = lazy(() => import('./pages/committee/BillingReports'));
@@ -177,7 +176,6 @@ function App() {
                   <Route path="farmers" element={<FarmersList />} />
                   <Route path="farmers/:id" element={<FarmerDetail />} />
                   <Route path="traders" element={<TradersList />} />
-                  <Route path="traders/:id" element={<TraderDetail />} />
                   <Route path="weight" element={<WeightList />} />
                   <Route path="activity" element={<MarketActivity />} />
 

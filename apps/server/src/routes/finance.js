@@ -12,6 +12,8 @@ router.use(requireAuth);
  */
 router.post('/pay-farmer/:id', async (req, res) => {
     try {
+        // Import notification service dynamically
+        const { createNotification } = await import('../services/notificationService.js');
         const { mode, ref, date } = req.body;
 
         if (!mode) return res.status(400).json({ error: 'Payment mode required' });
@@ -32,8 +34,16 @@ router.post('/pay-farmer/:id', async (req, res) => {
 
         if (!record) return res.status(404).json({ error: 'Record not found' });
 
-        // Update overall payment_status if both are paid?
-        // Let's rely on specific statuses primarily.
+        // TRIGGER NOTIFICATION: Payment Sent
+        if (record.farmer_id) {
+            await createNotification({
+                recipient: record.farmer_id,
+                type: 'success',
+                title: 'Payment Received',
+                message: `Your payment of ₹${record.net_payable_to_farmer} has been processed via ${mode}.`,
+                data: { recordId: record._id, type: 'payment' }
+            });
+        }
 
         res.json(record);
     } catch (error) {

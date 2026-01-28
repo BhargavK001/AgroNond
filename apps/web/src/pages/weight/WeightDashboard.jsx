@@ -52,7 +52,6 @@ const WeightDashboard = () => {
     recordRefId: '', // ID from the original records table
     farmerId: '',
     item: '',
-    item: '',
     estWeight: '',
     estCarat: '', // ✅ NEW
     updatedWeight: '',
@@ -160,7 +159,6 @@ const WeightDashboard = () => {
         ...prev,
         recordRefId: selectedItem.id,
         farmerId: selectedItem.farmer_id,
-        item: selectedItem.item,
         item: selectedItem.item,
         estWeight: selectedItem.est_qty || 0,
         estCarat: selectedItem.est_carat || 0 // ✅ NEW

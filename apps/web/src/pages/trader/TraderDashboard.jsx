@@ -116,9 +116,9 @@ export default function TraderDashboard() {
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
                 <th className="px-5 py-3 text-left font-semibold text-slate-600">Date & Time</th>
-                <th className="px-5 py-3 text-left font-semibold text-slate-600">Lot ID</th>
+
                 <th className="px-5 py-3 text-left font-semibold text-slate-600">Crop</th>
-                <th className="px-5 py-3 text-right font-semibold text-slate-600">Qty (kg)</th>
+                <th className="px-5 py-3 text-right font-semibold text-slate-600">Qty / Carat</th>
                 <th className="px-5 py-3 text-right font-semibold text-slate-600">Rate/kg</th>
                 <th className="px-5 py-3 text-right font-semibold text-slate-600">Total Amount</th>
                 <th className="px-5 py-3 text-center font-semibold text-slate-600">Status</th>
@@ -143,9 +143,12 @@ export default function TraderDashboard() {
                           {item.sold_at ? new Date(item.sold_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}
                         </div>
                       </td>
-                      <td className="px-5 py-4 font-medium text-slate-900">{item.lot_id}</td>
+
                       <td className="px-5 py-4 text-slate-600">{item.vegetable}</td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-700">{(item.official_qty || 0).toLocaleString('en-IN')}</td>
+                      <td className="px-5 py-4 text-right font-medium text-slate-700">
+                        <div>{(item.official_qty || 0).toLocaleString('en-IN')} kg</div>
+                        {item.official_carat > 0 && <div className="text-xs text-purple-600">{item.official_carat} Crt</div>}
+                      </td>
                       <td className="px-5 py-4 text-right text-slate-600">₹{item.sale_rate}</td>
                       <td className="px-5 py-4 text-right">
                         <div className="font-bold text-slate-900">₹{Math.round(total).toLocaleString('en-IN')}</div>

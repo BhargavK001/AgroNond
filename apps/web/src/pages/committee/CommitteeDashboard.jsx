@@ -126,7 +126,12 @@ export default function CommitteeDashboard() {
                       <td className="px-5 py-3.5 text-slate-600">{new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
                       <td className="px-5 py-3.5 font-medium text-slate-900">{txn.farmer}</td>
                       <td className="px-5 py-3.5 text-slate-600">{txn.trader}</td>
-                      <td className="px-5 py-3.5 text-slate-500">{txn.crop} ({txn.qty}kg)</td>
+                      <td className="px-5 py-3.5 text-slate-500">
+                        {txn.crop}
+                        <span className="block text-xs">
+                          {txn.qty} kg {txn.carat > 0 && `| ${txn.carat} Crt`}
+                        </span>
+                      </td>
                       <td className="px-5 py-3.5 text-right text-slate-600">₹{txn.rate}/kg</td>
                       <td className="px-5 py-3.5 text-right font-bold text-slate-900">₹{txn.amount.toLocaleString()}</td>
                       <td className="px-5 py-3.5 text-right">

@@ -26,13 +26,14 @@ router.get('/stats', requireAuth, requireTrader, async (req, res) => {
             {
                 $match: {
                     trader_id: new mongoose.Types.ObjectId(userId),
-                    status: 'Completed'
+                    status: { $in: ['Sold', 'Completed'] }
                 }
             },
             {
                 $group: {
                     _id: null,
                     totalQuantity: { $sum: '$official_qty' },
+                    totalCarats: { $sum: '$official_carat' },
                     // Use net_receivable_from_trader if available (new logic), else fallback
                     // We need to be careful with summing calculated fields if they are 0 in old records
                     // Better approach: sum(sale_amount) + sum(commission) is generally safer if net_receivable isn't populated on old records
@@ -49,7 +50,7 @@ router.get('/stats', requireAuth, requireTrader, async (req, res) => {
             {
                 $match: {
                     trader_id: new mongoose.Types.ObjectId(userId),
-                    status: 'Completed',
+                    status: { $in: ['Sold', 'Completed'] },
                     $or: [
                         { trader_payment_status: 'Pending' },
                         { payment_status: { $in: ['pending', 'overdue'] } }
@@ -79,6 +80,7 @@ router.get('/stats', requireAuth, requireTrader, async (req, res) => {
 
         const result = {
             totalQuantity: stats[0]?.totalQuantity || 0,
+            totalCarats: stats[0]?.totalCarats || 0,
             totalBaseSpend: totalBase,
             totalCommission: totalComm,
             totalSpend: totalBase + totalComm,
@@ -103,7 +105,7 @@ router.get('/transactions', requireAuth, requireTrader, async (req, res) => {
 
         let query = {
             trader_id: userId,
-            status: 'Completed'
+            status: { $in: ['Sold', 'Completed'] }
         };
 
         if (date) {

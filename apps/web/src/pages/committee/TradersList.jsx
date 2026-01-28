@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, ChevronRight, Phone, Calendar, Store, Plus } from 'lucide-react';
 import AddTraderModal from '../../components/committee/AddTraderModal';
+import TraderDetailsModal from '../../components/committee/TraderDetailsModal';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -14,6 +15,10 @@ export default function TradersList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('All');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // New State for Details Modal
+  const [selectedTrader, setSelectedTrader] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   // Fetch traders from API
   const fetchTraders = async () => {
@@ -43,6 +48,11 @@ export default function TradersList() {
 
   const handleAddTrader = (newTrader) => {
     setTraders(prev => [newTrader, ...prev]);
+  };
+
+  const handleTraderClick = (trader) => {
+    setSelectedTrader(trader);
+    setIsDetailsModalOpen(true);
   };
 
   return (
@@ -179,7 +189,7 @@ export default function TradersList() {
               {filteredTraders.map((trader) => (
                 <tr
                   key={trader._id || trader.id}
-                  onClick={() => navigate(`/dashboard/committee/traders/${trader._id || trader.id}`)}
+                  onClick={() => handleTraderClick(trader)}
                   className="hover:bg-slate-50/50 transition-colors cursor-pointer"
                 >
                   <td className="px-6 py-4">
@@ -223,7 +233,7 @@ export default function TradersList() {
           {filteredTraders.map((trader) => (
             <div
               key={trader._id || trader.id}
-              onClick={() => navigate(`/dashboard/committee/traders/${trader._id || trader.id}`)}
+              onClick={() => handleTraderClick(trader)}
               className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm cursor-pointer hover:border-emerald-200 transition-colors"
             >
               <div className="flex items-start justify-between mb-3">
@@ -257,6 +267,13 @@ export default function TradersList() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handleAddTrader}
+      />
+
+      {/* Details Modal */}
+      <TraderDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        trader={selectedTrader}
       />
     </div>
   );
