@@ -9,14 +9,18 @@ router.use(requireAuth);
 // GET /api/notifications
 router.get('/', async (req, res) => {
     try {
-        const notifications = await Notification.find({ recipient: req.user._id })
+        const notifications = await Notification.find({
+            recipient: req.user._id,
+            visible: { $ne: false } // Show initialized (true) or legacy (undefined)
+        })
             .sort({ createdAt: -1 })
             .limit(50); // Limit to last 50
 
         // Count unread
         const unreadCount = await Notification.countDocuments({
             recipient: req.user._id,
-            isRead: false
+            isRead: false,
+            visible: { $ne: false }
         });
 
         res.json({ notifications, unreadCount });

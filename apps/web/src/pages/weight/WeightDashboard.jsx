@@ -138,8 +138,6 @@ const WeightDashboard = () => {
         est_qty: r.quantity,
         est_carat: r.carat,
         date: r.createdAt,
-        est_carat: r.carat,
-        date: r.createdAt,
         status: r.status, // Capture status
         sale_unit: r.sale_unit || (r.carat > 0 ? 'carat' : 'kg') // Capture unit
       }));
@@ -864,8 +862,8 @@ const WeightDashboard = () => {
                 autoFocus
                 disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'}
                 className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
                   }`}
               />
             </div>
@@ -879,8 +877,8 @@ const WeightDashboard = () => {
                 placeholder="0.00"
                 disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'}
                 className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
                   }`}
               />
             </div>
