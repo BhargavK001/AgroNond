@@ -391,8 +391,21 @@ router.get('/billing-records', async (req, res) => {
             Record.countDocuments(query)
         ]);
 
+        // UPDATED: Transform records to ensure sale_unit is set correctly
+        const transformedRecords = records.map(record => {
+            const recordObj = record.toObject();
+
+            // If sale_unit is not set, infer from carat data
+            if (!recordObj.sale_unit) {
+                const caratValue = recordObj.official_carat || recordObj.carat || 0;
+                recordObj.sale_unit = caratValue > 0 ? 'carat' : 'kg';
+            }
+
+            return recordObj;
+        });
+
         res.json({
-            records,
+            records: transformedRecords,
             total,
             page: parseInt(page),
             totalPages: Math.ceil(total / limit)
