@@ -1,6 +1,7 @@
 import express from 'express';
 import Record from '../models/Record.js';
 import User from '../models/User.js';
+import CommissionRule from '../models/CommissionRule.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -59,7 +60,7 @@ router.get('/pending', requireAuth, async (req, res) => {
 
 
 // HELPER: Calculate Sale
-const calculateSale = (record, qty, carat) => {
+const calculateSale = async (record, qty, carat) => {
     let sale_amount = 0;
     if (record.sale_unit === 'carat') {
         sale_amount = carat * record.sale_rate;
@@ -67,8 +68,17 @@ const calculateSale = (record, qty, carat) => {
         sale_amount = qty * record.sale_rate;
     }
 
-    const farmer_commission = Math.round(sale_amount * 0.04);
-    const trader_commission = Math.round(sale_amount * 0.09);
+    // Fetch active commission rules
+    const [farmerRule, traderRule] = await Promise.all([
+        CommissionRule.findOne({ role_type: 'farmer', is_active: true, crop_type: 'All' }).sort({ createdAt: -1 }),
+        CommissionRule.findOne({ role_type: 'trader', is_active: true, crop_type: 'All' }).sort({ createdAt: -1 })
+    ]);
+
+    const farmerRate = farmerRule ? farmerRule.rate : 0.04; // Default 4%
+    const traderRate = traderRule ? traderRule.rate : 0.09; // Default 9%
+
+    const farmer_commission = Math.round(sale_amount * farmerRate);
+    const trader_commission = Math.round(sale_amount * traderRate);
 
     return {
         sale_amount,
@@ -107,7 +117,7 @@ router.post('/record', requireAuth, async (req, res) => {
 
             // If Rate is Assigned, Finalize Sale!
             if (record.status === 'RateAssigned' && (official_qty > 0 || official_carat > 0)) {
-                const saleData = calculateSale(record, official_qty, official_carat);
+                const saleData = await calculateSale(record, official_qty, official_carat);
                 Object.assign(record, saleData);
                 record.sold_by = req.user._id; // Weight person completes the sale
             } else {
@@ -189,7 +199,7 @@ router.put('/record/:id', requireAuth, async (req, res) => {
         if ((record.status === 'RateAssigned' || record.status === 'Sold') && (official_qty > 0 || o_carat > 0)) {
             // Only if we have rate info
             if (record.sale_rate && record.sale_rate > 0) {
-                const saleData = calculateSale(record, official_qty, o_carat);
+                const saleData = await calculateSale(record, official_qty, o_carat);
                 Object.assign(record, saleData);
             } else {
                 record.status = 'Weighed'; // Downgrade if no rate? Shouldn't happen in new flow

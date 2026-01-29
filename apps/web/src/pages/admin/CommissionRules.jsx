@@ -41,12 +41,17 @@ export default function CommissionRules() {
   });
 
   const handleChange = (field, value) => {
-    // Allow only valid numbers between 0 and 100
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue < 0 || numValue > 100) return;
+    // Allow empty string to let user clear input
+    if (value === '') {
+      setConfig(prev => ({ ...prev, [field]: '' }));
+      return;
+    }
 
-    setConfig(prev => ({ ...prev, [field]: numValue }));
-    setSaveSuccess(false);
+    // Allow typing decimals (e.g. "4.")
+    if (/^\d*\.?\d*$/.test(value)) {
+      setConfig(prev => ({ ...prev, [field]: value }));
+      setSaveSuccess(false);
+    }
   };
 
   const handleSave = async () => {
@@ -56,12 +61,12 @@ export default function CommissionRules() {
         createRuleMutation.mutateAsync({
           crop_type: 'All',
           role_type: 'farmer',
-          rate: config.farmerRate / 100
+          rate: (parseFloat(config.farmerRate) || 0) / 100
         }),
         createRuleMutation.mutateAsync({
           crop_type: 'All',
           role_type: 'trader',
-          rate: config.traderRate / 100
+          rate: (parseFloat(config.traderRate) || 0) / 100
         })
       ]);
 
@@ -90,8 +95,12 @@ export default function CommissionRules() {
 
   // Calculate example
   const exampleAmount = 10000;
-  const farmerCommission = (exampleAmount * config.farmerRate) / 100;
-  const traderCommission = (exampleAmount * config.traderRate) / 100;
+  // Safely parse input state
+  const currentFarmerRate = parseFloat(config.farmerRate) || 0;
+  const currentTraderRate = parseFloat(config.traderRate) || 0;
+
+  const farmerCommission = (exampleAmount * currentFarmerRate) / 100;
+  const traderCommission = (exampleAmount * currentTraderRate) / 100;
   const totalCommission = farmerCommission + traderCommission;
 
   return (
@@ -314,7 +323,7 @@ export default function CommissionRules() {
           </div>
           <div className="p-4 rounded-xl bg-white border-2 border-slate-100">
             <p className="text-slate-400 text-sm font-medium">Combined Rate</p>
-            <p className="text-3xl font-bold text-slate-800 mt-1">{(config.farmerRate + config.traderRate).toFixed(1)}%</p>
+            <p className="text-3xl font-bold text-slate-800 mt-1">{(parseFloat(config.farmerRate || 0) + parseFloat(config.traderRate || 0)).toFixed(1)}%</p>
           </div>
         </div>
       </motion.div>

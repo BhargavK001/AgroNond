@@ -24,7 +24,8 @@ const roleFilters = [
   { key: 'farmer', label: 'Farmers' },
   { key: 'trader', label: 'Traders' },
   { key: 'weight_staff', label: 'Weight Staff' },
-  { key: 'accounting', label: 'Accountants' }
+  { key: 'lilav', label: 'Lilav Staff' },
+  { key: 'committee', label: 'Market Committee' }
 ];
 
 export default function UserManagement() {
