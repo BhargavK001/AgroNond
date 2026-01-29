@@ -47,9 +47,7 @@ const userSchema = new mongoose.Schema({
     business_address: {
         type: String,
     },
-    adhaar_number: {
-        type: String,
-    },
+
     operating_locations: {
         type: [String],
     },

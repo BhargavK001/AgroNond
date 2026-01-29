@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, MapPin, User, CreditCard, UserPlus } from 'lucide-react';
+import { X, Phone, MapPin, User, UserPlus } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -9,7 +9,7 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
     name: '',
     phone: '',
     village: '',
-    aadhaar: '',
+
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,9 +22,7 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
     } else if (!/^[6-9]\d{9}$/.test(formData.phone)) {
       newErrors.phone = 'Enter valid 10-digit phone number';
     }
-    if (formData.aadhaar && !/^\d{12}$/.test(formData.aadhaar)) {
-      newErrors.aadhaar = 'Enter valid 12-digit Aadhaar';
-    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -40,7 +38,7 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
         full_name: formData.name,
         phone: formData.phone,
         location: formData.village,
-        adhaar_number: formData.aadhaar,
+
       });
 
       // FIX: robustly handle whether response IS the user or HAS the user
@@ -49,7 +47,7 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
       if (newUser) {
         onAdd(newUser);
         toast.success('Farmer added successfully!');
-        setFormData({ name: '', phone: '', village: '', aadhaar: '' });
+        setFormData({ name: '', phone: '', village: '' });
         onClose();
       } else {
         throw new Error("Invalid response received from server");
@@ -177,27 +175,7 @@ export default function AddFarmerModal({ isOpen, onClose, onAdd }) {
                   {errors.village && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-500" />{errors.village}</p>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Aadhaar Number <span className="text-slate-400 font-normal">(Optional)</span>
-                  </label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      name="aadhaar"
-                      value={formData.aadhaar}
-                      onChange={handleChange}
-                      placeholder="12-digit Aadhaar number"
-                      maxLength={12}
-                      className={`w-full pl-12 pr-4 py-3.5 rounded-xl border-2 ${errors.aadhaar
-                        ? 'border-red-300 focus:border-red-500 bg-red-50/50'
-                        : 'border-slate-200 focus:border-emerald-500 hover:border-slate-300'
-                        } focus:ring-0 focus:outline-none transition-all text-sm bg-slate-50 focus:bg-white`}
-                    />
-                  </div>
-                  {errors.aadhaar && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-red-500" />{errors.aadhaar}</p>}
-                </div>
+
 
                 <div className="flex gap-3 pt-3">
                   <button
