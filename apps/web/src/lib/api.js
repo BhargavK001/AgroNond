@@ -152,6 +152,8 @@ export const api = {
       },
       updateRole: (id, role) => apiRequest(`/api/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
       create: (data) => apiRequest('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id, data) => apiRequest(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      delete: (id) => apiRequest(`/api/admin/users/${id}`, { method: 'DELETE' }),
     },
   },
 

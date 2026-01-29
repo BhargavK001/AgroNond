@@ -36,6 +36,7 @@ export default function TransactionHistory() {
         traderName: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown Trader',
         crop: t.vegetable,
         quantity: t.official_qty || t.quantity || 0,
+        carat: t.carat || 0,
         rate: t.sale_rate || t.rate || 0,
         grossAmount: t.sale_amount || t.amount || 0,
         commission: (t.farmer_commission || 0) + (t.trader_commission || 0),
@@ -126,13 +127,13 @@ export default function TransactionHistory() {
   }, [filteredTransactions]);
 
   const handleExport = () => {
-    const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
+    const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty / Weight', 'Rate', 'Amount', 'Commission', 'Status'];
     const data = filteredTransactions.map(txn => [
       new Date(txn.date).toLocaleDateString('en-IN'),
       txn.farmerName,
       txn.traderName,
       txn.crop,
-      txn.quantity,
+      txn.quantity > 0 ? `${txn.quantity} kg` : (txn.carat > 0 ? `${txn.carat} Crt` : '-'),
       txn.rate,
       txn.grossAmount,
       txn.commission,
@@ -267,7 +268,7 @@ export default function TransactionHistory() {
                   onClick={() => handleSort('quantity')}
                 >
                   <div className="flex items-center justify-end gap-1">
-                    Qty (kg)
+                    Qty / Weight
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
@@ -309,8 +310,8 @@ export default function TransactionHistory() {
                         {txn.crop}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-800 font-medium text-sm">
-                      {txn.quantity.toLocaleString()}
+                    <td className="text-right text-slate-800 font-medium text-sm px-6 py-4">
+                      {txn.quantity > 0 ? `${txn.quantity.toLocaleString()} kg` : (txn.carat > 0 ? `${txn.carat} Crt` : '-')}
                     </td>
                     <td className="px-6 py-4 text-right text-slate-600 text-sm">
                       ₹{txn.rate}

@@ -31,7 +31,7 @@ const cleanup = async () => {
             'license_number',
             'business_name',
             'business_address',
-            'adhaar_number',
+
             'profile_picture',
             'email',
             'location'
