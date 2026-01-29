@@ -1,7 +1,8 @@
 import React from 'react';
 import { Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import BillingInvoice from '../committee/BillingInvoice';
 const SoldRecordCard = ({ record }) => {
   const {
     vegetable,
@@ -21,78 +22,19 @@ const SoldRecordCard = ({ record }) => {
   const isPaid = status === 'Paid';
   const date = record.sold_at ? new Date(record.sold_at) : new Date(createdAt);
 
-  const handleDownloadBill = () => {
-    // Basic bill generation logic (could be moved to a util)
-    toast.success("Downloading Bill...");
-
-    // Create a printable window
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error("Please allow popups");
-      return;
-    }
-
-    const html = `
-      <html>
-        <head>
-          <title>Farmer Bill</title>
-          <style>
-            body { font-family: sans-serif; padding: 40px; }
-            .header { border-bottom: 2px solid #16a34a; padding-bottom: 20px; margin-bottom: 30px; }
-            .title { color: #16a34a; font-size: 24px; font-weight: bold; }
-            .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
-            .total { border-top: 1px solid #ccc; padding-top: 10px; font-weight: bold; font-size: 18px; margin-top: 20px; }
-            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">AgroNond Market Committee</div>
-            <p>Official Farmer Bill</p>
-          </div>
-          
-          <div class="row">
-            <span>Date:</span> <span>${date.toLocaleDateString()}</span>
-          </div>
-          <div class="row">
-            <span>Vegetable:</span> <span>${vegetable}</span>
-          </div>
-          
-          <hr/>
-          
-          <div class="row">
-            <span>Quantity:</span> <span>${official_qty} kg ${official_carat ? `| ${official_carat} Crt` : ''}</span>
-          </div>
-          <div class="row">
-            <span>Rate:</span> <span>₹${sale_rate}/kg</span>
-          </div>
-          <div class="row">
-            <span>Gross Amount:</span> <span>₹${sale_amount}</span>
-          </div>
-          
-          <div class="row" style="color: #dc2626;">
-             <span>Market Fee (4%):</span> <span>- ₹${farmer_commission}</span>
-          </div>
-          
-          <div class="row total">
-             <span>Net Payable Amount:</span> <span>₹${net_payable_to_farmer}</span>
-          </div>
-          
-          <div class="row" style="margin-top:20px;">
-             <span>Payment Status:</span> 
-             <span style="color: ${isPaid ? 'green' : 'orange'}">${status.toUpperCase()}</span>
-          </div>
-
-          <div class="footer">
-            <p>This is a computer generated bill.</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.print();
+  // Prepare invoice data for BillingInvoice PDF component
+  const invoiceData = {
+    id: record._id || record.id || 'N/A',
+    date: date.toISOString(),
+    name: 'Farmer', // Will show farmer name from context
+    crop: vegetable,
+    qty: official_qty || 0,
+    carat: official_carat || 0,
+    baseAmount: sale_amount || 0,
+    commission: farmer_commission || 0,
+    finalAmount: net_payable_to_farmer || 0,
+    status: status,
+    type: 'pay' // farmer payment type
   };
 
   return (
@@ -143,13 +85,18 @@ const SoldRecordCard = ({ record }) => {
           )}
         </div>
 
-        <button
-          onClick={handleDownloadBill}
+        <PDFDownloadLink
+          document={<BillingInvoice data={invoiceData} type="farmer" />}
+          fileName={`farmer-bill-${(record._id || record.id || 'unknown').slice(-6)}.pdf`}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium transition text-sm"
         >
-          <Download size={16} />
-          Download Bill
-        </button>
+          {({ loading }) => (
+            <>
+              <Download size={16} className={loading ? 'animate-pulse' : ''} />
+              {loading ? 'Generating...' : 'Download Bill'}
+            </>
+          )}
+        </PDFDownloadLink>
       </div>
     </div>
   );
