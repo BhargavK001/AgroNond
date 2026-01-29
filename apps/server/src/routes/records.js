@@ -156,7 +156,7 @@ router.post('/add', requireAuth, async (req, res) => {
             vegetable: item.vegetable,
             quantity: item.quantity,
             carat: item.carat || 0,
-            sale_unit: (item.carat && item.carat > 0) ? 'carat' : 'kg', // ✅ Set unit
+            sale_unit: (item.carat && item.carat > 0) ? 'carat' : 'kg',
             status: 'Pending',
             qtySold: 0,
             rate: 0,

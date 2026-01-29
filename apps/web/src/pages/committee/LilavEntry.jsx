@@ -493,8 +493,8 @@ export default function LilavEntry() {
                                                 onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'carat' }))}
                                                 disabled={saleModal.lockedUnit === 'kg'}
                                                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'carat'
-                                                        ? 'bg-white text-purple-600 shadow-sm'
-                                                        : (saleModal.lockedUnit === 'kg' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700')
+                                                    ? 'bg-white text-purple-600 shadow-sm'
+                                                    : (saleModal.lockedUnit === 'kg' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700')
                                                     }`}
                                             >
                                                 Sell by Carat ({modalCaratValue} Crt)
@@ -503,8 +503,8 @@ export default function LilavEntry() {
                                                 onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'kg' }))}
                                                 disabled={saleModal.lockedUnit === 'carat'}
                                                 className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'kg'
-                                                        ? 'bg-white text-emerald-600 shadow-sm'
-                                                        : (saleModal.lockedUnit === 'carat' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700')
+                                                    ? 'bg-white text-emerald-600 shadow-sm'
+                                                    : (saleModal.lockedUnit === 'carat' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700')
                                                     }`}
                                             >
                                                 Sell by Weight ({modalQtyValue} kg)
