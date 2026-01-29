@@ -28,17 +28,31 @@ export default function AccountingOverview() {
 
         setSummary(statsResponse);
 
-        const formattedTransactions = billingData.records.map(t => ({
-          id: t._id,
-          date: new Date(t.sold_at || t.createdAt).toISOString().split('T')[0],
-          farmer: { name: t.farmer_id?.full_name || 'Unknown' },
-          trader: { name: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown' },
-          crop: t.vegetable,
-          quantity: t.official_qty,
-          rate: t.sale_rate,
-          baseAmount: t.sale_amount,
-          paymentStatus: t.trader_payment_status === 'Paid' ? 'Completed' : t.status
-        }));
+        // UPDATED: Include carat and sale_unit in transformation
+        const formattedTransactions = billingData.records.map(t => {
+          // Get effective values (official or farmer's initial)
+          const qtyValue = (t.official_qty && t.official_qty > 0)
+            ? t.official_qty
+            : (t.quantity || 0);
+          const caratValue = (t.official_carat && t.official_carat > 0)
+            ? t.official_carat
+            : (t.carat || 0);
+          const inferredSaleUnit = t.sale_unit || (caratValue > 0 ? 'carat' : 'kg');
+
+          return {
+            id: t._id,
+            date: new Date(t.sold_at || t.createdAt).toISOString().split('T')[0],
+            farmer: { name: t.farmer_id?.full_name || 'Unknown' },
+            trader: { name: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown' },
+            crop: t.vegetable,
+            quantity: qtyValue,
+            carat: caratValue,
+            sale_unit: inferredSaleUnit,
+            rate: t.sale_rate,
+            baseAmount: t.sale_amount,
+            paymentStatus: t.trader_payment_status === 'Paid' ? 'Completed' : t.status
+          };
+        });
 
         setTransactions(formattedTransactions);
       } catch (error) {

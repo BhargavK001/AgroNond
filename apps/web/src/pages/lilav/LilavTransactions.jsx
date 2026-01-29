@@ -12,7 +12,8 @@ import {
     Wallet,
     ReceiptText,
     Eye,
-    Calendar
+    Calendar,
+    Scale
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -50,19 +51,31 @@ export default function LilavTransactions() {
                 limit: 500
             });
 
-            // Transform data
-            const formattedData = data.map(t => ({
-                id: t._id,
-                lotId: t.lot_id,
-                date: t.sold_at || t.createdAt,
-                crop: t.vegetable,
-                quantity: t.official_qty,
-                rate: t.sale_rate,
-                grossAmount: t.sale_amount,
-                traderName: t.trader_id?.full_name || 'Unknown', // Lilav needs to see Trader
-                farmerName: t.farmer_id?.full_name || 'Unknown', // Lilav needs to see Farmer
-                status: t.status,
-            }));
+            // Transform data - UPDATED: Include carat values
+            const formattedData = data.map(t => {
+                // Get effective values (official or farmer's initial)
+                const qtyValue = (t.official_qty && t.official_qty > 0)
+                    ? t.official_qty
+                    : (t.quantity || 0);
+                const caratValue = (t.official_carat && t.official_carat > 0)
+                    ? t.official_carat
+                    : (t.carat || 0);
+
+                return {
+                    id: t._id,
+                    lotId: t.lot_id,
+                    date: t.sold_at || t.createdAt,
+                    crop: t.vegetable,
+                    quantity: qtyValue,
+                    carat: caratValue,
+                    sale_unit: t.sale_unit || 'kg',
+                    rate: t.sale_rate,
+                    grossAmount: t.sale_amount,
+                    traderName: t.trader_id?.full_name || 'Unknown',
+                    farmerName: t.farmer_id?.full_name || 'Unknown',
+                    status: t.status,
+                };
+            });
 
             // Double check client-side filtering for dates to be safe
             const filteredByDate = formattedData.filter(t => {
@@ -135,10 +148,11 @@ export default function LilavTransactions() {
         setDateRange({ start: today, end: today });
     };
 
-    // Calculate totals
+    // Calculate totals - UPDATED: Include carat total
     const totals = useMemo(() => ({
         count: filteredTransactions.length,
         quantity: filteredTransactions.reduce((sum, t) => sum + (t.quantity || 0), 0),
+        carat: filteredTransactions.reduce((sum, t) => sum + (t.carat || 0), 0),
         amount: filteredTransactions.reduce((sum, t) => sum + (t.grossAmount || 0), 0),
     }), [filteredTransactions]);
 
@@ -189,7 +203,7 @@ export default function LilavTransactions() {
                 </div>
             </motion.div>
 
-            {/* Summary Stats */}
+            {/* Summary Stats - UPDATED: Show both kg and Carat */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -208,9 +222,18 @@ export default function LilavTransactions() {
                         <ShoppingBasket className="w-5 h-5 text-slate-400" />
                     </div>
                     <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Quantity</p>
-                    <p className="text-2xl font-bold text-slate-800">{totals.quantity.toLocaleString('en-IN')} <span className="text-sm font-normal text-slate-400">kg</span></p>
+                    {/* UPDATED: Show both kg and Carat */}
+                    <div className="flex flex-wrap items-baseline gap-2">
+                        <p className="text-2xl font-bold text-slate-800">
+                            {totals.quantity.toLocaleString('en-IN')} <span className="text-sm font-normal text-slate-400">kg</span>
+                        </p>
+                        {totals.carat > 0 && (
+                            <p className="text-2xl font-bold text-purple-600">
+                                {totals.carat.toLocaleString('en-IN')} <span className="text-sm font-normal text-purple-400">Crt</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
-
             </motion.div>
 
             {/* Search & Filters */}
@@ -295,9 +318,9 @@ export default function LilavTransactions() {
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Lot Info</th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Parties</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Qty (kg)</th>
+                                {/* UPDATED: Changed header to show both units */}
+                                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Qty (kg/Crt)</th>
                                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Rate</th>
-
                                 <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
@@ -339,9 +362,23 @@ export default function LilavTransactions() {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">{txn.quantity?.toLocaleString('en-IN')}</td>
-                                    <td className="px-4 py-3 text-right text-sm text-slate-600">₹{txn.rate}</td>
-
+                                    {/* UPDATED: Show both kg and Carat in Qty column */}
+                                    <td className="px-4 py-3 text-right">
+                                        <div className="flex flex-col items-end gap-0.5">
+                                            <span className="text-sm font-medium text-slate-700">
+                                                {txn.quantity?.toLocaleString('en-IN')} kg
+                                            </span>
+                                            {txn.carat > 0 && (
+                                                <span className="text-xs font-medium text-purple-600">
+                                                    {txn.carat?.toLocaleString('en-IN')} Crt
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    {/* UPDATED: Show rate with unit */}
+                                    <td className="px-4 py-3 text-right text-sm text-slate-600">
+                                        ₹{txn.rate}/{txn.sale_unit === 'carat' ? 'Crt' : 'kg'}
+                                    </td>
                                     <td className="px-4 py-3 text-center">
                                         <span className="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
                                             {txn.status || 'Sold'}
@@ -360,7 +397,7 @@ export default function LilavTransactions() {
                     )}
                 </div>
 
-                {/* Mobile Card View */}
+                {/* Mobile Card View - UPDATED: Show both kg and Carat */}
                 <div className="md:hidden space-y-3 p-4">
                     {filteredTransactions.map((txn, index) => (
                         <div
@@ -374,7 +411,6 @@ export default function LilavTransactions() {
 
                             <div className="flex justify-between items-center mb-3">
                                 <span className="font-bold text-slate-800">{txn.crop}</span>
-
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-3">
@@ -388,12 +424,29 @@ export default function LilavTransactions() {
                                 </div>
                             </div>
 
+                            {/* UPDATED: Show both kg and Carat with rate unit */}
                             <div className="flex justify-between border-t border-slate-200 pt-2 text-xs">
-                                <span>{txn.quantity} kg @ ₹{txn.rate}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-slate-700">
+                                        {txn.quantity} kg @ ₹{txn.rate}/{txn.sale_unit === 'carat' ? 'Crt' : 'kg'}
+                                    </span>
+                                    {txn.carat > 0 && (
+                                        <span className="text-purple-600 font-medium">
+                                            {txn.carat} Crt
+                                        </span>
+                                    )}
+                                </div>
                                 <span className="text-green-600 font-bold">{txn.status}</span>
                             </div>
                         </div>
                     ))}
+
+                    {filteredTransactions.length === 0 && (
+                        <div className="text-center py-12">
+                            <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                            <p className="text-slate-500 font-medium">No transactions found for {isToday() ? "today" : "this date"}</p>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </div>
