@@ -57,7 +57,8 @@ const WeightDashboard = () => {
     estWeight: '',
     estCarat: '', // ✅ NEW
     updatedWeight: '',
-    updatedCarat: '' // ✅ NEW
+    updatedCarat: '', // ✅ NEW
+    saleUnit: 'kg' //Default
   });
 
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -137,7 +138,10 @@ const WeightDashboard = () => {
         est_qty: r.quantity,
         est_carat: r.carat,
         date: r.createdAt,
-        status: r.status // Capture status
+        est_carat: r.carat,
+        date: r.createdAt,
+        status: r.status, // Capture status
+        sale_unit: r.sale_unit || (r.carat > 0 ? 'carat' : 'kg') // Capture unit
       }));
       setMarketData(mapped);
     } catch (err) {
@@ -160,7 +164,8 @@ const WeightDashboard = () => {
         farmerId: selectedItem.farmer_id,
         item: selectedItem.item,
         estWeight: selectedItem.est_qty || 0,
-        estCarat: selectedItem.est_carat || 0 // ✅ NEW
+        estCarat: selectedItem.est_carat || 0, // ✅ NEW
+        saleUnit: selectedItem.sale_unit // Set sale unit
       }));
       toast.success("Auto-fetched details!");
     }
@@ -227,7 +232,8 @@ const WeightDashboard = () => {
         estWeight: '',
         estCarat: '',
         updatedWeight: '',
-        updatedCarat: ''
+        updatedCarat: '',
+        saleUnit: 'kg'
       });
       setModals(prev => ({ ...prev, addWeight: false }));
 
@@ -302,7 +308,8 @@ const WeightDashboard = () => {
       estWeight: record.est_weight.toString(),
       estCarat: record.est_carat ? record.est_carat.toString() : '',
       updatedWeight: record.updated_weight ? record.updated_weight.toString() : '',
-      updatedCarat: record.updated_carat ? record.updated_carat.toString() : ''
+      updatedCarat: record.updated_carat ? record.updated_carat.toString() : '',
+      saleUnit: record.sale_unit || (record.est_carat > 0 ? 'carat' : 'kg') // ✅ Set saleUnit
     });
     setModals(prev => ({ ...prev, editWeight: true }));
   };
@@ -767,7 +774,11 @@ const WeightDashboard = () => {
                 type="number"
                 value={formData.updatedWeight}
                 onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
+                disabled={formData.saleUnit === 'carat'}
+                className={`w-full px-4 py-3 rounded-xl border-2 outline-none font-bold transition-all ${formData.saleUnit === 'carat'
+                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-green-50/30 text-green-800'
+                  }`}
               />
             </div>
             {/* ✅ NEW: Official Carat Input */}
@@ -778,7 +789,11 @@ const WeightDashboard = () => {
                 value={formData.updatedCarat}
                 onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
                 placeholder="0.00"
-                className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
+                disabled={formData.saleUnit === 'kg'}
+                className={`w-full px-4 py-3 rounded-xl border-2 outline-none font-bold transition-all ${formData.saleUnit === 'kg'
+                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 bg-purple-50/30 text-purple-800'
+                  }`}
               />
             </div>
           </div>
@@ -847,10 +862,10 @@ const WeightDashboard = () => {
                 onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
                 placeholder="0.00"
                 autoFocus
-                disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
-                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)
-                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'}
+                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'
+                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                    : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
                   }`}
               />
             </div>
@@ -862,10 +877,10 @@ const WeightDashboard = () => {
                 // ✅ CHANGED: Clears updatedWeight when typing in updatedCarat
                 onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
                 placeholder="0.00"
-                disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
-                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)
-                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'}
+                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'
+                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                    : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
                   }`}
               />
             </div>
