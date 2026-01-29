@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion'; // Kept for simple fade-in only
+import { motion } from 'framer-motion';
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Wallet, IndianRupee } from 'lucide-react';
 import AnimatedCounter from '../../components/ui/AnimatedCounter';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+
+// Helper function for clean quantity display
+const formatQtyDisplay = (qty, carat) => {
+  const hasQty = qty && qty > 0;
+  const hasCarat = carat && carat > 0;
+
+  if (hasQty && hasCarat) {
+    // Both have values - show both
+    return <>{qty} kg <span className="text-purple-600 font-medium">| {carat} Crt</span></>;
+  } else if (hasCarat) {
+    // Only carat - show carat only (no "0 kg")
+    return <span className="text-purple-600 font-medium">{carat} Crt</span>;
+  } else {
+    // Only kg or default - show kg
+    return <>{qty || 0} kg</>;
+  }
+};
 
 export default function CommitteeDashboard() {
   const [loading, setLoading] = useState(true);
@@ -39,9 +56,7 @@ export default function CommitteeDashboard() {
     };
 
     fetchDashboardData();
-  }, []); // Empty dependency array means this runs once on mount
-
-  // Unified Theme - All Stats use consistent Emerald/Slate styling
+  }, []);
   const stats = [
     { label: 'Total Farmers', value: statsData.totalFarmers, icon: Users, isCurrency: false },
     { label: 'Total Traders', value: statsData.totalTraders, icon: ShoppingBag, isCurrency: false },
@@ -121,29 +136,36 @@ export default function CommitteeDashboard() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {recentTransactions.length > 0 ? (
-                  recentTransactions.map((txn) => (
-                    <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-5 py-3.5 text-slate-600">{new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
-                      <td className="px-5 py-3.5 font-medium text-slate-900">{txn.farmer}</td>
-                      <td className="px-5 py-3.5 text-slate-600">{txn.trader}</td>
-                      <td className="px-5 py-3.5 text-slate-500">
-                        {txn.crop}
-                        <span className="block text-xs">
-                          {txn.qty} kg {txn.carat > 0 && `| ${txn.carat} Crt`}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right text-slate-600">₹{txn.rate}/kg</td>
-                      <td className="px-5 py-3.5 text-right font-bold text-slate-900">₹{txn.amount.toLocaleString()}</td>
-                      <td className="px-5 py-3.5 text-right">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${txn.status === 'Paid'
-                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}>
-                          {txn.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  recentTransactions.map((txn) => {
+                    const hasQty = txn.qty && txn.qty > 0;
+                    const hasCarat = txn.carat && txn.carat > 0;
+                    const rateUnit = hasCarat ? 'Crt' : 'kg';
+
+                    return (
+                      <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3.5 text-slate-600">{new Date(txn.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                        <td className="px-5 py-3.5 font-medium text-slate-900">{txn.farmer}</td>
+                        <td className="px-5 py-3.5 text-slate-600">{txn.trader}</td>
+                        {/* CLEAN DISPLAY: Show only kg OR carat based on which has value */}
+                        <td className="px-5 py-3.5 text-slate-500">
+                          {txn.crop}
+                          <span className="block text-xs">
+                            {formatQtyDisplay(txn.qty, txn.carat)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 text-right text-slate-600">₹{txn.rate}/{rateUnit}</td>
+                        <td className="px-5 py-3.5 text-right font-bold text-slate-900">₹{txn.amount.toLocaleString()}</td>
+                        <td className="px-5 py-3.5 text-right">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${txn.status === 'Paid'
+                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            }`}>
+                            {txn.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan="7" className="px-5 py-8 text-center text-slate-500">

@@ -65,6 +65,23 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, type, amount, name }) => {
   );
 };
 
+// Helper function to format quantity display - CLEAN LOGIC
+const formatQtyDisplay = (qty, carat) => {
+  const hasQty = qty && qty > 0;
+  const hasCarat = carat && carat > 0;
+
+  if (hasQty && hasCarat) {
+    // Both have values - show both
+    return <>{qty}kg <span className="text-purple-600 font-medium">| {carat}Crt</span></>;
+  } else if (hasCarat) {
+    // Only carat - show carat only (no 0kg)
+    return <span className="text-purple-600 font-medium">{carat}Crt</span>;
+  } else {
+    // Only kg or default - show kg
+    return <>{qty || 0}kg</>;
+  }
+};
+
 // Main Component
 export default function BillingReports() {
   const [data, setData] = useState([]);
@@ -85,7 +102,6 @@ export default function BillingReports() {
   const fetchRecords = async () => {
     try {
       setLoading(true);
-      // Fetch billing records
       const response = await api.finance.billingRecords.list({
         limit: 20,
         page,
@@ -104,15 +120,10 @@ export default function BillingReports() {
   };
 
   const processRecord = (record) => {
-    // Backend now provides explicit fields, logic simplified but kept robust
-    // Fallback to calculation if fields missing (backward compatibility)
-
-    // Check if new API fields exist
     const hasNewFields = record.net_payable_to_farmer !== undefined;
-
     const baseAmount = record.sale_amount || 0;
 
-    let farmerComm, traderComm, netFarmer, netTrader, paymentStatus;
+    let farmerComm, traderComm, netFarmer, netTrader;
 
     if (hasNewFields) {
       farmerComm = record.farmer_commission;
@@ -120,7 +131,6 @@ export default function BillingReports() {
       netFarmer = record.net_payable_to_farmer;
       netTrader = record.net_receivable_from_trader;
     } else {
-      // Fallback Calc
       const totalCommission = record.commission || 0;
       farmerComm = Math.round(totalCommission * (4 / 13));
       traderComm = Math.round(totalCommission * (9 / 13));
@@ -128,17 +138,24 @@ export default function BillingReports() {
       netTrader = baseAmount + traderComm;
     }
 
+    // Get carat and qty values
+    const caratValue = (record.official_carat && record.official_carat > 0)
+      ? record.official_carat
+      : (record.carat || 0);
+    const qtyValue = record.qtySold || record.official_qty || record.quantity || 0;
+
     if (activeTab === 'farmers') {
       return {
         id: record._id,
         date: record.sold_at || record.createdAt,
         name: record.farmer_id?.full_name || 'Unknown Farmer',
         crop: record.vegetable,
-        qty: record.qtySold || record.quantity,
+        qty: qtyValue,
+        carat: caratValue,
         baseAmount: baseAmount,
-        commission: farmerComm, // Deducted
-        finalAmount: netFarmer, // Net Payable
-        status: record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'), // Use specific status
+        commission: farmerComm,
+        finalAmount: netFarmer,
+        status: record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
         type: 'pay'
       };
     } else {
@@ -147,10 +164,11 @@ export default function BillingReports() {
         date: record.sold_at || record.createdAt,
         name: record.trader_id?.business_name || record.trader_id?.full_name || 'Unknown Trader',
         crop: record.vegetable,
-        qty: record.qtySold || record.quantity,
+        qty: qtyValue,
+        carat: caratValue,
         baseAmount: baseAmount,
-        commission: traderComm, // Added
-        finalAmount: netTrader, // Total Receivable
+        commission: traderComm,
+        finalAmount: netTrader,
         status: record.trader_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
         type: 'receive'
       };
@@ -168,17 +186,15 @@ export default function BillingReports() {
 
     try {
       if (selectedRecord.type === 'pay') {
-        // Pay Farmer
         await api.post(`/api/finance/pay-farmer/${selectedRecord.id}`, { mode, ref });
         toast.success(`Paid ₹${selectedRecord.finalAmount} to ${selectedRecord.name}`);
       } else {
-        // Receive from Trader
         await api.post(`/api/finance/receive-trader/${selectedRecord.id}`, { mode, ref });
         toast.success(`Received ₹${selectedRecord.finalAmount} from ${selectedRecord.name}`);
       }
       setShowPaymentModal(false);
       setSelectedRecord(null);
-      fetchRecords(); // Refresh data
+      fetchRecords();
     } catch (error) {
       console.error(error);
       toast.error("Transaction failed");
@@ -193,17 +209,15 @@ export default function BillingReports() {
   const totalCommission = currentData.reduce((acc, item) => acc + item.commission, 0);
   const totalFinal = currentData.reduce((acc, item) => acc + item.finalAmount, 0);
 
-
-
   const handleExport = () => {
-    const headers = ['Date', activeTab === 'farmers' ? 'Farmer' : 'Trader', 'Crop', 'Qty (kg)', 'Base Amt', 'Commission', 'Final Amt', 'Status'];
+    const headers = ['Date', activeTab === 'farmers' ? 'Farmer' : 'Trader', 'Crop', 'Qty (kg)', 'Carat', 'Base Amt', 'Commission', 'Final Amt', 'Status'];
 
-    // Use currentData which is already processed with calculations
     const csvData = currentData.map(item => [
       new Date(item.date).toLocaleDateString('en-IN'),
       item.name,
       item.crop,
       item.qty,
+      item.carat,
       item.baseAmount,
       item.commission,
       item.finalAmount,
@@ -359,9 +373,10 @@ export default function BillingReports() {
                   {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                 </td>
                 <td className="px-6 py-4 font-medium text-slate-800">{item.name}</td>
+                {/* CLEAN DISPLAY: Show only kg OR carat based on which has value */}
                 <td className="px-6 py-4">
                   <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
-                    {item.crop} • {item.qty}kg
+                    {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right font-medium text-slate-700">₹{item.baseAmount.toLocaleString()}</td>
@@ -438,8 +453,9 @@ export default function BillingReports() {
                   {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
                 <h3 className="font-bold text-slate-800">{item.name}</h3>
+                {/* CLEAN DISPLAY for Mobile */}
                 <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium mt-1">
-                  {item.crop} • {item.qty}kg
+                  {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
                 </span>
               </div>
               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid'
