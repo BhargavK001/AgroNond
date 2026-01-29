@@ -4,6 +4,27 @@ import { X, Phone, MapPin, Calendar, IndianRupee, Package, Wheat, TrendingUp, Ed
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
+// Helper function for clean quantity display
+const formatQtyDisplay = (qty, carat) => {
+    const hasQty = qty && qty > 0;
+    const hasCarat = carat && carat > 0;
+
+    if (hasQty && hasCarat) {
+        return <>{qty} kg <span className="text-purple-600 font-medium">| {carat} Crt</span></>;
+    } else if (hasCarat) {
+        return <span className="text-purple-600 font-medium">{carat} Crt</span>;
+    } else {
+        return <>{qty || 0} kg</>;
+    }
+};
+
+// Helper to get rate unit
+const getRateUnit = (qty, carat) => {
+    const hasCarat = carat && carat > 0;
+    const hasQty = qty && qty > 0;
+    return hasCarat && !hasQty ? 'Crt' : 'kg';
+};
+
 export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
     const [history, setHistory] = useState([]);
     const [stats, setStats] = useState(null);
@@ -38,7 +59,6 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
 
     const handleEditToggle = () => {
         if (isEditing) {
-            // Cancel edit - reset form
             setEditForm({
                 full_name: farmer.full_name,
                 phone: farmer.phone,
@@ -53,7 +73,6 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
             await api.patch(`/api/users/${farmer._id}`, editForm);
             toast.success('Farmer details updated');
             setIsEditing(false);
-            // Reload to show changes as a simple way to refresh parent data
             window.location.reload();
         } catch (error) {
             console.error('Update failed:', error);
@@ -67,7 +86,7 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                 await api.delete(`/api/users/${farmer._id}`);
                 toast.success('Farmer deleted successfully');
                 onClose();
-                window.location.reload(); // Refresh list to remove deleted item
+                window.location.reload();
             } catch (error) {
                 console.error('Delete failed:', error);
                 toast.error('Failed to delete farmer');
@@ -274,10 +293,22 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                                             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                                                 {stats.vegetableSummary.map((veg) => {
                                                     const colors = getVegetableColor(veg.name);
+                                                    // Check for carat in vegetable summary
+                                                    const hasCarat = veg.carat && veg.carat > 0;
+                                                    const hasQty = veg.quantity && veg.quantity > 0;
                                                     return (
                                                         <div key={veg.name} className={`${colors.bg} ${colors.border} border rounded-xl p-3`}>
                                                             <p className={`text-xs font-bold ${colors.text} uppercase mb-1`}>{veg.name}</p>
-                                                            <p className="text-lg font-bold text-slate-800">{veg.quantity} kg</p>
+                                                            {/* CLEAN DISPLAY */}
+                                                            <p className="text-lg font-bold text-slate-800">
+                                                                {hasQty && hasCarat ? (
+                                                                    <>{veg.quantity} kg <span className="text-purple-600">| {veg.carat} Crt</span></>
+                                                                ) : hasCarat ? (
+                                                                    <span className="text-purple-600">{veg.carat} Crt</span>
+                                                                ) : (
+                                                                    <>{veg.quantity || 0} kg</>
+                                                                )}
+                                                            </p>
                                                             <p className="text-xs text-slate-500 opacity-80">{veg.count} lots</p>
                                                         </div>
                                                     );
@@ -314,6 +345,11 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                                                     ) : (
                                                         history.map((record) => {
                                                             const colors = getVegetableColor(record.vegetable);
+                                                            // Get qty and carat values
+                                                            const qty = record.official_qty || record.quantity || 0;
+                                                            const carat = record.official_carat || record.carat || 0;
+                                                            const rateUnit = getRateUnit(qty, carat);
+
                                                             return (
                                                                 <tr key={record._id} className="hover:bg-slate-50/50 transition-colors">
                                                                     <td className="px-6 py-4 text-sm text-slate-600">
@@ -327,11 +363,13 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                                                                     <td className="px-6 py-4 text-sm text-slate-600">
                                                                         {record.trader_id?.business_name || record.trader_id?.full_name || '-'}
                                                                     </td>
+                                                                    {/* CLEAN QTY DISPLAY */}
                                                                     <td className="px-6 py-4 text-right text-sm font-medium text-slate-700">
-                                                                        {record.official_qty || record.quantity} kg
+                                                                        {formatQtyDisplay(qty, carat)}
                                                                     </td>
+                                                                    {/* DYNAMIC RATE UNIT */}
                                                                     <td className="px-6 py-4 text-right text-sm text-slate-600">
-                                                                        {record.sale_rate ? `₹${record.sale_rate}` : '-'}
+                                                                        {record.sale_rate ? `₹${record.sale_rate}/${rateUnit}` : '-'}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-right">
                                                                         {record.total_amount ? (
