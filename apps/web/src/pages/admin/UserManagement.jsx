@@ -276,14 +276,14 @@ export default function UserManagement() {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2 relative">
                           <button
-                            onClick={() => setActionMenuOpen(actionMenuOpen === user.id ? null : user.id)}
+                            onClick={() => setActionMenuOpen(actionMenuOpen === (user.id || user._id) ? null : (user.id || user._id))}
                             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                           >
                             <MoreVertical className="w-5 h-5 text-gray-500" />
                           </button>
 
                           {/* Action Dropdown */}
-                          {actionMenuOpen === user.id && (
+                          {actionMenuOpen === (user.id || user._id) && (
                             <div className="absolute right-0 top-10 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20 overflow-hidden">
                               <button
                                 onClick={() => openEditModal(user)}
@@ -303,7 +303,7 @@ export default function UserManagement() {
                                   .map(role => (
                                     <button
                                       key={role.key}
-                                      onClick={() => handleRoleChange(user.id, role.key)}
+                                      onClick={() => handleRoleChange(user.id || user._id, role.key)}
                                       className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors capitalize pl-6 border-l-2 border-transparent hover:border-emerald-500 block"
                                     >
                                       To {role.label}
