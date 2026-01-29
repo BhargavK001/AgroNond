@@ -55,54 +55,86 @@ export default function TransactionsView({ transactions }) {
                             <th className="px-4 py-3">Date</th>
                             <th className="px-4 py-3">Farmer</th>
                             <th className="px-4 py-3">Trader</th>
-                            <th className="px-4 py-3">Crop</th>
+                            <th className="px-4 py-3">Details</th>
                             <th className="px-4 py-3 text-right">Rate</th>
                             <th className="px-4 py-3 text-right">Amount</th>
                             <th className="px-4 py-3 text-center">Status</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {filteredData.map((txn) => (
-                            <tr key={txn.id} className="hover:bg-emerald-50/20 transition-colors">
-                                <td className="px-4 py-3 text-slate-600">{txn.date}</td>
-                                <td className="px-4 py-3 font-medium text-slate-900">{txn.farmer.name}</td>
-                                <td className="px-4 py-3 text-slate-600">{txn.trader.name}</td>
-                                <td className="px-4 py-3 text-slate-600">{txn.crop} <span className="text-slate-400">({txn.quantity}kg)</span></td>
-                                <td className="px-4 py-3 text-right text-slate-600">₹{txn.rate}/kg</td>
-                                <td className="px-4 py-3 text-right font-medium text-slate-900">₹{txn.baseAmount.toLocaleString()}</td>
-                                <td className="px-4 py-3 text-center">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(txn.paymentStatus)}`}>
-                                        {txn.paymentStatus}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
+                        {filteredData.map((txn) => {
+                            // Determine if this transaction uses carat
+                            const hasCarat = txn.carat && txn.carat > 0;
+                            // FIX: Use hasCarat directly to determine rate unit (not relying on sale_unit field)
+                            const rateUnit = hasCarat ? 'Crt' : 'kg';
+
+                            return (
+                                <tr key={txn.id} className="hover:bg-emerald-50/20 transition-colors">
+                                    <td className="px-4 py-3 text-slate-600">{txn.date}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-900">{txn.farmer.name}</td>
+                                    <td className="px-4 py-3 text-slate-600">{txn.trader.name}</td>
+                                    {/* Show both kg and Carat in Details column */}
+                                    <td className="px-4 py-3 text-slate-600">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-slate-800">{txn.crop}</span>
+                                            <span className="text-xs text-slate-400">
+                                                {txn.quantity} kg
+                                                {hasCarat && (
+                                                    <span className="text-purple-600 font-medium"> | {txn.carat} Crt</span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    {/* FIX: Rate now shows correct unit based on hasCarat */}
+                                    <td className="px-4 py-3 text-right text-slate-600">
+                                        ₹{txn.rate}/{rateUnit}
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-medium text-slate-900">₹{txn.baseAmount?.toLocaleString() || 0}</td>
+                                    <td className="px-4 py-3 text-center">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(txn.paymentStatus)}`}>
+                                            {txn.paymentStatus}
+                                        </span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
 
             {/* Mobile Feed */}
             <div className="md:hidden space-y-3">
-                {filteredData.map((txn) => (
-                    <div key={txn.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <div className="flex justify-between items-start mb-2">
-                            <div>
-                                <p className="font-medium text-slate-900">{txn.farmer.name}</p>
-                                <p className="text-xs text-slate-500">{txn.date} • {txn.trader.name}</p>
+                {filteredData.map((txn) => {
+                    const hasCarat = txn.carat && txn.carat > 0;
+                    // FIX: Use hasCarat directly to determine rate unit
+                    const rateUnit = hasCarat ? 'Crt' : 'kg';
+
+                    return (
+                        <div key={txn.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <p className="font-medium text-slate-900">{txn.farmer.name}</p>
+                                    <p className="text-xs text-slate-500">{txn.date} • {txn.trader.name}</p>
+                                </div>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusColor(txn.paymentStatus)}`}>
+                                    {txn.paymentStatus}
+                                </span>
                             </div>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${getStatusColor(txn.paymentStatus)}`}>
-                                {txn.paymentStatus}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-end mt-3 pt-3 border-t border-slate-100">
-                            <div>
-                                <p className="text-xs text-slate-500">{txn.crop}</p>
-                                <p className="text-sm text-slate-700">{txn.quantity}kg @ ₹{txn.rate}</p>
+                            <div className="flex justify-between items-end mt-3 pt-3 border-t border-slate-100">
+                                <div>
+                                    <p className="text-xs text-slate-500">{txn.crop}</p>
+                                    {/* FIX: Show correct rate unit based on hasCarat */}
+                                    <p className="text-sm text-slate-700">
+                                        {txn.quantity} kg
+                                        {hasCarat && <span className="text-purple-600"> | {txn.carat} Crt</span>}
+                                        {' '}@ ₹{txn.rate}/{rateUnit}
+                                    </p>
+                                </div>
+                                <p className="font-bold text-slate-900">₹{txn.baseAmount?.toLocaleString() || 0}</p>
                             </div>
-                            <p className="font-bold text-slate-900">₹{txn.baseAmount.toLocaleString()}</p>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import Record from '../models/Record.js';
+import CommissionRule from '../models/CommissionRule.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -260,16 +261,103 @@ router.post('/users', requireAuth, requireAdmin, async (req, res) => {
 });
 
 /**
+ * DELETE /api/admin/users/:id
+ * Remove a user
+ */
+router.delete('/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    if (!deletedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+/**
+ * PATCH /api/admin/users/:id
+ * Update user details
+ */
+router.patch('/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { full_name, phone } = req.body;
+
+    const updates = {};
+    if (full_name !== undefined) updates.full_name = full_name;
+    if (phone !== undefined) updates.phone = phone;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+/**
  * GET /api/admin/commission-rules
  * Get commission rules
  */
 router.get('/commission-rules', requireAuth, requireAdmin, async (req, res) => {
-  // Return mock rules for now until DB model is ready
-  res.json([
-    { id: '1', cropType: 'Wheat', percentage: 2.5, minAmount: 100 },
-    { id: '2', cropType: 'Rice', percentage: 2.0, minAmount: 0 },
-    { id: '3', cropType: 'Corn', percentage: 1.5, minAmount: 50 }
-  ]);
+  try {
+    const rules = await CommissionRule.find({ is_active: true })
+      .sort({ createdAt: -1 });
+
+    // If no rules exist, return defaults
+    if (rules.length === 0) {
+      return res.json([
+        { role_type: 'farmer', crop_type: 'All', rate: 0.04, effective_date: new Date() },
+        { role_type: 'trader', crop_type: 'All', rate: 0.09, effective_date: new Date() }
+      ]);
+    }
+
+    res.json(rules);
+  } catch (error) {
+    console.error('Fetch commission rules error:', error);
+    res.status(500).json({ error: 'Failed to fetch rules' });
+  }
+});
+
+/**
+ * POST /api/admin/commission-rules
+ * Create new commission rule
+ */
+router.post('/commission-rules', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { role_type, crop_type, rate } = req.body;
+
+    if (!role_type || rate === undefined) {
+      return res.status(400).json({ error: 'Role type and rate are required' });
+    }
+
+    const newRule = await CommissionRule.create({
+      role_type,
+      crop_type: crop_type || 'All',
+      rate: parseFloat(rate), // Ensure it's a number
+      created_by: req.user._id
+    });
+
+    res.status(201).json(newRule);
+  } catch (error) {
+    console.error('Create commission rule error:', error);
+    res.status(500).json({ error: 'Failed to create rule' });
+  }
 });
 
 export default router;

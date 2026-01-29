@@ -64,8 +64,14 @@ export const api = {
   // Purchases
   purchases: {
     list: (params = {}) => {
-      const query = new URLSearchParams(params).toString();
-      return apiRequest(`/api/purchases${query ? '?' + query : ''}`, { method: 'GET' });
+      // Map frontend date range to backend 'date' param (backend supports single date filtering)
+      const apiParams = { ...params };
+      if (apiParams.startDate && !apiParams.date) {
+        apiParams.date = apiParams.startDate;
+      }
+
+      const query = new URLSearchParams(apiParams).toString();
+      return apiRequest(`/api/records/completed${query ? '?' + query : ''}`, { method: 'GET' });
     },
     get: (id) => apiRequest(`/api/purchases/${id}`, { method: 'GET' }),
     stats: () => apiRequest('/api/purchases/stats', { method: 'GET' }),
@@ -146,6 +152,8 @@ export const api = {
       },
       updateRole: (id, role) => apiRequest(`/api/admin/users/${id}/role`, { method: 'PATCH', body: JSON.stringify({ role }) }),
       create: (data) => apiRequest('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id, data) => apiRequest(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      delete: (id) => apiRequest(`/api/admin/users/${id}`, { method: 'DELETE' }),
     },
   },
 
@@ -164,6 +172,7 @@ export const api = {
       create: (data) => apiRequest('/api/finance/payments', { method: 'POST', body: JSON.stringify(data) }),
       payFarmer: (id, data) => apiRequest(`/api/finance/pay-farmer/${id}`, { method: 'POST', body: JSON.stringify(data) }),
       receiveTrader: (id, data) => apiRequest(`/api/finance/receive-trader/${id}`, { method: 'POST', body: JSON.stringify(data) }),
+      bulkReceiveTrader: (data) => apiRequest('/api/finance/bulk-receive-trader', { method: 'POST', body: JSON.stringify(data) }),
     },
     stats: () => apiRequest('/api/finance/stats', { method: 'GET' }),
     cashflow: () => apiRequest('/api/finance/cashflow', { method: 'GET' }),

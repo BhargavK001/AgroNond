@@ -72,7 +72,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 router.patch('/profile', requireAuth, async (req, res) => {
   try {
-    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations, adhaar_number } = req.body;
+    const { role, full_name, email, location, profile_picture, business_name, gst_number, license_number, business_address, operating_locations } = req.body;
 
     const user = req.user; // This comes from requireAuth middleware
 
@@ -96,7 +96,7 @@ router.patch('/profile', requireAuth, async (req, res) => {
     if (license_number) user.license_number = license_number;
     if (business_address) user.business_address = business_address;
     if (operating_locations) user.operating_locations = operating_locations;
-    if (adhaar_number) user.adhaar_number = adhaar_number;
+
 
     // Save to Database
     await user.save();
@@ -126,7 +126,7 @@ router.patch('/profile', requireAuth, async (req, res) => {
  */
 router.post('/add', requireAuth, async (req, res) => {
   try {
-    const { role, full_name, phone, location, adhaar_number, business_name, gst_number, license_number, business_address } = req.body;
+    const { role, full_name, phone, location, business_name, gst_number, license_number, business_address } = req.body;
 
     // Validate required fields
     if (!role || !full_name || !phone) {
@@ -151,7 +151,6 @@ router.post('/add', requireAuth, async (req, res) => {
       full_name,
       phone,
       location: location || '',
-      adhaar_number: adhaar_number || '',
     };
 
     // Add trader-specific fields

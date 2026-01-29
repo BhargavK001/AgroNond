@@ -13,6 +13,9 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    exclude: ['@react-pdf/renderer'],
+  },
   plugins: [
     react(),
     VitePWA({
@@ -57,8 +60,7 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['framer-motion', 'lucide-react', 'react-hot-toast'],
-          'data-vendor': ['@tanstack/react-query'],
-          'utils-vendor': ['@react-pdf/renderer']
+          'data-vendor': ['@tanstack/react-query']
         },
       },
     },

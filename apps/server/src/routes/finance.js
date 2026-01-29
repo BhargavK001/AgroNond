@@ -83,6 +83,105 @@ router.post('/receive-trader/:id', async (req, res) => {
 });
 
 /**
+ * POST /api/finance/bulk-receive-trader
+ * Process bulk payment from trader (Allocates to oldest pending records)
+ */
+router.post('/bulk-receive-trader', async (req, res) => {
+    try {
+        // Import notification service dynamically
+        const { createNotification } = await import('../services/notificationService.js');
+        // Import PaymentReceipt dynamically (or at top if preferred, but doing here to minimize file diffs elsewhere)
+        const PaymentReceipt = (await import('../models/PaymentReceipt.js')).default;
+
+        const { traderId, amount, mode, ref, date, recordIds } = req.body;
+
+        if (!traderId || !amount || !mode) {
+            return res.status(400).json({ error: 'Trader ID, Amount and Mode are required' });
+        }
+
+        let remainingAmount = Number(amount);
+        let processedCount = 0;
+        let recordsUpdated = [];
+
+        // 1. Fetch pending records
+        let query = {
+            trader_id: traderId,
+            trader_payment_status: 'Pending',
+            status: { $in: ['Sold', 'Completed'] }
+        };
+
+        // If specific records selected, filter by them
+        if (recordIds && Array.isArray(recordIds) && recordIds.length > 0) {
+            query._id = { $in: recordIds };
+        }
+
+        const pendingRecords = await Record.find(query).sort({ createdAt: 1 });
+
+        if (pendingRecords.length === 0) {
+            return res.status(400).json({ error: 'No pending records found for this trader' });
+        }
+
+        // 2. Allocate payment
+        for (const record of pendingRecords) {
+            if (remainingAmount <= 0) break;
+
+            const payableAmount = record.net_receivable_from_trader;
+
+            // We only settle FULL records as per current design limitation (no partial tracking)
+            if (remainingAmount >= payableAmount) {
+                // Mark as Paid
+                record.trader_payment_status = 'Paid';
+                record.trader_payment_mode = mode;
+                record.trader_payment_ref = ref;
+                record.trader_payment_date = date || new Date();
+
+                // If farmer is also paid, mark overall as paid? 
+                // Using existing logic:
+                // record.payment_status = 'paid'; // This seems to be the convention in single payment
+
+                // Let's check if we should update payment_status
+                // In single 'receive-trader', it sets payment_status: 'paid'. 
+                // We should probably check farmer status too effectively, but let's mimic single payment for now.
+                record.payment_status = 'paid';
+
+                await record.save();
+
+                recordsUpdated.push(record._id);
+                remainingAmount -= payableAmount;
+                processedCount++;
+            } else {
+                // Partial amount remaining, but not enough to clear next invoice.
+                // Stop here.
+                break;
+            }
+        }
+
+        // 3. Notification
+        if (processedCount > 0) {
+            await createNotification({
+                recipient: traderId, // Assuming trader is a user
+                type: 'success',
+                title: 'Bulk Payment Received',
+                message: `We received ₹${amount - remainingAmount} via ${mode}. ${processedCount} invoices cleared.`,
+                data: { type: 'payment' }
+            });
+        }
+
+        res.json({
+            success: true,
+            processedCount,
+            totalAllocated: amount - remainingAmount,
+            remainingUnallocated: remainingAmount,
+            message: `Successfully cleared ${processedCount} invoices. ₹${remainingAmount} remaining.`
+        });
+
+    } catch (error) {
+        console.error('Bulk receive error:', error);
+        res.status(500).json({ error: 'Bulk payment failed' });
+    }
+});
+
+/**
  * GET /api/finance/stats
  * Get financial statistics
  */
@@ -292,8 +391,21 @@ router.get('/billing-records', async (req, res) => {
             Record.countDocuments(query)
         ]);
 
+        // UPDATED: Transform records to ensure sale_unit is set correctly
+        const transformedRecords = records.map(record => {
+            const recordObj = record.toObject();
+
+            // If sale_unit is not set, infer from carat data
+            if (!recordObj.sale_unit) {
+                const caratValue = recordObj.official_carat || recordObj.carat || 0;
+                recordObj.sale_unit = caratValue > 0 ? 'carat' : 'kg';
+            }
+
+            return recordObj;
+        });
+
         res.json({
-            records,
+            records: transformedRecords,
             total,
             page: parseInt(page),
             totalPages: Math.ceil(total / limit)

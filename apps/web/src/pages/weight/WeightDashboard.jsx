@@ -44,8 +44,10 @@ const WeightDashboard = () => {
     addWeight: false,
     editWeight: false,
     editProfile: false,
-    details: false
+    details: false,
+    delete: false
   });
+  const [deleteId, setDeleteId] = useState(null);
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -114,10 +116,6 @@ const WeightDashboard = () => {
         record_ref_id: r._id
       });
 
-      // Filter out duplicate pending records just in case logic overlaps, 
-      // but usually records() returns 'Weighed'/'Completed' and pendingRecords() returns 'Pending'
-      // We want all of them in the main table logic? 
-      // The original dashboard showed "Pending" records in the list too.
       const allRecords = [...done, ...pending].map(mapRecord);
 
       setRecords(allRecords);
@@ -127,7 +125,7 @@ const WeightDashboard = () => {
     }
   };
 
-  // 2. Fetch Market Data (Source for Auto-Fill)
+  // 2. Fetch Market Data (Source for Auto-Fill) - Now fetches "RateAssigned" records
   const fetchMarketData = async () => {
     try {
       const data = await api.weight.pendingRecords();
@@ -137,8 +135,9 @@ const WeightDashboard = () => {
         farmer_id: r.farmer_id?.farmerId || 'Unknown',
         item: r.vegetable,
         est_qty: r.quantity,
-        est_carat: r.carat, // ✅ NEW
-        date: r.createdAt
+        est_carat: r.carat,
+        date: r.createdAt,
+        status: r.status // Capture status
       }));
       setMarketData(mapped);
     } catch (err) {
@@ -177,8 +176,8 @@ const WeightDashboard = () => {
   }, []);
 
   // --- CALCULATIONS ---
-  const completedRecords = records.filter(r => r.status === 'Done');
-  const pendingRecords = records.filter(r => r.status === 'Pending');
+  const completedRecords = records.filter(r => r.status === 'Done' || r.status === 'Sold' || r.status === 'Weighed'); // Include Sold/Weighed in "Done" bucket for KPI
+  const pendingRecords = records.filter(r => r.status === 'Pending' || r.status === 'RateAssigned');
   const todayRecords = records.filter(r => {
     const recordDate = new Date(r.date).toLocaleDateString('en-GB');
     const today = new Date().toLocaleDateString('en-GB');
@@ -245,6 +244,12 @@ const WeightDashboard = () => {
   const handleUpdateWeight = async () => {
     if (!selectedRecord) return;
 
+    // ✅ FIX 1: Check if product is sold - prevent editing
+    if (['Sold', 'Completed'].includes(selectedRecord.status)) {
+      toast.error('Cannot update weight - Product already sold!');
+      return;
+    }
+
     try {
       await api.weight.updateRecord(selectedRecord.id, {
         updatedWeight: formData.updatedWeight ? parseFloat(formData.updatedWeight) : 0,
@@ -263,20 +268,32 @@ const WeightDashboard = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
-      try {
-        await api.weight.deleteRecord(id);
-        toast.success('Record deleted');
-        fetchWeightRecords();
-        fetchMarketData();
-      } catch (err) {
-        toast.error('Delete failed');
-      }
+  const handleDelete = (id) => {
+    setDeleteId(id);
+    setModals(prev => ({ ...prev, delete: true }));
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await api.weight.deleteRecord(deleteId);
+      toast.success('Record deleted successfully');
+      fetchWeightRecords();
+      fetchMarketData();
+      setModals((prev) => ({ ...prev, delete: false }));
+    } catch (err) {
+      toast.error('Delete failed');
+      console.error(err);
     }
   };
 
   const openEditModal = (record) => {
+    // ✅ FIX 1: Check if product is sold - prevent opening edit modal
+    if (['Sold', 'Completed'].includes(record.status)) {
+      toast.error('Cannot edit - Product already sold!');
+      return;
+    }
+
     setSelectedRecord(record);
     setFormData({
       date: record.date,
@@ -361,7 +378,7 @@ const WeightDashboard = () => {
               <div className="p-3 bg-orange-50 rounded-2xl text-orange-600 group-hover:bg-orange-500 group-hover:text-white transition-colors">
                 <Clock size={24} />
               </div>
-              <span className="text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">Pending</span>
+              <span className="text-xs font-bold text-orange-700 bg-orange-100 px-3 py-1 rounded-full">{pendingRecords.length} Pending</span>
             </div>
             <p className="text-gray-500 text-sm font-medium mb-1">Remaining Weight</p>
             <h3 className="text-3xl font-bold text-gray-900">{pendingRecords.length}</h3>
@@ -397,6 +414,8 @@ const WeightDashboard = () => {
                 <option value="All">All Status</option>
                 <option value="Pending">Pending</option>
                 <option value="Done">Completed</option>
+                <option value="Sold">Sold</option>
+                <option value="RateAssigned">Ready to Weight</option>
               </select>
               <select
                 value={sortBy}
@@ -421,69 +440,86 @@ const WeightDashboard = () => {
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {sortedRecords.map((record) => (
-                  <div key={record.id} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs">
-                          {record.farmer_id.slice(0, 2).toUpperCase()}
+                {sortedRecords.map((record) => {
+                  // ✅ FIX 1: Check if sold
+                  const isSold = ['Sold', 'Completed'].includes(record.status);
+
+                  return (
+                    <div key={record.id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs">
+                            {record.farmer_id.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="block text-xs text-gray-500 font-medium">
+                              {new Date(record.date).toLocaleDateString('en-GB')}
+                            </span>
+                            <span className="text-sm font-bold text-gray-900">{record.farmer_id}</span>
+                          </div>
                         </div>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${['Done', 'Sold', 'Weighed'].includes(record.status)
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
+                          }`}>
+                          {['Done', 'Sold', 'Weighed'].includes(record.status) ? <CheckCircle size={10} /> : <Clock size={10} />}
+                          {record.status}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center mb-4 pl-10">
                         <div>
-                          <span className="block text-xs text-gray-500 font-medium">
-                            {new Date(record.date).toLocaleDateString('en-GB')}
-                          </span>
-                          <span className="text-sm font-bold text-gray-900">{record.farmer_id}</span>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Item</p>
+                          <p className="text-base font-bold text-gray-900">{record.item}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Official Qty</p>
+                          {/* ✅ UPDATED: Shows only one value (Kg OR Crt) with correct color */}
+                          <p className={`text-lg font-bold ${record.updated_weight ? 'text-green-600' : (record.updated_carat ? 'text-purple-600' : 'text-gray-400')}`}>
+                            {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '---')}
+                          </p>
+
+                          <p className="text-[10px] text-gray-400">
+                            Est: {record.est_weight > 0 ? `${record.est_weight} kg` : ''}{record.est_weight > 0 && record.est_carat > 0 ? ' | ' : ''}{record.est_carat > 0 ? `${record.est_carat} Crt` : ''}
+                          </p>
                         </div>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-orange-100 text-orange-700'
-                        }`}>
-                        {record.status === 'Done' ? <CheckCircle size={10} /> : <Clock size={10} />}
-                        {record.status}
-                      </span>
-                    </div>
 
-                    <div className="flex justify-between items-center mb-4 pl-10">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Item</p>
-                        <p className="text-base font-bold text-gray-900">{record.item}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Official Qty</p>
-                        <p className={`text-lg font-bold ${record.updated_weight ? 'text-green-600' : 'text-gray-400'}`}>
-                          {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '---')}
-                        </p>
-                        {/* ✅ NEW: Show Carat */}
-                        <p className={`text-sm font-bold ${record.updated_carat ? 'text-purple-600' : 'text-gray-400'}`}>
-                          {record.updated_carat ? `${record.updated_carat} Crt` : ''}
-                        </p>
-                        <p className="text-[10px] text-gray-400">Est: {record.est_weight} kg | {record.est_carat} Crt</p>
+                      {/* ✅ FIX 2: Always visible action buttons */}
+                      <div className="flex gap-2 justify-end pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => { setSelectedRecord(record); setModals(prev => ({ ...prev, details: true })); }}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg active:scale-95 transition"
+                          title="View Details"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => openEditModal(record)}
+                          disabled={isSold}
+                          className={`p-2 rounded-lg transition ${isSold
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            : 'bg-green-50 text-green-600 active:scale-95'
+                            }`}
+                          title={isSold ? "Cannot edit - Product sold" : "Edit Weight"}
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(record.id)}
+                          disabled={isSold}
+                          className={`p-2 rounded-lg transition ${isSold
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            : 'bg-red-50 text-red-600 active:scale-95'
+                            }`}
+                          title={isSold ? "Cannot delete - Product sold" : "Delete Record"}
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex gap-2 justify-end pt-3 border-t border-gray-100">
-                      <button
-                        onClick={() => { setSelectedRecord(record); setModals(prev => ({ ...prev, details: true })); }}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg active:scale-95 transition"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        onClick={() => openEditModal(record)}
-                        className="p-2 bg-green-50 text-green-600 rounded-lg active:scale-95 transition"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(record.id)}
-                        className="p-2 bg-red-50 text-red-600 rounded-lg active:scale-95 transition"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -514,63 +550,80 @@ const WeightDashboard = () => {
                     </td>
                   </tr>
                 ) : (
-                  sortedRecords.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50/80 transition-colors group">
-                      <td className="px-6 py-4 text-gray-600 font-medium">
-                        {new Date(record.date).toLocaleDateString('en-GB')}
-                      </td>
-                      <td className="px-6 py-4 text-gray-900 font-bold">{record.farmer_id}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 bg-gray-100 rounded-md text-gray-700 font-medium text-xs border border-gray-200">
-                          {record.item}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-500 font-medium">{record.est_weight} kg</td>
-                      <td className="px-6 py-4">
-                        <span className={`text-base font-bold ${record.updated_weight ? 'text-green-600' : 'text-gray-400'}`}>
-                          {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '-')}
-                        </span>
-                        {/* ✅ NEW: Show Carat */}
-                        <div className={`text-xs font-bold ${record.updated_carat ? 'text-purple-600' : 'text-gray-400'}`}>
-                          {record.updated_carat ? `${record.updated_carat} Crt` : ''}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${record.status === 'Done'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-orange-100 text-orange-700'
-                          }`}>
-                          {record.status === 'Done' ? <CheckCircle size={12} /> : <Clock size={12} />}
-                          {record.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => { setSelectedRecord(record); setModals(prev => ({ ...prev, details: true })); }}
-                            className="p-2 hover:bg-blue-50 text-gray-400 hover:text-blue-600 rounded-lg transition"
-                            title="View"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          <button
-                            onClick={() => openEditModal(record)}
-                            className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-lg transition"
-                            title="Edit"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(record.id)}
-                            className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  sortedRecords.map((record) => {
+                    // ✅ FIX 1: Check if sold
+                    const isSold = ['Sold', 'Completed'].includes(record.status);
+
+                    return (
+                      <tr key={record.id} className="hover:bg-gray-50/80 transition-colors">
+                        <td className="px-6 py-4 text-gray-600 font-medium">
+                          {new Date(record.date).toLocaleDateString('en-GB')}
+                        </td>
+                        <td className="px-6 py-4 text-gray-900 font-bold">{record.farmer_id}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-2.5 py-1 bg-gray-100 rounded-md text-gray-700 font-medium text-xs border border-gray-200">
+                            {record.item}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 font-medium">
+                          {record.est_weight > 0
+                            ? `${record.est_weight} kg`
+                            : record.est_carat > 0
+                              ? `${record.est_carat} Crt`
+                              : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          {/* ✅ UPDATED: Shows only one value (Kg OR Crt) */}
+                          <span className={`text-base font-bold ${record.updated_weight ? 'text-green-600' : (record.updated_carat ? 'text-purple-600' : 'text-gray-400')}`}>
+                            {record.updated_weight ? `${record.updated_weight} kg` : (record.updated_carat ? `${record.updated_carat} Crt` : '-')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${['Done', 'Sold', 'Weighed'].includes(record.status)
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-orange-100 text-orange-700'
+                            }`}>
+                            {['Done', 'Sold', 'Weighed'].includes(record.status) ? <CheckCircle size={12} /> : <Clock size={12} />}
+                            {record.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {/* ✅ FIX 2: Always visible action buttons - removed opacity-0 and group-hover:opacity-100 */}
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => { setSelectedRecord(record); setModals(prev => ({ ...prev, details: true })); }}
+                              className="p-2 hover:bg-blue-50 text-gray-600 hover:text-blue-600 rounded-lg transition"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button
+                              onClick={() => openEditModal(record)}
+                              disabled={isSold}
+                              className={`p-2 rounded-lg transition ${isSold
+                                ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                                : 'hover:bg-green-50 text-gray-600 hover:text-green-600'
+                                }`}
+                              title={isSold ? "Cannot edit - Product sold" : "Edit Weight"}
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(record.id)}
+                              disabled={isSold}
+                              className={`p-2 rounded-lg transition ${isSold
+                                ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                                : 'hover:bg-red-50 text-gray-600 hover:text-red-600'
+                                }`}
+                              title={isSold ? "Cannot delete - Product sold" : "Delete Record"}
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -579,6 +632,41 @@ const WeightDashboard = () => {
       </main>
 
       {/* --- MODALS --- */}
+
+      <Modal
+        isOpen={modals.delete}
+        onClose={() => setModals(prev => ({ ...prev, delete: false }))}
+        title="Confirm Delete"
+        size="sm"
+      >
+        <div className="space-y-6">
+          <div className="flex flex-col items-center justify-center text-center p-4 bg-red-50 rounded-2xl border border-red-100">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+              <Trash2 size={32} className="text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-red-900">Delete Record?</h3>
+            <p className="text-sm text-red-600/80 mt-1 max-w-[200px]">
+              This action cannot be undone. Are you sure you want to proceed?
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setModals(prev => ({ ...prev, delete: false }))}
+              className="px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition active:scale-95"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition shadow-lg shadow-red-200 active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Trash2 size={18} />
+              Yes, Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Weight Record Modal - UPDATED FOR AUTO FETCH */}
       <Modal
@@ -614,7 +702,7 @@ const WeightDashboard = () => {
                 {marketData.length > 0 ? (
                   marketData.map((mItem) => (
                     <option key={mItem.id} value={mItem.id}>
-                      {mItem.farmer_id} - {mItem.item} ({mItem.est_qty}kg)
+                      {mItem.farmer_id} - {mItem.item} ({mItem.est_qty}kg) {mItem.status === 'RateAssigned' ? '✅ Ready' : ''}
                     </option>
                   ))
                 ) : (
@@ -704,7 +792,7 @@ const WeightDashboard = () => {
             className="w-full mt-4 px-4 py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition shadow-lg shadow-green-200 flex items-center justify-center gap-2"
           >
             <Plus size={20} />
-            Save Record
+            Save & Finalize Sale
           </button>
         </div>
       </Modal>
@@ -736,27 +824,49 @@ const WeightDashboard = () => {
             </div>
           </div>
 
+          {/* ✅ FIX 1: Show warning if product is sold */}
+          {selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status) && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+              <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <X size={16} className="text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-red-900">Cannot Edit - Product Sold</p>
+                <p className="text-xs text-red-700 mt-1">This product has already been sold. Weight changes are not allowed.</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Official Weight (Kg)</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Kg)</label>
               <input
                 type="number"
                 value={formData.updatedWeight}
-                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
+                // ✅ CHANGED: Clears updatedCarat when typing in updatedWeight
+                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
                 placeholder="0.00"
                 autoFocus
-                className="w-full px-4 py-4 rounded-xl border-2 border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-white text-green-700 text-3xl font-bold text-center"
+                disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
+                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)
+                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                  }`}
               />
             </div>
-            {/* ✅ NEW: Edit Official Carat */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Official Carat</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Crt)</label>
               <input
                 type="number"
                 value={formData.updatedCarat}
-                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
+                // ✅ CHANGED: Clears updatedWeight when typing in updatedCarat
+                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
                 placeholder="0.00"
-                className="w-full px-4 py-4 rounded-xl border-2 border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-white text-green-700 text-3xl font-bold text-center"
+                disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
+                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)
+                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                  }`}
               />
             </div>
           </div>
@@ -764,7 +874,11 @@ const WeightDashboard = () => {
           <div className="pt-2">
             <button
               onClick={handleUpdateWeight}
-              className="w-full px-4 py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition shadow-lg shadow-green-200 flex items-center justify-center gap-2"
+              disabled={selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)}
+              className={`w-full px-4 py-3.5 font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'
+                }`}
             >
               <CheckCircle size={20} />
               Update Record

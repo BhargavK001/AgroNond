@@ -50,7 +50,7 @@ export default function FarmerManagement() {
                         <thead className="bg-emerald-50/50 border-b border-emerald-100">
                             <tr>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Farmer Details</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">ID & Verification</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Farmer ID</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Location</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-emerald-800 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-4 text-right text-xs font-semibold text-emerald-800 uppercase tracking-wider">Actions</th>
@@ -82,9 +82,6 @@ export default function FarmerManagement() {
                                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800 mb-1">
                                                     {farmer.farmerId || 'Pending'}
                                                 </span>
-                                                {farmer.adhaar_number && (
-                                                    <p className="text-xs text-slate-500">Aadhaar: {farmer.adhaar_number}</p>
-                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -169,31 +166,9 @@ export default function FarmerManagement() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">Identification</h4>
-                                    <div className="p-4 border border-slate-100 rounded-xl bg-white shadow-sm">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs font-semibold text-slate-500">Aadhaar Number</span>
-                                            {selectedFarmer.adhaar_number ? (
-                                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Verified</span>
-                                            ) : (
-                                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">Missing</span>
-                                            )}
-                                        </div>
-                                        <p className="font-mono text-slate-800 tracking-wider">
-                                            {selectedFarmer.adhaar_number || 'XXXX-XXXX-XXXX'}
-                                        </p>
-                                    </div>
-                                </div>
 
-                                <div className="pt-6 mt-6 border-t border-slate-100">
-                                    <button
-                                        onClick={() => toast.success('Account reset email sent')}
-                                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
-                                    >
-                                        Reset Password
-                                    </button>
-                                </div>
+
+
                             </div>
                         </motion.div>
                     </>

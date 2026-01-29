@@ -50,13 +50,7 @@ function CameraIcon({ className }) {
   );
 }
 
-function IdCardIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-    </svg>
-  );
-}
+
 
 // Role based routes
 const roleRoutes = {
@@ -79,7 +73,7 @@ export default function Login() {
   const [profileData, setProfileData] = useState({
     full_name: '',
     location: '',
-    adhaar_number: '',
+
     profile_picture: ''
   });
 
@@ -114,7 +108,7 @@ export default function Login() {
           ...prev,
           full_name: profile.full_name || '',
           location: profile.location || '',
-          adhaar_number: profile.adhaar_number || '',
+
           profile_picture: profile.profile_picture || ''
         }));
         return;
@@ -471,24 +465,7 @@ export default function Login() {
                 </div>
 
                 {/* Adhaar */}
-                <div>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-                      <IdCardIcon className="w-5 h-5" />
-                    </span>
-                    <input
-                      type="text"
-                      name="adhaar_number"
-                      value={profileData.adhaar_number}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '').slice(0, 12);
-                        setProfileData(prev => ({ ...prev, adhaar_number: val }));
-                      }}
-                      placeholder="Adhaar Number (Optional)"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none text-sm"
-                    />
-                  </div>
-                </div>
+
 
                 <Button type="submit" loading={loading} className="w-full" size="lg">
                   Complete Setup

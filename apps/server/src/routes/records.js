@@ -382,7 +382,8 @@ router.get('/all-weighed', requireAuth, async (req, res) => {
 
 /**
  * PATCH /api/records/:id/sell
- * Complete a sale (Lilav auction)
+ * Assign Rate and Trader (Committee Step 1)
+ * Moves Status: Pending -> RateAssigned
  */
 router.patch('/:id/sell', requireAuth, async (req, res) => {
     try {
@@ -399,33 +400,10 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             return res.status(404).json({ error: 'Record not found' });
         }
 
-        if (record.status !== 'Weighed') {
-            return res.status(400).json({ error: 'Record must be weighed before sale' });
+        // Allow 'Pending' records to be assigned a rate
+        if (record.status !== 'Pending' && record.status !== 'RateAssigned') {
+            return res.status(400).json({ error: 'Record status must be Pending to assign rate' });
         }
-
-        let sale_amount = 0;
-
-        // Calculate Amount based on Sale Unit (Carat or Kg)
-        if (sale_unit === 'carat') {
-            if (!record.official_carat || record.official_carat <= 0) {
-                return res.status(400).json({ error: 'Cannot sell by carat: Official carat is 0' });
-            }
-            sale_amount = record.official_carat * sale_rate;
-        } else {
-            // Default to KG
-            if (!record.official_qty || record.official_qty <= 0) {
-                return res.status(400).json({ error: 'Cannot sell by kg: Official weight is 0' });
-            }
-            sale_amount = record.official_qty * sale_rate;
-        }
-
-        // Calculate Commissions
-        const farmer_commission = Math.round(sale_amount * 0.04);
-        const trader_commission = Math.round(sale_amount * 0.09);
-
-        // Calculate Net Amounts
-        const net_payable_to_farmer = sale_amount - farmer_commission;
-        const net_receivable_from_trader = sale_amount + trader_commission;
 
         const updatedRecord = await Record.findByIdAndUpdate(
             id,
@@ -433,47 +411,18 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
                 trader_id,
                 sale_rate,
                 sale_unit: sale_unit || 'kg',
-                sale_amount,
-                status: 'Sold',
-                sold_by: req.user._id,
-                sold_at: new Date(),
-
-                // Commission & Billing info
-                farmer_commission,
-                trader_commission,
-                commission: farmer_commission + trader_commission, // Total commission for stats
-
-                net_payable_to_farmer,
-                net_receivable_from_trader,
-                total_amount: net_receivable_from_trader, // For general "Total Amount" ref
-
-                // Initialize payment status
-                farmer_payment_status: 'Pending',
-                trader_payment_status: 'Pending'
+                status: 'RateAssigned',
+                // No calculations yet - wait for weight
             },
             { new: true }
         )
             .populate('farmer_id', 'full_name phone')
             .populate('trader_id', 'full_name phone business_name');
 
-        // Import notification service dynamically
-        const { createNotification } = await import('../services/notificationService.js');
-
-        // TRIGGER NOTIFICATION: Item Sold
-        if (updatedRecord.farmer_id) {
-            await createNotification({
-                recipient: updatedRecord.farmer_id._id, // Populated
-                type: 'success',
-                title: 'Produce Sold',
-                message: `Your ${updatedRecord.vegetable} has been sold at ₹${updatedRecord.sale_rate}/${updatedRecord.sale_unit}. Total: ₹${updatedRecord.total_amount}.`,
-                data: { recordId: updatedRecord._id, type: 'sold' }
-            });
-        }
-
         res.json(updatedRecord);
     } catch (error) {
-        console.error('Sell record error:', error);
-        res.status(500).json({ error: 'Failed to complete sale' });
+        console.error('Assign rate error:', error);
+        res.status(500).json({ error: 'Failed to assign rate' });
     }
 });
 

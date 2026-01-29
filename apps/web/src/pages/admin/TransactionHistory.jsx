@@ -1,18 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
   Calendar,
   Download,
-  Filter,
-  Package,
   ChevronDown,
-  Eye,
   ArrowUpDown
 } from 'lucide-react';
-import { mockTransactions } from '../../data/mockData';
+import { api } from '../../lib/api';
+import { exportToCSV } from '../../lib/csvExport';
 
 export default function TransactionHistory() {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -20,26 +20,56 @@ export default function TransactionHistory() {
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
 
-  const filteredTransactions = useMemo(() => {
-    let result = [...mockTransactions];
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
-    // Search filter (by trader or farmer name)
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const data = await api.purchases.list({ limit: 500 }); // Fetch sufficient history
+
+      const formattedData = data.map(t => ({
+        id: t._id,
+        date: t.sold_at || t.date || t.createdAt,
+        farmerName: t.farmer_id?.full_name || 'Unknown Farmer',
+        traderName: t.trader_id?.business_name || t.trader_id?.full_name || 'Unknown Trader',
+        crop: t.vegetable,
+        quantity: t.official_qty || t.quantity || 0,
+        carat: t.carat || 0,
+        rate: t.sale_rate || t.rate || 0,
+        grossAmount: t.sale_amount || t.amount || 0,
+        commission: (t.farmer_commission || 0) + (t.trader_commission || 0),
+        paymentStatus: t.payment_status || 'pending'
+      }));
+
+      setTransactions(formattedData);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredTransactions = useMemo(() => {
+    let result = [...transactions];
+
+    // Search filter (removed lotId, searching by names and crop only)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(txn =>
         txn.farmerName.toLowerCase().includes(query) ||
         txn.traderName.toLowerCase().includes(query) ||
-        txn.lotId.toLowerCase().includes(query) ||
         txn.crop.toLowerCase().includes(query)
       );
     }
 
     // Date range filter
     if (dateFrom) {
-      result = result.filter(txn => txn.date >= dateFrom);
+      result = result.filter(txn => new Date(txn.date) >= new Date(dateFrom));
     }
     if (dateTo) {
-      result = result.filter(txn => txn.date <= dateTo);
+      result = result.filter(txn => new Date(txn.date) <= new Date(dateTo));
     }
 
     // Payment status filter
@@ -76,7 +106,7 @@ export default function TransactionHistory() {
     });
 
     return result;
-  }, [searchQuery, dateFrom, dateTo, paymentFilter, sortField, sortDirection]);
+  }, [transactions, searchQuery, dateFrom, dateTo, paymentFilter, sortField, sortDirection]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -92,34 +122,34 @@ export default function TransactionHistory() {
       totalTransactions: filteredTransactions.length,
       totalVolume: filteredTransactions.reduce((sum, t) => sum + t.quantity, 0),
       totalAmount: filteredTransactions.reduce((sum, t) => sum + t.grossAmount, 0),
-      totalCommission: filteredTransactions.reduce((sum, t) => sum + t.farmerCommission + t.traderCommission, 0)
+      totalCommission: filteredTransactions.reduce((sum, t) => sum + t.commission, 0)
     };
   }, [filteredTransactions]);
 
   const handleExport = () => {
-    // Simulate CSV export
-    const headers = ['Lot ID', 'Date', 'Farmer', 'Trader', 'Crop', 'Qty (kg)', 'Rate', 'Amount', 'Commission', 'Status'];
-    const rows = filteredTransactions.map(txn => [
-      txn.lotId,
-      txn.date,
+    const headers = ['Date', 'Farmer', 'Trader', 'Crop', 'Qty / Weight', 'Rate', 'Amount', 'Commission', 'Status'];
+    const data = filteredTransactions.map(txn => [
+      new Date(txn.date).toLocaleDateString('en-IN'),
       txn.farmerName,
       txn.traderName,
       txn.crop,
-      txn.quantity,
+      txn.quantity > 0 ? `${txn.quantity} kg` : (txn.carat > 0 ? `${txn.carat} Crt` : '-'),
       txn.rate,
       txn.grossAmount,
-      txn.farmerCommission + txn.traderCommission,
+      txn.commission,
       txn.paymentStatus
     ]);
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+    exportToCSV(data, headers, `transactions_${new Date().toISOString().split('T')[0]}.csv`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -127,7 +157,7 @@ export default function TransactionHistory() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Transaction History</h1>
-          <p className="text-gray-500 mt-1">View and search all lot entries</p>
+          <p className="text-gray-500 mt-1">View and search all transactions</p>
         </div>
         <button
           onClick={handleExport}
@@ -166,7 +196,7 @@ export default function TransactionHistory() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by farmer, trader, or lot ID..."
+              placeholder="Search by farmer, trader..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
@@ -221,7 +251,6 @@ export default function TransactionHistory() {
           <table className="w-full">
             <thead className="bg-slate-50/50">
               <tr>
-                <th className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4">Lot ID</th>
                 <th
                   className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500 px-6 py-4 cursor-pointer hover:text-slate-700 transition-colors"
                   onClick={() => handleSort('date')}
@@ -239,7 +268,7 @@ export default function TransactionHistory() {
                   onClick={() => handleSort('quantity')}
                 >
                   <div className="flex items-center justify-end gap-1">
-                    Qty (kg)
+                    Qty / Weight
                     <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
@@ -260,19 +289,13 @@ export default function TransactionHistory() {
             <tbody>
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                     No transactions found matching your filters.
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((txn) => (
                   <tr key={txn.id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-slate-400" />
-                        <span className="font-medium text-slate-800 text-sm">{txn.lotId}</span>
-                      </div>
-                    </td>
                     <td className="px-6 py-4 text-slate-600 text-sm">
                       {new Date(txn.date).toLocaleDateString('en-IN', {
                         day: '2-digit',
@@ -287,8 +310,8 @@ export default function TransactionHistory() {
                         {txn.crop}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-800 font-medium text-sm">
-                      {txn.quantity.toLocaleString()}
+                    <td className="text-right text-slate-800 font-medium text-sm px-6 py-4">
+                      {txn.quantity > 0 ? `${txn.quantity.toLocaleString()} kg` : (txn.carat > 0 ? `${txn.carat} Crt` : '-')}
                     </td>
                     <td className="px-6 py-4 text-right text-slate-600 text-sm">
                       ₹{txn.rate}
@@ -297,7 +320,7 @@ export default function TransactionHistory() {
                       ₹{txn.grossAmount.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right text-emerald-600 font-medium text-sm">
-                      ₹{(txn.farmerCommission + txn.traderCommission).toLocaleString()}
+                      ₹{txn.commission.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold border
@@ -318,7 +341,7 @@ export default function TransactionHistory() {
         {/* Table Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
           <p className="text-sm text-slate-500">
-            Showing {filteredTransactions.length} of {mockTransactions.length} transactions
+            Showing {filteredTransactions.length} of {transactions.length} transactions
           </p>
         </div>
       </motion.div>

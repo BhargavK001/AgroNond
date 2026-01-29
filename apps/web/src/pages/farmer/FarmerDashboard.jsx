@@ -239,6 +239,11 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
   };
 
   const handleQuantityChange = (value, type) => {
+    // ✅ NEW: If typing in Quantity, clear Carat
+    if (value) {
+      setCarat('');
+    }
+
     if (value === '') {
       setQuantities({ kg: '', ton: '', quintal: '' });
       return;
@@ -270,6 +275,16 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     });
   };
 
+  // ✅ NEW: Handler for Carat change
+  const handleCaratChange = (value) => {
+    setCarat(value);
+
+    // If typing in Carat, clear Quantities
+    if (value) {
+      setQuantities({ kg: '', ton: '', quintal: '' });
+    }
+  };
+
   const handleAddItem = () => {
     if (!selectedVegetable) {
       toast.error('Please select a vegetable');
@@ -282,6 +297,12 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
     if (!hasQuantity && !hasCarat) {
       toast.error('Please enter either Quantity (Kg) or Carat');
+      return;
+    }
+
+    // Safety check (shouldn't happen with UI logic, but good practice)
+    if (hasQuantity && hasCarat) {
+      toast.error('Please enter only Quantity OR Carat, not both.');
       return;
     }
 
@@ -381,8 +402,11 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{item.vegetable}</p>
                         <div className="text-xs text-gray-600 space-y-0.5">
-                          {item.quantity > 0 && <p>Qty: {item.quantity} kg</p>}
-                          {item.carat > 0 && <p>Carat: {item.carat}</p>}
+                          {item.quantity > 0 ? (
+                            <p>Qty: {item.quantity} kg</p>
+                          ) : (
+                            <p>Carat: {item.carat}</p>
+                          )}
                         </div>
                       </div>
                       <button
@@ -510,7 +534,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
             {/* Quantity Inputs */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Optional if Carat is filled)</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Leave empty if using Carat)</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
@@ -555,20 +579,20 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
             {/* ✅ NEW: Carat Field */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Optional if Quantity is filled)</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Leave empty if using Quantity)</label>
               <input
                 type="number"
                 value={carat}
-                onChange={(e) => setCarat(e.target.value)}
+                onChange={(e) => handleCaratChange(e.target.value)}
                 placeholder="Enter carat (e.g., 1, 2, 3...)"
-                step="0.01"
+                step="1"  // Changed step to 1 for integers
                 min="0"
                 className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-green-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
               />
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-              <p><strong>Note:</strong> You must fill at least one field - either <strong>Quantity (Kg)</strong> or <strong>Carat</strong>, or both. For quantity, enter in any box and others will calculate automatically.</p>
+              <p><strong>Note:</strong> Enter value in <strong>either</strong> Quantity <strong>OR</strong> Carat. Filling one will automatically clear the other.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -663,6 +687,12 @@ const FarmerDashboard = () => {
     }
   };
 
+  // ✅ NEW: Fetch records on mount
+  useEffect(() => {
+    fetchRecords();
+    loadProfile();
+  }, []);
+
   useEffect(() => {
     const handleOpenEditProfile = () => {
       setModals(prev => ({ ...prev, editProfile: true }));
@@ -747,6 +777,11 @@ const FarmerDashboard = () => {
   };
 
   const handleEditQuantityChange = (value, type) => {
+    // If typing in Quantity, clear Carat
+    if (value) {
+      setEditFormData(prev => ({ ...prev, carat: '' }));
+    }
+
     if (value === '') {
       setEditFormData(prev => ({
         ...prev,
@@ -782,6 +817,19 @@ const FarmerDashboard = () => {
         quintal: type === 'quintal' ? value : parseFloat(newQuintal).toString()
       }
     }));
+  };
+
+  const handleEditCaratChange = (value) => {
+    // If typing in Carat, clear Quantities
+    if (value) {
+      setEditFormData(prev => ({
+        ...prev,
+        quantities: { kg: '', ton: '', quintal: '' },
+        carat: value
+      }));
+    } else {
+      setEditFormData(prev => ({ ...prev, carat: value }));
+    }
   };
 
   const handleUpdateRecord = async () => {
@@ -1152,7 +1200,14 @@ const FarmerDashboard = () => {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-bold text-gray-900">{record.quantity} kg</p>
+                            {/* UPDATED LOGIC FOR QUANTITY DISPLAY */}
+                            <p className="text-sm font-bold text-gray-900">
+                              {record.quantity > 0
+                                ? `${record.quantity} kg`
+                                : record.carat > 0
+                                  ? `${record.carat} Crt`
+                                  : '-'}
+                            </p>
                             <p className="text-xs text-gray-500">Total</p>
                           </div>
                         </div>
@@ -1239,7 +1294,14 @@ const FarmerDashboard = () => {
                           <td className="px-8 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
                           <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
                           <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
-                          <td className="px-8 py-4 text-gray-700">{record.quantity} kg</td>
+                          {/* UPDATED LOGIC FOR QUANTITY DISPLAY */}
+                          <td className="px-8 py-4 text-gray-700">
+                            {record.quantity > 0
+                              ? `${record.quantity} kg`
+                              : record.carat > 0
+                                ? `${record.carat} Crt`
+                                : '-'}
+                          </td>
                           <td className="px-8 py-4">
                             <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${['Sold', 'Completed'].includes(record.status)
                               ? 'bg-green-100 text-green-700 border border-green-200'
@@ -1341,7 +1403,14 @@ const FarmerDashboard = () => {
 
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
               <p className="text-xs text-gray-600 font-semibold mb-1">TOTAL QTY</p>
-              <p className="font-bold text-gray-900">{selectedRecord.quantity} kg</p>
+              {/* UPDATED LOGIC FOR DETAILS MODAL */}
+              <p className="font-bold text-gray-900">
+                {selectedRecord.quantity > 0
+                  ? `${selectedRecord.quantity} kg`
+                  : selectedRecord.carat > 0
+                    ? `${selectedRecord.carat} Crt`
+                    : '-'}
+              </p>
             </div>
 
             {['Sold', 'Completed'].includes(selectedRecord.status) && (

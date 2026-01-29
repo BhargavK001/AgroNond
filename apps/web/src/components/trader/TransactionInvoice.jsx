@@ -320,12 +320,7 @@ const TransactionInvoice = ({ transaction, committeeInfo }) => {
                                 <Text style={styles.value}>#{transaction._id.slice(-6).toUpperCase()}</Text>
                             </View>
                         )}
-                        {transaction.lotId && (
-                            <View style={styles.row}>
-                                <Text style={styles.label}>Lot ID:</Text>
-                                <Text style={styles.value}>{transaction.lotId}</Text>
-                            </View>
-                        )}
+                        {/* Lot ID Removed from here */}
                     </View>
                 </View>
 
