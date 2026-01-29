@@ -3,9 +3,11 @@ import FarmerNavbar from '../../components/navigation/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
 import SoldRecordCard from '../../components/farmer/SoldRecordCard';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import BillingInvoice from '../../components/committee/BillingInvoice';
 import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
-  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History
+  Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History, Download
 } from 'lucide-react';
 
 // --- MODAL COMPONENT ---
@@ -863,122 +865,22 @@ const FarmerDashboard = () => {
     }
   };
 
-  const handleDownloadInvoice = (record) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error("Please allow popups to download invoice");
-      return;
-    }
-
-    const recordDate = new Date(record.createdAt).toLocaleDateString('en-GB');
-    const recordTime = formatTime(record.createdAt);
-    const invoiceId = record._id.toString().slice(-6).toUpperCase();
-
-    // ✅ Display both Quantity and Carat in invoice
-    let quantityDisplay = '';
-    if (record.quantity > 0) quantityDisplay += `${record.quantity} kg`;
-    if (record.carat > 0) {
-      if (quantityDisplay) quantityDisplay += ' | ';
-      quantityDisplay += `${record.carat} carat`;
-    }
-
-    const invoiceContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Invoice #${invoiceId}</title>
-        <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; background: #fff; }
-          .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); font-size: 16px; line-height: 24px; color: #555; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #22c55e; padding-bottom: 20px; margin-bottom: 30px; }
-          .company-info h1 { margin: 0; color: #166534; font-size: 28px; }
-          .invoice-details { text-align: right; }
-          .invoice-details h2 { margin: 0; color: #333; }
-          .info-table { width: 100%; margin-bottom: 40px; }
-          .info-table td { padding: 5px; vertical-align: top; }
-          .item-table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; }
-          .item-table th { background: #f0fdf4; color: #166534; font-weight: bold; padding: 12px; border-bottom: 2px solid #bbf7d0; }
-          .item-table td { padding: 12px; border-bottom: 1px solid #eee; }
-          .total-section { margin-top: 30px; text-align: right; }
-          .total-amount { font-size: 24px; font-weight: bold; color: #166534; }
-          .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #888; }
-          .badge { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-          .badge-sold { background: #dcfce7; color: #166534; }
-          .badge-pending { background: #fef9c3; color: #854d0e; }
-          @media print { .no-print { display: none; } }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-box">
-          <div class="header">
-            <div class="company-info">
-              <h1>AgroNond</h1>
-              <p>Farmer Panel Transaction</p>
-            </div>
-            <div class="invoice-details">
-              <h2>INVOICE</h2>
-              <p>#${invoiceId}</p>
-              <p>Date: ${recordDate}</p>
-              <p>Time: ${recordTime}</p>
-            </div>
-          </div>
-
-          <table class="info-table">
-            <tr>
-              <td>
-                <strong>Farmer Details:</strong><br>
-                ${profile.name}<br>
-                ${profile.farmerId}<br>
-                ${profile.location}
-              </td>
-              <td style="text-align: right;">
-                <strong>Market Details:</strong><br>
-                ${record.market}<br>
-                Trader: ${record.trader}
-              </td>
-            </tr>
-          </table>
-
-          <table class="item-table">
-            <thead>
-              <tr>
-                <th>Item Description</th>
-                <th style="text-align: center;">Total Qty</th>
-                <th style="text-align: right;">Rate</th>
-                <th style="text-align: right;">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>${record.vegetable}</td>
-                <td style="text-align: center;">${quantityDisplay || 'N/A'}</td>
-                <td style="text-align: right;">${['Sold', 'Completed'].includes(record.status) ? '₹' + record.rate : '-'}</td>
-                <td style="text-align: right;">${['Sold', 'Completed'].includes(record.status) ? '₹' + (record.sale_amount || (record.rate * record.quantity) || 0).toLocaleString('en-IN') : '-'}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="total-section">
-             <p style="margin: 5px 0;">Gross Sale Amount: ₹${(record.sale_amount || (record.rate * record.quantity) || 0).toLocaleString('en-IN')}</p>
-             <p style="margin: 5px 0; font-size: 14px; color: #666;">Less: Market Commission (4%): -₹${(record.farmer_commission || 0).toLocaleString('en-IN')}</p>
-             <p class="total-amount" style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">Net Payable: ₹${(record.net_payable_to_farmer || 0).toLocaleString('en-IN')}</p>
-             <p style="font-size: 12px; color: #888; margin-top: 5px;">Payment Status: <span class="badge ${record.farmer_payment_status === 'Paid' ? 'badge-sold' : 'badge-pending'}">${record.farmer_payment_status || 'Pending'}</span></p>
-          </div>
-
-
-          <div class="footer">
-            <p>This is a computer-generated invoice and does not require a signature.</p>
-            <p>AgroNond Market Committee • Pune, Maharashtra</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printDocument = printWindow.document;
-    printDocument.write(invoiceContent);
-    printDocument.close();
-    printWindow.print();
+  // Helper to create invoice data for PDFDownloadLink
+  const getInvoiceData = (record) => {
+    const date = record.sold_at || record.createdAt;
+    return {
+      id: record._id || record.id || 'N/A',
+      date: date,
+      name: profile.name || 'Farmer',
+      crop: record.vegetable,
+      qty: record.quantity || record.official_qty || 0,
+      carat: record.carat || record.official_carat || 0,
+      baseAmount: record.sale_amount || (record.rate * record.quantity) || 0,
+      commission: record.farmer_commission || 0,
+      finalAmount: record.net_payable_to_farmer || 0,
+      status: record.farmer_payment_status || 'Pending',
+      type: 'pay'
+    };
   };
 
   const saveProfile = () => {
@@ -1213,13 +1115,16 @@ const FarmerDashboard = () => {
                         </div>
 
                         <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
-                          <button
-                            onClick={() => handleDownloadInvoice(record)}
+                          <PDFDownloadLink
+                            document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
+                            fileName={`invoice-${record._id.slice(-6)}.pdf`}
                             className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
                             title="Download Data / Invoice"
                           >
-                            <FileText size={16} />
-                          </button>
+                            {({ loading }) => (
+                              <Download size={16} className={loading ? 'animate-pulse' : ''} />
+                            )}
+                          </PDFDownloadLink>
 
                           <button
                             onClick={() => {
@@ -1316,13 +1221,16 @@ const FarmerDashboard = () => {
                           <td className="px-8 py-4 text-right">
                             <div className="flex justify-end gap-2">
 
-                              <button
-                                onClick={() => handleDownloadInvoice(record)}
+                              <PDFDownloadLink
+                                document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
+                                fileName={`invoice-${record._id.slice(-6)}.pdf`}
                                 className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
                                 title="Download Data / Invoice"
                               >
-                                <FileText size={18} />
-                              </button>
+                                {({ loading }) => (
+                                  <Download size={18} className={loading ? 'animate-pulse' : ''} />
+                                )}
+                              </PDFDownloadLink>
 
                               <button
                                 onClick={() => {
@@ -1427,13 +1335,18 @@ const FarmerDashboard = () => {
                 </div>
 
                 <div className="pt-2 border-t border-gray-200">
-                  <button
-                    onClick={() => handleDownloadInvoice(selectedRecord)}
+                  <PDFDownloadLink
+                    document={<BillingInvoice data={getInvoiceData(selectedRecord)} type="farmer" />}
+                    fileName={`invoice-${selectedRecord._id.slice(-6)}.pdf`}
                     className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
                   >
-                    <FileText size={18} />
-                    Download Invoice
-                  </button>
+                    {({ loading }) => (
+                      <>
+                        <Download size={18} className={loading ? 'animate-pulse' : ''} />
+                        {loading ? 'Generating...' : 'Download Invoice'}
+                      </>
+                    )}
+                  </PDFDownloadLink>
                 </div>
               </>
             )}
