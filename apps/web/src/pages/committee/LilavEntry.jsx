@@ -122,12 +122,13 @@ export default function LilavEntry() {
         // Use effective carat value (official or farmer's initial)
         const { caratValue } = getEffectiveValues(record);
 
+        const recordUnit = record.sale_unit || (caratValue > 0 ? 'carat' : 'kg');
         setSaleForm({
             trader_id: '',
             sale_rate: todayRate?.rate || '',
-            sale_unit: caratValue > 0 ? 'carat' : 'kg'
+            sale_unit: recordUnit
         });
-        setSaleModal({ open: true, record });
+        setSaleModal({ open: true, record, lockedUnit: recordUnit });
     };
 
     const handleConfirmSale = async () => {
@@ -490,13 +491,21 @@ export default function LilavEntry() {
                                         <div className="flex bg-gray-100 p-1 rounded-xl">
                                             <button
                                                 onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'carat' }))}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'carat' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                                disabled={saleModal.lockedUnit === 'kg'}
+                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'carat'
+                                                        ? 'bg-white text-purple-600 shadow-sm'
+                                                        : (saleModal.lockedUnit === 'kg' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700')
+                                                    }`}
                                             >
                                                 Sell by Carat ({modalCaratValue} Crt)
                                             </button>
                                             <button
                                                 onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'kg' }))}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'kg' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                                disabled={saleModal.lockedUnit === 'carat'}
+                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'kg'
+                                                        ? 'bg-white text-emerald-600 shadow-sm'
+                                                        : (saleModal.lockedUnit === 'carat' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:text-gray-700')
+                                                    }`}
                                             >
                                                 Sell by Weight ({modalQtyValue} kg)
                                             </button>

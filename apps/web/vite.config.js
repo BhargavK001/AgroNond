@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@react-pdf/renderer'],
+    include: ['@react-pdf/renderer'],
   },
   plugins: [
     react(),
