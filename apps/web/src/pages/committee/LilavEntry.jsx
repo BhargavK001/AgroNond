@@ -362,16 +362,17 @@ export default function LilavEntry() {
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-slate-900 text-sm sm:text-base">{record.vegetable}</p>
-                                                        {/* UPDATED: Show both kg and Carat weight with fallback */}
+                                                        {/* UPDATED: Show only one unit - Crt OR Kg based on data */}
                                                         <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 flex-wrap">
-                                                            <span className="flex items-center gap-1">
-                                                                <Scale className="w-3 h-3 sm:w-4 sm:h-4" />
-                                                                {qtyValue} kg
-                                                            </span>
-                                                            {hasCarat && (
+                                                            {hasCarat ? (
                                                                 <span className="flex items-center gap-1 text-purple-600 font-medium">
                                                                     <Scale className="w-3 h-3 sm:w-4 sm:h-4" />
                                                                     {caratValue} Crt
+                                                                </span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-1">
+                                                                    <Scale className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                                    {qtyValue} kg
                                                                 </span>
                                                             )}
                                                             {todayRate && (
@@ -479,27 +480,18 @@ export default function LilavEntry() {
                                                 Farmer: <span className="font-medium text-gray-900">{selectedFarmer?.full_name}</span>
                                             </div>
                                         </div>
-                                        {/* Show currently selected unit badge */}
-                                        <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${saleForm.sale_unit === 'carat' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                            Selling by {saleForm.sale_unit === 'carat' ? 'Carat' : 'Kg'}
+                                        {/* Show selling unit badge - Carat-only when carat exists */}
+                                        <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${modalHasCarat ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                            {modalHasCarat ? 'Carat Only' : 'Selling by Kg'}
                                         </div>
                                     </div>
 
-                                    {/* UPDATED: Sale Unit Toggle - Show when carat exists (using fallback) */}
+                                    {/* Sale Unit Display - Carat-only when Carat exists, no toggle */}
                                     {modalHasCarat && (
-                                        <div className="flex bg-gray-100 p-1 rounded-xl">
-                                            <button
-                                                onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'carat' }))}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'carat' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                            >
-                                                Sell by Carat ({modalCaratValue} Crt)
-                                            </button>
-                                            <button
-                                                onClick={() => setSaleForm(prev => ({ ...prev, sale_unit: 'kg' }))}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${saleForm.sale_unit === 'kg' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                            >
-                                                Sell by Weight ({modalQtyValue} kg)
-                                            </button>
+                                        <div className="flex bg-purple-50 p-3 rounded-xl border border-purple-100">
+                                            <div className="flex-1 py-2 rounded-lg text-sm font-bold text-purple-600 text-center">
+                                                Sell by Carat ({modalCaratValue} Crt) - Carat sales only
+                                            </div>
                                         </div>
                                     )}
 
@@ -507,7 +499,7 @@ export default function LilavEntry() {
                                     <div className="grid sm:grid-cols-2 gap-6">
                                         <div className="space-y-4">
                                             <label className="block text-sm font-semibold text-gray-700">
-                                                Sale Rate (₹/{saleForm.sale_unit === 'carat' ? 'Carat' : 'Kg'})
+                                                Sale Rate (₹/{modalHasCarat ? 'Carat' : 'Kg'})
                                             </label>
                                             <div className="relative">
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
