@@ -200,11 +200,13 @@ export default function VegetableSalesAnalytics() {
                                             <span className="text-sm font-medium text-emerald-700 uppercase tracking-wide">Highest Selling</span>
                                         </div>
                                         <h3 className="text-2xl font-bold text-emerald-800 mb-1">{data.highest?.vegetable}</h3>
-                                        <p className="text-lg font-semibold text-emerald-600">
-                                            ₹{data.highest?.totalSalesAmount.toLocaleString()}
+                                        <p className="text-sm text-emerald-600 mt-1">
+                                            Avg Rate: <span className="font-semibold">₹{data.highest?.avgRatePerKg || 0}/kg</span>
+                                            <span className="mx-1">|</span>
+                                            <span className="font-semibold">₹{data.highest?.avgRatePerCarat || 0}/Crt</span>
                                         </p>
                                         <p className="text-sm text-emerald-600/70 mt-1">
-                                            {data.highest?.totalQuantity} kg • {data.highest?.transactionCount} sales
+                                            {data.highest?.transactionCount} sales
                                         </p>
                                     </div>
                                 </div>
@@ -218,11 +220,13 @@ export default function VegetableSalesAnalytics() {
                                             <span className="text-sm font-medium text-amber-700 uppercase tracking-wide">Lowest Selling</span>
                                         </div>
                                         <h3 className="text-2xl font-bold text-amber-800 mb-1">{data.lowest?.vegetable}</h3>
-                                        <p className="text-lg font-semibold text-amber-600">
-                                            ₹{data.lowest?.totalSalesAmount.toLocaleString()}
+                                        <p className="text-sm text-amber-600 mt-1">
+                                            Avg Rate: <span className="font-semibold">₹{data.lowest?.avgRatePerKg || 0}/kg</span>
+                                            <span className="mx-1">|</span>
+                                            <span className="font-semibold">₹{data.lowest?.avgRatePerCarat || 0}/Crt</span>
                                         </p>
                                         <p className="text-sm text-amber-600/70 mt-1">
-                                            {data.lowest?.totalQuantity} kg • {data.lowest?.transactionCount} sales
+                                            {data.lowest?.transactionCount} sales
                                         </p>
                                     </div>
                                 </div>
