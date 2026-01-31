@@ -94,10 +94,30 @@ export default function BillingReports() {
   // Payment Modal State
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [commissionRates, setCommissionRates] = useState({ farmer: 4, trader: 9 });
 
   useEffect(() => {
     fetchRecords();
+    fetchCommissionRates();
   }, [activeTab, dateFilter, page]);
+
+  const fetchCommissionRates = async () => {
+    try {
+      // Use finance endpoint accessible to committee
+      const rules = await api.finance.commissionRates.list();
+      if (rules && rules.length > 0) {
+        const farmerRule = rules.find(r => r.role_type === 'farmer' && r.crop_type === 'All');
+        const traderRule = rules.find(r => r.role_type === 'trader' && r.crop_type === 'All');
+
+        setCommissionRates({
+          farmer: farmerRule ? parseFloat(farmerRule.rate) * 100 : 4,
+          trader: traderRule ? parseFloat(traderRule.rate) * 100 : 9
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch commission rates:", error);
+    }
+  };
 
   const fetchRecords = async () => {
     try {
@@ -202,7 +222,7 @@ export default function BillingReports() {
   };
 
   const currentData = data.map(processRecord);
-  const commissionLabel = activeTab === 'farmers' ? '4%' : '9%';
+  const commissionLabel = activeTab === 'farmers' ? `${commissionRates.farmer}%` : `${commissionRates.trader}%`;
   const commissionColor = activeTab === 'farmers' ? 'blue' : 'purple';
 
   const totalBase = currentData.reduce((acc, item) => acc + item.baseAmount, 0);

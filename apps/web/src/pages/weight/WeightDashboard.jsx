@@ -772,16 +772,6 @@ const WeightDashboard = () => {
 
             return (
               <div className="space-y-4">
-                {/* Show info banner about which unit is allowed */}
-                {(hasEstCarat || hasEstWeight) && (
-                  <div className={`p-3 rounded-xl border text-sm font-medium text-center ${hasEstCarat ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
-                    {hasEstCarat
-                      ? `📦 This lot is measured in Carat (${formData.estCarat} Crt) - Enter Official Qty in Carat only`
-                      : `📦 This lot is measured in Kg (${formData.estWeight} kg) - Enter Official Qty in Kg only`
-                    }
-                  </div>
-                )}
-
                 <div className="grid grid-cols-1 gap-4">
                   {/* Show Kg input ONLY when estWeight > 0 AND estCarat = 0 */}
                   {hasEstWeight && !hasEstCarat && (

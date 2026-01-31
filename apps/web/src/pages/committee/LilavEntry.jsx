@@ -16,7 +16,8 @@ import {
     X,
     Plus,
     Edit2,
-    Trash2
+    Trash2,
+    Lock
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -111,6 +112,15 @@ export default function LilavEntry() {
 
     // Helper function to get effective carat and qty values
     const getEffectiveValues = (record) => {
+        // For parent records with remaining quantity (partial sales)
+        if (record.has_remaining) {
+            return {
+                caratValue: record.remaining_carat || 0,
+                qtyValue: record.remaining_qty || 0
+            };
+        }
+
+        // Regular records
         const caratValue = (record.official_carat && record.official_carat > 0)
             ? record.official_carat
             : (record.carat || 0);
@@ -130,16 +140,26 @@ export default function LilavEntry() {
         const { caratValue } = getEffectiveValues(record);
 
         const recordUnit = record.sale_unit || (caratValue > 0 ? 'carat' : 'kg');
+
+        // Check for locked rate (partial sale)
+        const lockedRate = record.prev_rate || null;
+        const initialRate = lockedRate || todayRate?.rate || '';
+
         setSaleForm({
             trader_id: '',
-            sale_rate: todayRate?.rate || '',
+            sale_rate: initialRate,
             sale_unit: recordUnit,
             allocation_qty: ''
         });
         // Reset multi-trader allocations when opening modal
         setTraderAllocations([]);
         setEditingAllocationIndex(null);
-        setSaleModal({ open: true, record, lockedUnit: recordUnit });
+        setSaleModal({
+            open: true,
+            record,
+            lockedUnit: recordUnit,
+            lockedRate: lockedRate // Pass locked rate to modal
+        });
     };
 
     // Add a trader allocation to the list
@@ -249,40 +269,38 @@ export default function LilavEntry() {
     };
 
     const handleConfirmSale = async () => {
-        // If we have allocations, use first trader for now (backend supports single trader)
-        // In future, backend can be updated to handle multiple traders
+        // Validate allocations
         if (traderAllocations.length === 0) {
-            // Fallback to old single-trader logic
-            if (!saleForm.trader_id) {
-                toast.error('Please add at least one trader');
-                return;
-            }
-            if (!saleForm.sale_rate || saleForm.sale_rate <= 0) {
-                toast.error('Please enter a valid rate');
-                return;
-            }
+            toast.error('Please add at least one trader');
+            return;
         }
 
         try {
             setProcessingId(saleModal.record._id);
 
-            // Use first allocation if available, otherwise use saleForm
-            const traderToUse = traderAllocations.length > 0
-                ? { trader_id: traderAllocations[0].trader_id, sale_rate: traderAllocations[0].rate }
-                : { trader_id: saleForm.trader_id, sale_rate: saleForm.sale_rate };
+            // Send all allocations to backend for proper splitting
+            const allocationsPayload = traderAllocations.map(a => ({
+                trader_id: a.trader_id,
+                quantity: a.quantity,
+                rate: a.rate
+            }));
 
-            await api.patch(`/api/records/${saleModal.record._id}/sell`, {
-                trader_id: traderToUse.trader_id,
-                sale_rate: traderToUse.sale_rate,
+            const response = await api.patch(`/api/records/${saleModal.record._id}/sell`, {
+                allocations: allocationsPayload,
                 sale_unit: saleForm.sale_unit
             });
 
-            toast.success('Rate assigned successfully! Sent to weight.');
+            // Show success message based on response
+            if (response.childRecords && response.childRecords.length > 1) {
+                toast.success(`Lot split among ${response.childRecords.length} traders!`);
+            } else {
+                toast.success('Rate assigned successfully! Sent to weight.');
+            }
 
             // Trigger Success Modal
             setSaleModal(prev => ({ ...prev, success: true }));
 
-            // Remove from list after a short delay or immediately (optional)
+            // Remove from list
             setWeighedRecords(prev => prev.filter(r => r._id !== saleModal.record._id));
         } catch (error) {
             console.error('Error completing sale:', error);
@@ -647,11 +665,19 @@ export default function LilavEntry() {
                                                     value={saleForm.sale_rate}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
+                                                        // Prevent changing if locked (double check)
+                                                        if (saleModal.lockedRate) return;
                                                         setSaleForm(prev => ({ ...prev, sale_rate: val === '' ? '' : parseFloat(val) }));
                                                     }}
                                                     placeholder="0"
-                                                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none"
+                                                    disabled={!!saleModal.lockedRate}
+                                                    className={`w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none ${saleModal.lockedRate ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gray-50'}`}
                                                 />
+                                                {saleModal.lockedRate && (
+                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" title="Rate locked for partial sale">
+                                                        <Lock size={16} />
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
 

@@ -416,4 +416,31 @@ router.get('/billing-records', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/finance/commission-rates
+ * Get current commission rates
+ */
+router.get('/commission-rates', async (req, res) => {
+    try {
+        // Import dynamically to avoid circular dependency issues if any, or just consistent with other dynamic imports
+        const CommissionRule = (await import('../models/CommissionRule.js')).default;
+
+        const rules = await CommissionRule.find({ is_active: true })
+            .sort({ createdAt: -1 });
+
+        // If no rules exist, return defaults
+        if (rules.length === 0) {
+            return res.json([
+                { role_type: 'farmer', crop_type: 'All', rate: 0.04 },
+                { role_type: 'trader', crop_type: 'All', rate: 0.09 }
+            ]);
+        }
+
+        res.json(rules);
+    } catch (error) {
+        console.error('Fetch commission rules error:', error);
+        res.status(500).json({ error: 'Failed to fetch rules' });
+    }
+});
+
 export default router;

@@ -1032,96 +1032,111 @@ const FarmerDashboard = () => {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {sortedRecords.map((record) => (
-                      <div key={record._id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <span className="text-xs font-semibold text-gray-500">
-                              {new Date(record.createdAt).toLocaleDateString('en-GB')}
-                            </span>
-                            <span className="text-xs text-gray-400 ml-2">
-                              {formatTime(record.createdAt)}
+                    {sortedRecords.map((record) => {
+                      // Logic for Mobile View Sold Qty
+                      const totalQty = record.quantity > 0 ? record.quantity : record.carat;
+                      // const unit = record.quantity > 0 ? 'kg' : 'Crt'; // Not used in mobile view yet, or can be used if needed
+                      const isParent = record.is_parent === true;
+                      let soldQty = 0;
+                      if (isParent) {
+                        soldQty = record.quantity > 0 ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
+                      } else {
+                        const officialQty = record.quantity > 0 ? (record.official_qty || 0) : (record.official_carat || 0);
+                        const isSold = ['Sold', 'Completed'].includes(record.status);
+                        soldQty = isSold ? (officialQty > 0 ? officialQty : totalQty) : 0;
+                      }
+
+                      return (
+                        <div key={record._id} className="p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <span className="text-xs font-semibold text-gray-500">
+                                {new Date(record.createdAt).toLocaleDateString('en-GB')}
+                              </span>
+                              <span className="text-xs text-gray-400 ml-2">
+                                {formatTime(record.createdAt)}
+                              </span>
+                            </div>
+                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${['Sold', 'Completed'].includes(record.status)
+                              ? 'bg-green-100 text-green-700 border border-green-200'
+                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                              }`}>
+                              {['Sold', 'Completed'].includes(record.status) ? <CheckCircle size={10} /> : <Clock size={10} />}
+                              {record.status}
                             </span>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${['Sold', 'Completed'].includes(record.status)
-                            ? 'bg-green-100 text-green-700 border border-green-200'
-                            : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                            }`}>
-                            {['Sold', 'Completed'].includes(record.status) ? <CheckCircle size={10} /> : <Clock size={10} />}
-                            {record.status}
-                          </span>
-                        </div>
 
-                        <div className="flex justify-between items-center mb-3">
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
-                            <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
-                              <MapPin size={12} />
-                              {record.market}
+                          <div className="flex justify-between items-center mb-3">
+                            <div>
+                              <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
+                              <div className="flex items-center gap-1 text-xs text-gray-600 mt-0.5">
+                                <MapPin size={12} />
+                                {record.market}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {/* UPDATED LOGIC FOR QUANTITY DISPLAY */}
+                              <p className="text-sm font-bold text-gray-900">
+                                {record.quantity > 0
+                                  ? `${record.quantity} kg`
+                                  : record.carat > 0
+                                    ? `${record.carat} Crt`
+                                    : '-'}
+                              </p>
+                              <p className="text-xs text-gray-500">Total</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            {/* UPDATED LOGIC FOR QUANTITY DISPLAY */}
-                            <p className="text-sm font-bold text-gray-900">
-                              {record.quantity > 0
-                                ? `${record.quantity} kg`
-                                : record.carat > 0
-                                  ? `${record.carat} Crt`
-                                  : '-'}
-                            </p>
-                            <p className="text-xs text-gray-500">Total</p>
+
+                          <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
+                            <PDFDownloadLink
+                              document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
+                              fileName={`invoice-${record._id.slice(-6)}.pdf`}
+                              className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
+                              title="Download Data / Invoice"
+                            >
+                              {({ loading }) => (
+                                <Download size={16} className={loading ? 'animate-pulse' : ''} />
+                              )}
+                            </PDFDownloadLink>
+
+                            <button
+                              onClick={() => {
+                                setSelectedRecord(record);
+                                setModals({ ...modals, details: true });
+                              }}
+                              className="p-2 bg-gray-100 text-gray-600 rounded-lg"
+                              title="View"
+                            >
+                              <Eye size={16} />
+                            </button>
+
+                            <button
+                              onClick={() => handleEditClick(record)}
+                              disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                              className={`p-2 rounded-lg ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                                ? 'bg-gray-50 text-gray-300 pointer-events-none'
+                                : 'bg-green-100 text-green-600'
+                                }`}
+                              title={soldQty > 0 ? "Cannot edit sold/partial item" : (record.official_qty > 0 ? "Cannot edit weighed item" : "Edit")}
+                            >
+                              <Edit size={16} />
+                            </button>
+
+                            <button
+                              onClick={() => initiateDelete(record._id)}
+                              disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                              className={`p-2 rounded-lg ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                                ? 'bg-gray-50 text-gray-300 pointer-events-none'
+                                : 'bg-red-50 text-red-600'
+                                }`}
+                              title={soldQty > 0 ? "Cannot delete sold/partial item" : (record.official_qty > 0 ? "Cannot delete weighed item" : "Delete")}
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         </div>
-
-                        <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
-                          <PDFDownloadLink
-                            document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
-                            fileName={`invoice-${record._id.slice(-6)}.pdf`}
-                            className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100"
-                            title="Download Data / Invoice"
-                          >
-                            {({ loading }) => (
-                              <Download size={16} className={loading ? 'animate-pulse' : ''} />
-                            )}
-                          </PDFDownloadLink>
-
-                          <button
-                            onClick={() => {
-                              setSelectedRecord(record);
-                              setModals({ ...modals, details: true });
-                            }}
-                            className="p-2 bg-gray-100 text-gray-600 rounded-lg"
-                            title="View"
-                          >
-                            <Eye size={16} />
-                          </button>
-
-                          <button
-                            onClick={() => handleEditClick(record)}
-                            disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                            className={`p-2 rounded-lg ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
-                              ? 'bg-gray-50 text-gray-300 pointer-events-none'
-                              : 'bg-green-100 text-green-600'
-                              }`}
-                            title={record.official_qty > 0 ? "Cannot edit weighed item" : "Edit"}
-                          >
-                            <Edit size={16} />
-                          </button>
-
-                          <button
-                            onClick={() => initiateDelete(record._id)}
-                            disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                            className={`p-2 rounded-lg ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
-                              ? 'bg-gray-50 text-gray-300 pointer-events-none'
-                              : 'bg-red-50 text-red-600'
-                              }`}
-                            title={record.official_qty > 0 ? "Cannot delete weighed item" : "Delete"}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1131,104 +1146,169 @@ const FarmerDashboard = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Date</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Time</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Market</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Item</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Total Qty</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Status</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Rate</th>
-                      <th className="px-8 py-4 text-left font-semibold text-gray-900">Amount</th>
-                      <th className="px-8 py-4 text-right font-semibold text-gray-900">Actions</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-900">Date</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Time</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Market</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Item</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Total Qty</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Sold</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Awaiting</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Status</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Rate</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Amount</th>
+                      <th className="px-6 py-4 text-right font-semibold text-gray-900">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {sortedRecords.length === 0 ? (
                       <tr>
-                        <td colSpan="9" className="px-8 py-16 text-center">
+                        <td colSpan="11" className="px-8 py-16 text-center">
                           <Clock size={48} className="mx-auto text-gray-300 mb-3" />
                           <p className="text-gray-600 font-medium">No records found</p>
                           <p className="text-gray-500 text-sm mt-1">Click "New Record" to add your first entry</p>
                         </td>
                       </tr>
                     ) : (
-                      sortedRecords.map((record) => (
-                        <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
-                          <td className="px-8 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
-                          <td className="px-8 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
-                          <td className="px-8 py-4 text-gray-900 font-medium">{record.market}</td>
-                          <td className="px-8 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
-                          {/* UPDATED LOGIC FOR QUANTITY DISPLAY */}
-                          <td className="px-8 py-4 text-gray-700">
-                            {record.quantity > 0
-                              ? `${record.quantity} kg`
-                              : record.carat > 0
-                                ? `${record.carat} Crt`
-                                : '-'}
-                          </td>
-                          <td className="px-8 py-4">
-                            <span className={`px-4 py-2 rounded-full text-xs font-bold inline-flex items-center gap-2 ${['Sold', 'Completed'].includes(record.status)
-                              ? 'bg-green-100 text-green-700 border border-green-200'
-                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                              } `}>
-                              {['Sold', 'Completed'].includes(record.status) ? <CheckCircle size={14} /> : <Clock size={14} />}
-                              {record.status}
-                            </span>
-                          </td>
-                          <td className="px-8 py-4 text-gray-700">{['Sold', 'Completed'].includes(record.status) ? `₹${record.sale_rate || record.rate} ` : '-'}</td>
-                          <td className="px-8 py-4 font-bold text-green-600">{['Sold', 'Completed'].includes(record.status) ? `₹${(record.sale_amount || (record.sale_rate * record.quantity) || 0).toLocaleString('en-IN')} ` : '-'}</td>
-                          <td className="px-8 py-4 text-right">
-                            <div className="flex justify-end gap-2">
+                      sortedRecords.map((record) => {
+                        // Calculate sold and pending quantities
+                        const totalQty = record.quantity > 0 ? record.quantity : record.carat;
+                        const unit = record.quantity > 0 ? 'kg' : 'Crt';
 
-                              <PDFDownloadLink
-                                document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
-                                fileName={`invoice-${record._id.slice(-6)}.pdf`}
-                                className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
-                                title="Download Data / Invoice"
-                              >
-                                {({ loading }) => (
-                                  <Download size={18} className={loading ? 'animate-pulse' : ''} />
-                                )}
-                              </PDFDownloadLink>
+                        // Check if this is a parent record with aggregated data
+                        const isParent = record.is_parent === true;
+                        let soldQty = 0;
+                        let awaitingQty = 0;
+                        let displayStatus = record.status;
+                        let saleAmount = record.sale_amount || 0;
+                        let avgRate = record.sale_rate || 0;
 
-                              <button
-                                onClick={() => {
-                                  setSelectedRecord(record);
-                                  setModals({ ...modals, details: true });
-                                }}
-                                className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
-                                title="View Details"
-                              >
-                                <Eye size={18} />
-                              </button>
+                        if (isParent) {
+                          // Use aggregated data from backend
+                          soldQty = record.quantity > 0
+                            ? (record.aggregated_sold_qty || 0)
+                            : (record.aggregated_sold_carat || 0);
+                          awaitingQty = record.quantity > 0
+                            ? (record.awaiting_qty || 0)
+                            : (record.awaiting_carat || 0);
+                          // Status is Pending if there's still awaiting quantity
+                          displayStatus = awaitingQty > 0.01 ? 'Pending' : 'Sold';
+                          saleAmount = record.aggregated_sale_amount || 0;
+                          avgRate = record.aggregated_avg_rate || 0;
+                        } else {
+                          // Regular record logic
+                          const officialQty = record.quantity > 0 ? (record.official_qty || 0) : (record.official_carat || 0);
+                          const isSold = ['Sold', 'Completed'].includes(record.status);
+                          soldQty = isSold ? (officialQty > 0 ? officialQty : totalQty) : 0;
+                          awaitingQty = totalQty - soldQty;
+                          displayStatus = awaitingQty > 0.01 ? 'Pending' : (isSold ? 'Sold' : 'Pending');
+                        }
 
-                              <button
-                                onClick={() => handleEditClick(record)}
-                                disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                                className={`p-2.5 rounded-lg transition border ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
-                                  ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                                  : 'bg-green-100 hover:bg-green-200 text-green-600 border-green-200'
-                                  }`}
-                                title={record.official_qty > 0 ? "Cannot edit weighed item" : "Edit"}
-                              >
-                                <Edit size={18} />
-                              </button>
+                        const isSold = displayStatus === 'Sold';
 
-                              <button
-                                onClick={() => initiateDelete(record._id)}
-                                disabled={record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                                className={`p-2.5 rounded-lg transition border ${record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
-                                  ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                                  : 'bg-red-100 hover:bg-red-200 text-red-600 border-red-200'
-                                  }`}
-                                title={record.official_qty > 0 ? "Cannot delete weighed item" : "Delete"}
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                        return (
+                          <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
+                            <td className="px-6 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
+                            <td className="px-4 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
+                            <td className="px-4 py-4 text-gray-900 font-medium">{record.market}</td>
+                            <td className="px-4 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
+                            {/* Total Qty */}
+                            <td className="px-4 py-4 text-gray-700">
+                              {record.quantity > 0
+                                ? `${record.quantity} kg`
+                                : record.carat > 0
+                                  ? `${record.carat} Crt`
+                                  : '-'}
+                            </td>
+                            {/* Sold Qty */}
+                            <td className="px-4 py-4">
+                              {soldQty > 0 ? (
+                                <span className="text-green-600 font-semibold">{parseFloat(soldQty.toFixed(2))} {unit}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            {/* Pending/Awaiting Qty */}
+                            <td className="px-4 py-4">
+                              {awaitingQty > 0.01 ? (
+                                <span className="text-amber-600 font-semibold">{parseFloat(awaitingQty.toFixed(2))} {unit}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            {/* Status */}
+                            <td className="px-4 py-4">
+                              {isSold ? (
+                                <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-green-100 text-green-700 border border-green-200">
+                                  <CheckCircle size={12} />
+                                  Sold
+                                </span>
+                              ) : displayStatus === 'Partial' ? (
+                                <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 border border-blue-200">
+                                  <Clock size={12} />
+                                  Partial
+                                </span>
+                              ) : (
+                                <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 border border-amber-200">
+                                  <Clock size={12} />
+                                  Pending
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-4 text-gray-700">{(soldQty > 0 || isSold) ? `₹${Math.round(avgRate || record.sale_rate || 0)} ` : '-'}</td>
+                            <td className="px-4 py-4 font-bold text-green-600">{(soldQty > 0 || isSold) ? `₹${Math.round(saleAmount || 0).toLocaleString('en-IN')} ` : '-'}</td>
+                            <td className="px-8 py-4 text-right">
+                              <div className="flex justify-end gap-2">
+
+                                <PDFDownloadLink
+                                  document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
+                                  fileName={`invoice-${record._id.slice(-6)}.pdf`}
+                                  className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
+                                  title="Download Data / Invoice"
+                                >
+                                  {({ loading }) => (
+                                    <Download size={18} className={loading ? 'animate-pulse' : ''} />
+                                  )}
+                                </PDFDownloadLink>
+
+                                <button
+                                  onClick={() => {
+                                    setSelectedRecord(record);
+                                    setModals({ ...modals, details: true });
+                                  }}
+                                  className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
+                                  title="View Details"
+                                >
+                                  <Eye size={18} />
+                                </button>
+
+                                <button
+                                  onClick={() => handleEditClick(record)}
+                                  disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                                  className={`p-2.5 rounded-lg transition border ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                                    ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                                    : 'bg-green-100 hover:bg-green-200 text-green-600 border-green-200'
+                                    }`}
+                                  title={soldQty > 0 ? "Cannot edit sold/partial item" : (record.official_qty > 0 ? "Cannot edit weighed item" : "Edit")}
+                                >
+                                  <Edit size={18} />
+                                </button>
+
+                                <button
+                                  onClick={() => initiateDelete(record._id)}
+                                  disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                                  className={`p-2.5 rounded-lg transition border ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                                    ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                                    : 'bg-red-100 hover:bg-red-200 text-red-600 border-red-200'
+                                    }`}
+                                  title={soldQty > 0 ? "Cannot delete sold/partial item" : (record.official_qty > 0 ? "Cannot delete weighed item" : "Delete")}
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

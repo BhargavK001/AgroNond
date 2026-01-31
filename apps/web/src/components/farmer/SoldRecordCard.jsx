@@ -74,7 +74,7 @@ const SoldRecordCard = ({ record }) => {
             <span className="font-medium">₹{sale_amount?.toLocaleString()}</span>
           </div>
           <div className="flex justify-between items-center text-red-500">
-            <span>Commission (4%)</span>
+            <span>Commission ({sale_amount ? Math.round((farmer_commission / sale_amount) * 100) : 0}%)</span>
             <span className="font-medium">- ₹{farmer_commission?.toLocaleString()}</span>
           </div>
           {isPaid && farmer_payment_mode && (
