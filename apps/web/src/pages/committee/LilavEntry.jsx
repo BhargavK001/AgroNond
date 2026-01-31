@@ -14,7 +14,9 @@ import {
     RefreshCw,
     CheckCircle2,
     X,
-    Plus
+    Plus,
+    Edit2,
+    Trash2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -44,7 +46,12 @@ export default function LilavEntry() {
 
     // Sale modal state
     const [saleModal, setSaleModal] = useState({ open: false, record: null });
-    const [saleForm, setSaleForm] = useState({ trader_id: '', sale_rate: 0, sale_unit: 'kg' });
+    const [saleForm, setSaleForm] = useState({ trader_id: '', sale_rate: 0, sale_unit: 'kg', allocation_qty: '' });
+
+    // Multi-trader allocation state
+    const [traderAllocations, setTraderAllocations] = useState([]);
+    // { trader_id, trader_name, business_name, quantity, rate }
+    const [editingAllocationIndex, setEditingAllocationIndex] = useState(null);
 
     useEffect(() => {
         fetchInitialData();
@@ -126,27 +133,147 @@ export default function LilavEntry() {
         setSaleForm({
             trader_id: '',
             sale_rate: todayRate?.rate || '',
-            sale_unit: recordUnit
+            sale_unit: recordUnit,
+            allocation_qty: ''
         });
+        // Reset multi-trader allocations when opening modal
+        setTraderAllocations([]);
+        setEditingAllocationIndex(null);
         setSaleModal({ open: true, record, lockedUnit: recordUnit });
     };
 
-    const handleConfirmSale = async () => {
+    // Add a trader allocation to the list
+    const handleAddTraderAllocation = () => {
         if (!saleForm.trader_id) {
             toast.error('Please select a trader');
             return;
         }
-        if (!saleForm.sale_rate || saleForm.sale_rate <= 0) {
+        if (!saleForm.allocation_qty || parseFloat(saleForm.allocation_qty) <= 0) {
+            toast.error('Please enter a valid quantity');
+            return;
+        }
+        if (!saleForm.sale_rate || parseFloat(saleForm.sale_rate) <= 0) {
             toast.error('Please enter a valid rate');
             return;
+        }
+
+        const trader = traders.find(t => t._id === saleForm.trader_id);
+        if (!trader) {
+            toast.error('Trader not found');
+            return;
+        }
+
+        // Check if trader is already in the list
+        const existingIndex = traderAllocations.findIndex(a => a.trader_id === saleForm.trader_id);
+        if (existingIndex !== -1 && editingAllocationIndex !== existingIndex) {
+            toast.error('This trader is already added. Edit the existing entry instead.');
+            return;
+        }
+
+        const { caratValue, qtyValue } = getEffectiveValues(saleModal.record);
+        const totalAvailable = caratValue > 0 ? caratValue : qtyValue;
+        const allocatedQty = traderAllocations.reduce((sum, a, idx) =>
+            idx !== editingAllocationIndex ? sum + parseFloat(a.quantity) : sum, 0);
+        const newQty = parseFloat(saleForm.allocation_qty);
+
+        if (allocatedQty + newQty > totalAvailable) {
+            toast.error(`Cannot allocate more than available (${totalAvailable - allocatedQty} remaining)`);
+            return;
+        }
+
+        const newAllocation = {
+            trader_id: saleForm.trader_id,
+            trader_name: trader.full_name,
+            business_name: trader.business_name || '',
+            quantity: newQty,
+            rate: parseFloat(saleForm.sale_rate)
+        };
+
+        if (editingAllocationIndex !== null) {
+            // Update existing allocation
+            setTraderAllocations(prev => {
+                const updated = [...prev];
+                updated[editingAllocationIndex] = newAllocation;
+                return updated;
+            });
+            toast.success('Allocation updated');
+            setEditingAllocationIndex(null);
+        } else {
+            // Add new allocation
+            setTraderAllocations(prev => [...prev, newAllocation]);
+            toast.success(`${trader.full_name} added`);
+        }
+
+        // Reset form for next trader
+        setSaleForm(prev => ({
+            ...prev,
+            trader_id: '',
+            allocation_qty: ''
+        }));
+    };
+
+    // Edit an existing allocation
+    const handleEditAllocation = (index) => {
+        const allocation = traderAllocations[index];
+        setSaleForm(prev => ({
+            ...prev,
+            trader_id: allocation.trader_id,
+            allocation_qty: allocation.quantity.toString(),
+            sale_rate: allocation.rate
+        }));
+        setEditingAllocationIndex(index);
+    };
+
+    // Delete an allocation
+    const handleDeleteAllocation = (index) => {
+        setTraderAllocations(prev => prev.filter((_, i) => i !== index));
+        if (editingAllocationIndex === index) {
+            setEditingAllocationIndex(null);
+            setSaleForm(prev => ({
+                ...prev,
+                trader_id: '',
+                allocation_qty: ''
+            }));
+        }
+        toast.success('Trader removed');
+    };
+
+    // Cancel editing an allocation
+    const handleCancelEdit = () => {
+        setEditingAllocationIndex(null);
+        setSaleForm(prev => ({
+            ...prev,
+            trader_id: '',
+            allocation_qty: ''
+        }));
+    };
+
+    const handleConfirmSale = async () => {
+        // If we have allocations, use first trader for now (backend supports single trader)
+        // In future, backend can be updated to handle multiple traders
+        if (traderAllocations.length === 0) {
+            // Fallback to old single-trader logic
+            if (!saleForm.trader_id) {
+                toast.error('Please add at least one trader');
+                return;
+            }
+            if (!saleForm.sale_rate || saleForm.sale_rate <= 0) {
+                toast.error('Please enter a valid rate');
+                return;
+            }
         }
 
         try {
             setProcessingId(saleModal.record._id);
 
+            // Use first allocation if available, otherwise use saleForm
+            const traderToUse = traderAllocations.length > 0
+                ? { trader_id: traderAllocations[0].trader_id, sale_rate: traderAllocations[0].rate }
+                : { trader_id: saleForm.trader_id, sale_rate: saleForm.sale_rate };
+
             await api.patch(`/api/records/${saleModal.record._id}/sell`, {
-                trader_id: saleForm.trader_id,
-                sale_rate: saleForm.sale_rate,
+                trader_id: traderToUse.trader_id,
+                sale_rate: traderToUse.sale_rate,
                 sale_unit: saleForm.sale_unit
             });
 
@@ -186,6 +313,16 @@ export default function LilavEntry() {
 
     const calculateAmount = (qty, rate) => {
         return (qty || 0) * (rate || 0);
+    };
+
+    // Calculate remaining quantity to allocate
+    const getRemainingQuantity = () => {
+        if (!saleModal.record) return 0;
+        const { caratValue, qtyValue } = getEffectiveValues(saleModal.record);
+        const totalAvailable = caratValue > 0 ? caratValue : qtyValue;
+        const allocated = traderAllocations.reduce((sum, a, idx) =>
+            idx !== editingAllocationIndex ? sum + parseFloat(a.quantity) : sum, 0);
+        return totalAvailable - allocated;
     };
 
     if (loading) {
@@ -496,11 +633,11 @@ export default function LilavEntry() {
                                         </div>
                                     )}
 
-                                    {/* Inputs Row */}
-                                    <div className="grid sm:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
+                                    {/* Inputs Row - Rate, Quantity, and Trader Search */}
+                                    <div className="grid sm:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
                                             <label className="block text-sm font-semibold text-gray-700">
-                                                Sale Rate (₹/{modalHasCarat ? 'Carat' : 'Kg'})
+                                                Rate (₹/{modalHasCarat ? 'Crt' : 'Kg'})
                                             </label>
                                             <div className="relative">
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
@@ -518,13 +655,33 @@ export default function LilavEntry() {
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <label className="block text-sm font-semibold text-gray-700">Buyer (Trader)</label>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-gray-700">
+                                                Quantity ({modalHasCarat ? 'Crt' : 'Kg'})
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={getRemainingQuantity()}
+                                                    value={saleForm.allocation_qty}
+                                                    onChange={(e) => setSaleForm(prev => ({ ...prev, allocation_qty: e.target.value }))}
+                                                    placeholder={`Max: ${getRemainingQuantity()}`}
+                                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500">
+                                                Remaining: <span className="font-bold text-emerald-600">{getRemainingQuantity()} {modalHasCarat ? 'Crt' : 'Kg'}</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-gray-700">Search Trader</label>
                                             <div className="relative">
                                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                                 <input
                                                     type="text"
-                                                    placeholder="Search trader..."
+                                                    placeholder="Search..."
                                                     value={traderSearch}
                                                     onChange={(e) => setTraderSearch(e.target.value)}
                                                     className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
@@ -534,7 +691,7 @@ export default function LilavEntry() {
                                     </div>
 
                                     {/* Trader Selection List (Compact) */}
-                                    <div className="h-40 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/50 p-2 custom-scrollbar">
+                                    <div className="h-32 overflow-y-auto border border-gray-100 rounded-xl bg-gray-50/50 p-2 custom-scrollbar">
                                         {filteredTraders.map((trader) => (
                                             <button
                                                 key={trader._id}
@@ -552,6 +709,78 @@ export default function LilavEntry() {
                                             </button>
                                         ))}
                                     </div>
+
+                                    {/* Add Trader Button */}
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={handleAddTraderAllocation}
+                                            disabled={!saleForm.trader_id || !saleForm.allocation_qty}
+                                            className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <Plus size={18} />
+                                            {editingAllocationIndex !== null ? 'Update Trader' : 'Add Trader'}
+                                        </button>
+                                        {editingAllocationIndex !== null && (
+                                            <button
+                                                onClick={handleCancelEdit}
+                                                className="py-2.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Added Traders List */}
+                                    {traderAllocations.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-sm font-bold text-gray-700">Added Traders ({traderAllocations.length})</h4>
+                                                <span className="text-xs text-gray-500">
+                                                    Total: {traderAllocations.reduce((s, a) => s + a.quantity, 0)} {modalHasCarat ? 'Crt' : 'Kg'}
+                                                </span>
+                                            </div>
+                                            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                                                {traderAllocations.map((allocation, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className={`flex items-center justify-between p-3 bg-white ${editingAllocationIndex === index ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''}`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                                                                {allocation.trader_name?.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-semibold text-sm text-gray-900">{allocation.trader_name}</p>
+                                                                <p className="text-xs text-gray-500">{allocation.business_name}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="text-right">
+                                                                <p className="font-bold text-emerald-600">{allocation.quantity} {modalHasCarat ? 'Crt' : 'Kg'}</p>
+                                                                <p className="text-xs text-gray-500">₹{allocation.rate}/{modalHasCarat ? 'Crt' : 'Kg'}</p>
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                <button
+                                                                    onClick={() => handleEditAllocation(index)}
+                                                                    className="p-1.5 hover:bg-blue-50 text-blue-600 rounded-lg transition"
+                                                                    title="Edit"
+                                                                >
+                                                                    <Edit2 size={16} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteAllocation(index)}
+                                                                    className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg transition"
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
@@ -563,7 +792,7 @@ export default function LilavEntry() {
                                     </button>
                                     <button
                                         onClick={handleConfirmSale}
-                                        disabled={!saleForm.trader_id || processingId}
+                                        disabled={traderAllocations.length === 0 || processingId}
                                         className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                         {processingId ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
