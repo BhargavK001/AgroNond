@@ -122,12 +122,13 @@ export default function LilavEntry() {
         // Use effective carat value (official or farmer's initial)
         const { caratValue } = getEffectiveValues(record);
 
+        const recordUnit = record.sale_unit || (caratValue > 0 ? 'carat' : 'kg');
         setSaleForm({
             trader_id: '',
             sale_rate: todayRate?.rate || '',
-            sale_unit: caratValue > 0 ? 'carat' : 'kg'
+            sale_unit: recordUnit
         });
-        setSaleModal({ open: true, record });
+        setSaleModal({ open: true, record, lockedUnit: recordUnit });
     };
 
     const handleConfirmSale = async () => {

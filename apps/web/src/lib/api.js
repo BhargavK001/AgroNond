@@ -198,6 +198,13 @@ export const api = {
     getProfile: () => apiRequest('/api/weight/profile', { method: 'GET' }),
     updateProfile: (data) => apiRequest('/api/weight/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
+
+  // Notifications
+  notifications: {
+    list: () => apiRequest('/api/notifications', { method: 'GET' }),
+    markRead: (id) => apiRequest(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+    markAllRead: () => apiRequest('/api/notifications/read-all', { method: 'PATCH' }),
+  },
 };
 
 export default api;

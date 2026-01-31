@@ -57,7 +57,8 @@ const WeightDashboard = () => {
     estWeight: '',
     estCarat: '', // ✅ NEW
     updatedWeight: '',
-    updatedCarat: '' // ✅ NEW
+    updatedCarat: '', // ✅ NEW
+    saleUnit: 'kg' //Default
   });
 
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -137,7 +138,8 @@ const WeightDashboard = () => {
         est_qty: r.quantity,
         est_carat: r.carat,
         date: r.createdAt,
-        status: r.status // Capture status
+        status: r.status, // Capture status
+        sale_unit: r.sale_unit || (r.carat > 0 ? 'carat' : 'kg') // Capture unit
       }));
       setMarketData(mapped);
     } catch (err) {
@@ -160,7 +162,8 @@ const WeightDashboard = () => {
         farmerId: selectedItem.farmer_id,
         item: selectedItem.item,
         estWeight: selectedItem.est_qty || 0,
-        estCarat: selectedItem.est_carat || 0 // ✅ NEW
+        estCarat: selectedItem.est_carat || 0, // ✅ NEW
+        saleUnit: selectedItem.sale_unit // Set sale unit
       }));
       toast.success("Auto-fetched details!");
     }
@@ -227,7 +230,8 @@ const WeightDashboard = () => {
         estWeight: '',
         estCarat: '',
         updatedWeight: '',
-        updatedCarat: ''
+        updatedCarat: '',
+        saleUnit: 'kg'
       });
       setModals(prev => ({ ...prev, addWeight: false }));
 
@@ -302,7 +306,8 @@ const WeightDashboard = () => {
       estWeight: record.est_weight.toString(),
       estCarat: record.est_carat ? record.est_carat.toString() : '',
       updatedWeight: record.updated_weight ? record.updated_weight.toString() : '',
-      updatedCarat: record.updated_carat ? record.updated_carat.toString() : ''
+      updatedCarat: record.updated_carat ? record.updated_carat.toString() : '',
+      saleUnit: record.sale_unit || (record.est_carat > 0 ? 'carat' : 'kg') // ✅ Set saleUnit
     });
     setModals(prev => ({ ...prev, editWeight: true }));
   };

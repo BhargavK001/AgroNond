@@ -12,16 +12,9 @@ export function NotificationProvider({ children }) {
     const fetchNotifications = async () => {
         if (!user) return;
         try {
-            const response = await fetch('/api/notifications', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setNotifications(data.notifications || []);
-                setUnreadCount(data.unreadCount || 0);
-            }
+            const data = await api.notifications.list();
+            setNotifications(data.notifications || []);
+            setUnreadCount(data.unreadCount || 0);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         }
@@ -45,12 +38,7 @@ export function NotificationProvider({ children }) {
             setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
 
-            await fetch(`/api/notifications/${id}/read`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                }
-            });
+            await api.notifications.markRead(id);
         } catch (error) {
             console.error('Mark read failed:', error);
             fetchNotifications(); // Revert on error
@@ -63,12 +51,7 @@ export function NotificationProvider({ children }) {
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
             setUnreadCount(0);
 
-            await fetch('/api/notifications/read-all', {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                }
-            });
+            await api.notifications.markAllRead();
         } catch (error) {
             console.error('Mark all read failed:', error);
             fetchNotifications();

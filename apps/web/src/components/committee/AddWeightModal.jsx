@@ -39,7 +39,7 @@ export default function AddWeightModal({ isOpen, onClose, onAdd }) {
             });
 
             toast.success('Weight operator added successfully!');
-            onAdd(response.data.user);
+            onAdd(response.user);
             setFormData({ name: '', phone: '', location: '' });
             onClose();
         } catch (error) {

@@ -23,6 +23,10 @@ const notificationSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    visible: {
+        type: Boolean,
+        default: true
+    },
     data: {
         type: Object, // For any extra metadata like recordId, link, etc.
         default: {}
