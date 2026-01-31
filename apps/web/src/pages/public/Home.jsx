@@ -7,6 +7,7 @@ import Card from '../../components/ui/Card';
 
 // CTA Background Image
 import ctaBackground from '../../assets/hero-farmer.jpg';
+import VegetableSalesAnalytics from '../../components/public/VegetableSalesAnalytics';
 
 // Feature icons
 const features = [
@@ -267,31 +268,24 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Market Sales Analytics Section */}
       <section className="section">
         <div className="container">
-          <ScrollReveal variant="scale">
-            <div className="rounded-2xl overflow-hidden relative text-center py-20 px-6" style={{ backgroundImage: `url(${ctaBackground})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              {/* Dark overlay for text readability */}
-              <div className="absolute inset-0 bg-black/60" />
-              <motion.div
-                className="relative z-10"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8 }}
-              >
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                  Ready to Transform Your Market?
-                </h2>
-                <p className="text-white/90 text-lg mb-8 max-w-xl mx-auto">
-                  Join thousands of farmers and traders already benefiting from digital market management.
-                </p>
-                <ShimmerButton to="/login" variant="secondary" size="lg">
-                  Start Now — It's Free
-                </ShimmerButton>
-              </motion.div>
+          <ScrollReveal variant="fadeUp">
+            <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+              <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary-100)] text-[var(--primary)] text-xs sm:text-sm font-semibold mb-3">
+                Analytics
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
+                Today's Market Overview
+              </h2>
+              <p className="text-[var(--text-secondary)] text-sm sm:text-base">
+                Real-time vegetable sales data from the market. See what's selling high and low.
+              </p>
             </div>
+          </ScrollReveal>
+          <ScrollReveal variant="fadeUp" delay={0.2}>
+            <VegetableSalesAnalytics />
           </ScrollReveal>
         </div>
       </section>

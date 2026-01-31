@@ -765,36 +765,55 @@ const WeightDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Qty (Kg)</label>
-              <input
-                type="number"
-                value={formData.updatedWeight}
-                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
-                disabled={formData.saleUnit === 'carat'}
-                className={`w-full px-4 py-3 rounded-xl border-2 outline-none font-bold transition-all ${formData.saleUnit === 'carat'
-                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-green-50/30 text-green-800'
-                  }`}
-              />
-            </div>
-            {/* ✅ NEW: Official Carat Input */}
-            <div>
-              <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Carat</label>
-              <input
-                type="number"
-                value={formData.updatedCarat}
-                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
-                placeholder="0.00"
-                disabled={formData.saleUnit === 'kg'}
-                className={`w-full px-4 py-3 rounded-xl border-2 outline-none font-bold transition-all ${formData.saleUnit === 'kg'
-                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 bg-purple-50/30 text-purple-800'
-                  }`}
-              />
-            </div>
-          </div>
+          {/* Conditional Official Qty Input - Based on Est. values */}
+          {(() => {
+            const hasEstCarat = parseFloat(formData.estCarat) > 0;
+            const hasEstWeight = parseFloat(formData.estWeight) > 0;
+
+            return (
+              <div className="space-y-4">
+                {/* Show info banner about which unit is allowed */}
+                {(hasEstCarat || hasEstWeight) && (
+                  <div className={`p-3 rounded-xl border text-sm font-medium text-center ${hasEstCarat ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+                    {hasEstCarat
+                      ? `📦 This lot is measured in Carat (${formData.estCarat} Crt) - Enter Official Qty in Carat only`
+                      : `📦 This lot is measured in Kg (${formData.estWeight} kg) - Enter Official Qty in Kg only`
+                    }
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Show Kg input ONLY when estWeight > 0 AND estCarat = 0 */}
+                  {hasEstWeight && !hasEstCarat && (
+                    <div>
+                      <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Qty (Kg)</label>
+                      <input
+                        type="number"
+                        value={formData.updatedWeight}
+                        onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
+                      />
+                    </div>
+                  )}
+
+                  {/* Show Crt input ONLY when estCarat > 0 */}
+                  {hasEstCarat && (
+                    <div>
+                      <label className="block text-xs font-bold text-purple-700 uppercase mb-2 tracking-wide">Official Carat</label>
+                      <input
+                        type="number"
+                        value={formData.updatedCarat}
+                        onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none bg-purple-50/30 text-purple-800 font-bold transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
             * Enter "Official Qty" to mark status as "Done". Leaving empty keeps it "Pending".
@@ -850,39 +869,56 @@ const WeightDashboard = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Kg)</label>
-              <input
-                type="number"
-                value={formData.updatedWeight}
-                // ✅ CHANGED: Clears updatedCarat when typing in updatedWeight
-                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
-                placeholder="0.00"
-                autoFocus
-                disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'}
-                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'
-                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
-                  }`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Crt)</label>
-              <input
-                type="number"
-                value={formData.updatedCarat}
-                // ✅ CHANGED: Clears updatedWeight when typing in updatedCarat
-                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
-                placeholder="0.00"
-                disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'}
-                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'
-                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                  : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
-                  }`}
-              />
-            </div>
-          </div>
+          {/* Conditional Weight Input - Based on Est. Weight values */}
+          {(() => {
+            const hasEstCarat = parseFloat(formData.estCarat) > 0;
+            const hasEstWeight = parseFloat(formData.estWeight) > 0;
+            const isSold = selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status);
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Show Kg input ONLY when estWeight > 0 AND estCarat = 0 */}
+                  {hasEstWeight && !hasEstCarat && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Kg)</label>
+                      <input
+                        type="number"
+                        value={formData.updatedWeight}
+                        onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        placeholder="0.00"
+                        autoFocus
+                        disabled={isSold}
+                        className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${isSold
+                          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                          : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                          }`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Show Crt input ONLY when estCarat > 0 */}
+                  {hasEstCarat && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Crt)</label>
+                      <input
+                        type="number"
+                        value={formData.updatedCarat}
+                        onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        placeholder="0.00"
+                        autoFocus
+                        disabled={isSold}
+                        className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${isSold
+                          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                          : 'border-purple-500 focus:ring-purple-100 bg-white text-purple-700'
+                          }`}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="pt-2">
             <button
