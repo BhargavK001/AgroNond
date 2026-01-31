@@ -237,7 +237,8 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
             let prevRate = 0;
 
             for (const child of children) {
-                if (['Sold', 'Completed'].includes(child.status)) {
+                // Include RateAssigned and Weighed as 'sold'/allocated so they don't show up as pending
+                if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
                     soldQty += child.official_qty || child.quantity || 0;
                     soldCarat += child.official_carat || child.carat || 0;
                     // Capture rate from first sold child to lock it for subsequent splits
@@ -566,31 +567,57 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             console.log('Multi-trader flow detected with', allocations.length, 'allocations');
             // Multi-trader allocation flow
 
-            // Calculate base total (original quantity)
-            let baseTotal = record.sale_unit === 'carat' || (record.carat > 0 && record.quantity === 0)
-                ? (record.official_carat || record.carat || 0)
-                : (record.official_qty || record.quantity || 0);
-
             let alreadySold = 0;
-
             // If it's already a parent record, subtract what's already been sold to child records
             if (record.is_parent) {
                 const existingChildren = await Record.find({ parent_record_id: record._id });
                 for (const child of existingChildren) {
                     if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
-                        const childQty = record.sale_unit === 'carat' || (record.carat > 0 && record.quantity === 0)
-                            ? (child.official_carat || child.carat || 0)
-                            : (child.official_qty || child.quantity || 0);
+                        // This `alreadySold` is a bit ambiguous as it doesn't specify unit.
+                        // It's used in the `availableKg` and `availableCarat` calculations below
+                        // with an `approx check`. This might need refinement if `alreadySold`
+                        // needs to be unit-specific. For now, keeping it as is from the original context.
+                        const childQty = (child.official_qty || child.quantity || child.official_carat || child.carat || 0);
                         alreadySold += childQty;
                     }
                 }
             }
 
-            const totalAvailable = baseTotal - alreadySold;
+            // Calculate availability for BOTH units
+            const availableKg = (record.official_qty || record.quantity || 0) -
+                (record.sale_unit === 'kg' && record.is_parent ? alreadySold : 0); // Approx check for alreadySold
+
+            const availableCarat = (record.official_carat || record.carat || 0) -
+                (record.sale_unit === 'carat' && record.is_parent ? alreadySold : 0);
+
+            // Determine intention
             const totalAllocated = allocations.reduce((sum, a) => sum + parseFloat(a.quantity || 0), 0);
+
+            // Initial assumption from request or record
+            let targetUnit = sale_unit || (availableCarat > 0 ? 'carat' : 'kg');
+            let totalAvailable = targetUnit === 'carat' ? availableCarat : availableKg;
+
+            // SMART FIX: If selected unit has 0 availability (or less than allocated) BUT other unit has enough
+            // explicitly switch to the other unit.
+            // This handles mismatch where frontend sends 'carat' but we only have 'kg', or vice versa.
+            if (totalAvailable < totalAllocated) {
+                const otherUnit = targetUnit === 'carat' ? 'kg' : 'carat';
+                const otherAvailable = targetUnit === 'carat' ? availableKg : availableCarat;
+
+                console.log(`Mismatch detected! Requested ${targetUnit} (${totalAvailable}) < Allocated (${totalAllocated}). Checking ${otherUnit} (${otherAvailable})...`);
+
+                if (otherAvailable >= totalAllocated - 0.01) {
+                    console.log(`Substituted unit to ${otherUnit} to allow sale.`);
+                    targetUnit = otherUnit;
+                    totalAvailable = otherAvailable;
+                }
+            }
+
+            const isCarat = targetUnit === 'carat';
 
             // Use small epsilon for floating point comparison
             if (totalAllocated > totalAvailable + 0.01) {
+                console.error(`FAIL: Allocated ${totalAllocated} > Available ${totalAvailable} (${targetUnit})`);
                 return res.status(400).json({
                     error: `Total allocated (${totalAllocated}) exceeds available quantity (${parseFloat(totalAvailable.toFixed(2))})`
                 });
@@ -608,7 +635,7 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
 
             // Create child records for each allocation
             const createdRecords = [];
-            const isCarat = record.sale_unit === 'carat' || (record.carat > 0 && record.quantity === 0);
+            // isCarat is already determined above
 
             for (let i = 0; i < allocations.length; i++) {
                 const allocation = allocations[i];
@@ -633,7 +660,7 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
                     allocated_carat: isCarat ? parseFloat(allocation.quantity) : 0,
                     trader_id: allocation.trader_id,
                     sale_rate: parseFloat(allocation.rate),
-                    sale_unit: sale_unit || (isCarat ? 'carat' : 'kg'),
+                    sale_unit: targetUnit,
                     status: 'RateAssigned',
                     parent_record_id: record._id,
                     is_parent: false,

@@ -34,11 +34,8 @@ const COLORS = [
     '#3b82f6', // blue-500
 ];
 
-// Custom Tick Component for Y-Axis to stack languages
 const CustomYAxisTick = ({ x, y, payload }) => {
     const text = payload.value;
-    // Split by open parenthesis to separate English and Marathi
-    // E.g. "Cabbage (कोबी)" -> ["Cabbage ", "कोबी)"]
     const parts = text.split('(');
     const english = parts[0].trim();
     // Re-add parenthesis if it exists in split

@@ -139,7 +139,9 @@ export default function LilavEntry() {
         // Use effective carat value (official or farmer's initial)
         const { caratValue } = getEffectiveValues(record);
 
-        const recordUnit = record.sale_unit || (caratValue > 0 ? 'carat' : 'kg');
+        // Prioritize actual values to determine unit - if we have carat value, use carat, otherwise default to kg
+        // This fixes issues where sale_unit might be set to 'carat' but the item is actually weighed in kg
+        const recordUnit = caratValue > 0 ? 'carat' : 'kg';
 
         // Check for locked rate (partial sale)
         const lockedRate = record.prev_rate || null;
