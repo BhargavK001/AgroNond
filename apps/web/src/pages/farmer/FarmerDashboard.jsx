@@ -459,7 +459,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                   )}
                 </div>
 
-                {/* Dropdown Menu */}
+                {/* Dropdown Menu - Flat List */}
                 {isDropdownOpen && (
                   <>
                     <div
@@ -467,51 +467,36 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                       onClick={() => setIsDropdownOpen(false)}
                     />
                     <div className="absolute z-20 w-full mt-2 bg-white border border-gray-300 rounded-xl shadow-xl max-h-96 overflow-y-auto custom-scrollbar">
-                      {filteredCategories.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
-                          No vegetables found
-                        </div>
-                      ) : (
-                        filteredCategories.map((category) => (
-                          <div key={category.id} className="border-b border-gray-100 last:border-0">
-                            {/* Accordion Header */}
-                            <button
-                              onClick={() => toggleCategory(category.id)}
-                              className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition text-left"
-                            >
-                              <span className="font-bold text-sm text-gray-800">
-                                {category.name} <span className="font-normal text-gray-500 text-xs ml-1">({category.marathi})</span>
-                              </span>
-                              {expandedCategories.includes(category.id) ? (
-                                <ChevronUp size={16} className="text-gray-500" />
-                              ) : (
-                                <ChevronDown size={16} className="text-gray-500" />
-                              )}
-                            </button>
+                      {(() => {
+                        // Flatten all vegetables for display
+                        const allItems = filteredCategories.flatMap(cat =>
+                          cat.items.map(item => ({ ...item, categoryName: cat.name }))
+                        );
 
-                            {/* Accordion Content */}
-                            {expandedCategories.includes(category.id) && (
-                              <div className="bg-white animate-fadeIn">
-                                {category.items.map((item, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => handleVegetableSelect(item, category.name)}
-                                    className="w-full px-6 py-3 text-left hover:bg-green-50 transition border-b border-gray-50 last:border-0 flex justify-between items-center group"
-                                  >
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-900 group-hover:text-green-700">{item.english}</p>
-                                      <p className="text-xs text-gray-500 group-hover:text-green-600">{item.marathi}</p>
-                                    </div>
-                                    {selectedVegetable.includes(item.english) && (
-                                      <CheckCircle size={16} className="text-green-600" />
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
+                        if (allItems.length === 0) {
+                          return (
+                            <div className="p-4 text-center text-gray-500">
+                              No vegetables found
+                            </div>
+                          );
+                        }
+
+                        return allItems.map((item, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleVegetableSelect(item, item.categoryName)}
+                            className="w-full px-4 py-3 text-left hover:bg-green-50 transition border-b border-gray-100 last:border-0 flex justify-between items-center group"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 group-hover:text-green-700">{item.english}</p>
+                              <p className="text-xs text-gray-500 group-hover:text-green-600">{item.marathi}</p>
+                            </div>
+                            {selectedVegetable.includes(item.english) && (
+                              <CheckCircle size={16} className="text-green-600" />
                             )}
-                          </div>
-                        ))
-                      )}
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </>
                 )}
@@ -534,63 +519,37 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               )}
             </div>
 
-            {/* Quantity Inputs */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Leave empty if using Carat)</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
-                  <input
-                    type="number"
-                    value={quantities.kg}
-                    onChange={(e) => handleQuantityChange(e.target.value, 'kg')}
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Tons (1T = 1000kg)</label>
-                  <input
-                    type="number"
-                    value={quantities.ton}
-                    onChange={(e) => handleQuantityChange(e.target.value, 'ton')}
-                    placeholder="0.00"
-                    step="0.001"
-                    min="0"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1 font-medium">Quintals (1Q = 100kg)</label>
-                  <input
-                    type="number"
-                    value={quantities.quintal}
-                    onChange={(e) => handleQuantityChange(e.target.value, 'quintal')}
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none bg-white text-gray-900"
-                  />
-                </div>
+            {/* Quantity and Carat Inputs - Side by Side */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Quantity Input */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Leave empty if using Carat)</label>
+                <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
+                <input
+                  type="number"
+                  value={quantities.kg}
+                  onChange={(e) => handleQuantityChange(e.target.value, 'kg')}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
+                />
               </div>
-            </div>
 
-            {/* ✅ NEW: Carat Field */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Leave empty if using Quantity)</label>
-              <input
-                type="number"
-                value={carat}
-                onChange={(e) => handleCaratChange(e.target.value)}
-                placeholder="Enter carat (e.g., 1, 2, 3...)"
-                step="1"  // Changed step to 1 for integers
-                min="0"
-                className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-green-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
-              />
+              {/* Carat Input */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Leave empty if using Quantity)</label>
+                <label className="block text-xs text-gray-500 mb-1 font-medium">Carat (Crt)</label>
+                <input
+                  type="number"
+                  value={carat}
+                  onChange={(e) => handleCaratChange(e.target.value)}
+                  placeholder="Enter carat (e.g., 1, 2, 3...)"
+                  step="1"
+                  min="0"
+                  className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
+                />
+              </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
