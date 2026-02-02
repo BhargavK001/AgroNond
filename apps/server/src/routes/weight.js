@@ -3,6 +3,7 @@ import Record from '../models/Record.js';
 import User from '../models/User.js';
 import CommissionRule from '../models/CommissionRule.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createAuditLog, getClientIp, AuditDescriptions } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -182,6 +183,22 @@ router.post('/record', requireAuth, async (req, res) => {
             if (date) record.createdAt = new Date(date);
             await record.save();
         }
+
+        // AUDIT LOG: Track weight entry
+        await createAuditLog({
+            user: req.user,
+            action: recordRefId ? 'update' : 'create',
+            entityType: 'weight',
+            entityId: record._id,
+            description: AuditDescriptions.createWeight(
+                record.farmer_id?.full_name || 'Farmer',
+                record.vegetable,
+                official_qty || official_carat
+            ),
+            changes: { official_qty, official_carat, status: record.status },
+            ipAddress: getClientIp(req)
+        });
+
         res.json(record);
     } catch (e) {
         console.error('Save record error:', e);

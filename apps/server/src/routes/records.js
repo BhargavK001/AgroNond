@@ -2,6 +2,7 @@ import express from 'express';
 import Record from '../models/Record.js';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createAuditLog, getClientIp, AuditDescriptions } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -168,6 +169,17 @@ router.patch('/:id/payment-status', requireAuth, async (req, res) => {
         if (!record) {
             return res.status(404).json({ error: 'Record not found' });
         }
+
+        // AUDIT LOG: Track payment status change
+        await createAuditLog({
+            user: req.user,
+            action: 'update',
+            entityType: 'payment',
+            entityId: record._id,
+            description: AuditDescriptions.paymentStatus(type, status, type === 'farmer' ? 'Farmer' : 'Trader'),
+            changes: { [updateField]: { old: 'Pending', new: status }, mode, ref },
+            ipAddress: getClientIp(req)
+        });
 
         res.json(record);
     } catch (error) {
@@ -685,6 +697,22 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             record.is_parent = true;
             record.status = 'Completed';
             await record.save();
+
+            // AUDIT LOG: Track lilav entry
+            await createAuditLog({
+                user: req.user,
+                action: 'create',
+                entityType: 'lilav',
+                entityId: record._id,
+                description: AuditDescriptions.createLilav(
+                    record.farmer_id?.full_name || 'Farmer',
+                    record.vegetable,
+                    `${allocations.length} traders`,
+                    allocations.reduce((sum, a) => sum + (parseFloat(a.quantity) * parseFloat(a.rate)), 0)
+                ),
+                changes: { allocations: allocations.length, traders: allocations.map(a => a.trader_id) },
+                ipAddress: getClientIp(req)
+            });
 
             res.json({
                 message: `Lot split successfully among ${allocations.length} traders`,
