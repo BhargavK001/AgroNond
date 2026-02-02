@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import FarmerNavbar from '../../components/navigation/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
 import SoldRecordCard from '../../components/farmer/SoldRecordCard';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import BillingInvoice from '../../components/committee/BillingInvoice';
 import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
   Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History, Download
@@ -621,9 +620,9 @@ const FarmerDashboard = () => {
   // --- FETCH DATA FROM BACKEND ---
   const [markets, setMarkets] = useState([]); // ✅ State for markets list
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async (showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       const data = await api.records.myRecords();
 
       let allRecords = data;
@@ -633,11 +632,15 @@ const FarmerDashboard = () => {
       setRecords(allRecords);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to fetch records');
+      // Only show error on initial load, not on background refresh
+      if (showLoading) toast.error('Failed to fetch records');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, []);
+
+  // ✅ Auto-refresh records every 30 seconds
+  useAutoRefresh(() => fetchRecords(false), { interval: 30000 });
 
   const loadProfile = () => {
     const prof = localStorage.getItem('farmer-profile');

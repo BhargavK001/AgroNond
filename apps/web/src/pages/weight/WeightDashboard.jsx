@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import WeightNavbar from '../../components/navigation/WeightNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
@@ -66,13 +67,6 @@ const WeightDashboard = () => {
   const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
 
-  // --- FETCH RECORDS ---
-  useEffect(() => {
-    fetchWeightRecords();
-    fetchMarketData();
-    loadProfile();
-  }, []);
-
   const loadProfile = async () => {
     try {
       const data = await api.weight.getProfile();
@@ -97,7 +91,7 @@ const WeightDashboard = () => {
   };
 
   // 1. Fetch Weight Records (Combined Pending + Done)
-  const fetchWeightRecords = async () => {
+  const fetchWeightRecords = useCallback(async (showLoading = true) => {
     try {
       const [done, pending] = await Promise.all([
         api.weight.records(),
@@ -122,12 +116,12 @@ const WeightDashboard = () => {
       setRecords(allRecords);
     } catch (err) {
       console.error('Error fetching weight records:', err);
-      toast.error('Failed to fetch records');
+      if (showLoading) toast.error('Failed to fetch records');
     }
-  };
+  }, []);
 
   // 2. Fetch Market Data (Source for Auto-Fill) - Now fetches "RateAssigned" records
-  const fetchMarketData = async () => {
+  const fetchMarketData = useCallback(async () => {
     try {
       const data = await api.weight.pendingRecords();
       // Map to format expected by dropdown
@@ -145,7 +139,20 @@ const WeightDashboard = () => {
     } catch (err) {
       console.error('Error fetching market data:', err);
     }
-  };
+  }, []);
+
+  // --- FETCH RECORDS ---
+  useEffect(() => {
+    fetchWeightRecords();
+    fetchMarketData();
+    loadProfile();
+  }, [fetchWeightRecords, fetchMarketData]);
+
+  // ✅ Auto-refresh records every 30 seconds
+  useAutoRefresh(() => {
+    fetchWeightRecords(false);
+    fetchMarketData();
+  }, { interval: 30000 });
 
   // --- AUTO FILL HANDLER ---
   const handleSelectMarketRecord = (e) => {

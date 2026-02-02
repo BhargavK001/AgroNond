@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,
@@ -29,23 +30,26 @@ export default function TransactionHistory() {
     });
     const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-    useEffect(() => {
-        fetchTransactions();
-    }, [dateFilter]);
-
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const params = dateFilter ? `?date=${dateFilter}` : '';
             const response = await api.get(`/api/records/completed${params}`);
             setTransactions(response || []);
         } catch (error) {
             console.error('Error fetching transactions:', error);
-            toast.error('Failed to load transactions');
+            if (showLoading) toast.error('Failed to load transactions');
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
-    };
+    }, [dateFilter]);
+
+    useEffect(() => {
+        fetchTransactions();
+    }, [dateFilter, fetchTransactions]);
+
+    // ✅ Auto-refresh transactions every 30 seconds
+    useAutoRefresh(() => fetchTransactions(false), { interval: 30000 });
 
     const filteredTransactions = useMemo(() => {
         if (!searchTerm.trim()) return transactions;

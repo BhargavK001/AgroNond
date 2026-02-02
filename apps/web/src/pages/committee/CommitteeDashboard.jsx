@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
 import { Users, ShoppingBag, TrendingUp, AlertCircle, ArrowRight, Wallet, IndianRupee } from 'lucide-react';
 import AnimatedCounter from '../../components/ui/AnimatedCounter';
@@ -37,39 +38,42 @@ export default function CommitteeDashboard() {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [commissionRates, setCommissionRates] = useState({ farmer: 4, trader: 9 });
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const [statsResponse, transactionsResponse, ratesResponse] = await Promise.all([
-          api.get('/api/committee/stats'),
-          api.get('/api/committee/transactions'),
-          // Use finance endpoint accessible to committee
-          api.finance.commissionRates.list()
-        ]);
+  const fetchDashboardData = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      const [statsResponse, transactionsResponse, ratesResponse] = await Promise.all([
+        api.get('/api/committee/stats'),
+        api.get('/api/committee/transactions'),
+        // Use finance endpoint accessible to committee
+        api.finance.commissionRates.list()
+      ]);
 
-        setStatsData(statsResponse);
-        setRecentTransactions(transactionsResponse);
+      setStatsData(statsResponse);
+      setRecentTransactions(transactionsResponse);
 
-        if (ratesResponse && ratesResponse.length > 0) {
-          const farmerRule = ratesResponse.find(r => r.role_type === 'farmer' && r.crop_type === 'All');
-          const traderRule = ratesResponse.find(r => r.role_type === 'trader' && r.crop_type === 'All');
+      if (ratesResponse && ratesResponse.length > 0) {
+        const farmerRule = ratesResponse.find(r => r.role_type === 'farmer' && r.crop_type === 'All');
+        const traderRule = ratesResponse.find(r => r.role_type === 'trader' && r.crop_type === 'All');
 
-          setCommissionRates({
-            farmer: farmerRule ? parseFloat(farmerRule.rate) * 100 : 4,
-            trader: traderRule ? parseFloat(traderRule.rate) * 100 : 9
-          });
-        }
-      } catch (error) {
-        console.error("Dashboard fetch error:", error);
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
+        setCommissionRates({
+          farmer: farmerRule ? parseFloat(farmerRule.rate) * 100 : 4,
+          trader: traderRule ? parseFloat(traderRule.rate) * 100 : 9
+        });
       }
-    };
-
-    fetchDashboardData();
+    } catch (error) {
+      console.error("Dashboard fetch error:", error);
+      if (showLoading) toast.error('Failed to load dashboard data');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // ✅ Auto-refresh data every 30 seconds
+  useAutoRefresh(() => fetchDashboardData(false), { interval: 30000 });
   const stats = [
     { label: 'Total Farmers', value: statsData.totalFarmers, icon: Users, isCurrency: false },
     { label: 'Total Traders', value: statsData.totalTraders, icon: ShoppingBag, isCurrency: false },
