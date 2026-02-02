@@ -557,6 +557,18 @@ p {
   color: var(--text-muted);
 }
 
+/* ===== NUMBER INPUT - DISABLE SCROLL/SPINNERS ===== */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* ===== MOBILE MENU OVERLAY ===== */
 .mobile-menu-overlay {
   position: fixed;

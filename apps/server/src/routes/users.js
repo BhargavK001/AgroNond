@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import Record from '../models/Record.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -126,7 +127,7 @@ router.patch('/profile', requireAuth, async (req, res) => {
  */
 router.post('/add', requireAuth, async (req, res) => {
   try {
-    const { role, full_name, phone, location, business_name, gst_number, license_number, business_address } = req.body;
+    const { role, full_name, phone, location, business_name, gst_number, license_number, business_address, initialRecords } = req.body;
 
     // Validate required fields
     if (!role || !full_name || !phone) {
@@ -171,10 +172,40 @@ router.post('/add', requireAuth, async (req, res) => {
 
     const user = await User.create(userData);
 
+    // Create initial records if provided (for farmers)
+    let createdRecords = [];
+    if (initialRecords && initialRecords.length > 0 && role === 'farmer') {
+      // Determine market name from the creator (Committee/Admin)
+      const marketName = req.user.business_name || req.user.full_name || 'AgroNond Market';
+
+      for (const item of initialRecords) {
+        try {
+          const record = await Record.create({
+            farmer_id: user._id,
+            vegetable: item.vegetable,
+            market: marketName, // Required field
+            quantity: item.quantity || 0,
+            carat: item.carat || 0,
+            sale_unit: (item.carat && item.carat > 0) ? 'carat' : 'kg',
+            status: 'Pending',
+            qtySold: 0,
+            rate: 0,
+            totalAmount: 0,
+            trader: '-'
+          });
+          createdRecords.push(record);
+        } catch (recError) {
+          console.error("Failed to create initial record:", recError);
+          // Continue creating other records even if one fails
+        }
+      }
+    }
+
     res.status(201).json({
       message: 'User added successfully',
       user: {
         id: user._id,
+        _id: user._id,
         customId: user.customId,
         farmerId: user.farmerId,
         phone: user.phone,
@@ -184,7 +215,8 @@ router.post('/add', requireAuth, async (req, res) => {
         initials: user.initials,
         business_name: user.business_name,
         createdAt: user.createdAt
-      }
+      },
+      recordsCreated: createdRecords.length
     });
   } catch (error) {
     console.error('Add user error:', error);

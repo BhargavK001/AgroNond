@@ -348,7 +348,7 @@ const TransactionInvoice = ({ transaction, committeeInfo }) => {
                     </View>
                     <View style={styles.totalRow}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.totalLabel}>Market Fee (9%)</Text>
+                            <Text style={styles.totalLabel}>Market Fee ({purchaseAmount ? Math.round((commissionAmount / purchaseAmount) * 100) : 0}%)</Text>
                             <Text style={styles.feeNote}>(Commission)</Text>
                         </View>
                         <Text style={styles.totalValue}>₹{commissionAmount.toLocaleString('en-IN')}</Text>

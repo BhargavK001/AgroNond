@@ -106,7 +106,10 @@ function DashboardRedirect() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
+      staleTime: 1000 * 30, // 30 seconds - data considered fresh
+      refetchOnWindowFocus: true, // Auto-refresh when user returns to tab
+      refetchOnReconnect: true, // Auto-refresh on network reconnect
+      refetchInterval: false, // Disable global polling (handled per-component)
       retry: 1,
     },
   },

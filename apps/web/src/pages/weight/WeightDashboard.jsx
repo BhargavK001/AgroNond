@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import WeightNavbar from '../../components/navigation/WeightNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
@@ -66,13 +67,6 @@ const WeightDashboard = () => {
   const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
 
-  // --- FETCH RECORDS ---
-  useEffect(() => {
-    fetchWeightRecords();
-    fetchMarketData();
-    loadProfile();
-  }, []);
-
   const loadProfile = async () => {
     try {
       const data = await api.weight.getProfile();
@@ -97,7 +91,7 @@ const WeightDashboard = () => {
   };
 
   // 1. Fetch Weight Records (Combined Pending + Done)
-  const fetchWeightRecords = async () => {
+  const fetchWeightRecords = useCallback(async (showLoading = true) => {
     try {
       const [done, pending] = await Promise.all([
         api.weight.records(),
@@ -122,12 +116,12 @@ const WeightDashboard = () => {
       setRecords(allRecords);
     } catch (err) {
       console.error('Error fetching weight records:', err);
-      toast.error('Failed to fetch records');
+      if (showLoading) toast.error('Failed to fetch records');
     }
-  };
+  }, []);
 
   // 2. Fetch Market Data (Source for Auto-Fill) - Now fetches "RateAssigned" records
-  const fetchMarketData = async () => {
+  const fetchMarketData = useCallback(async () => {
     try {
       const data = await api.weight.pendingRecords();
       // Map to format expected by dropdown
@@ -145,7 +139,20 @@ const WeightDashboard = () => {
     } catch (err) {
       console.error('Error fetching market data:', err);
     }
-  };
+  }, []);
+
+  // --- FETCH RECORDS ---
+  useEffect(() => {
+    fetchWeightRecords();
+    fetchMarketData();
+    loadProfile();
+  }, [fetchWeightRecords, fetchMarketData]);
+
+  // ✅ Auto-refresh records every 30 seconds
+  useAutoRefresh(() => {
+    fetchWeightRecords(false);
+    fetchMarketData();
+  }, { interval: 30000 });
 
   // --- AUTO FILL HANDLER ---
   const handleSelectMarketRecord = (e) => {
@@ -772,16 +779,6 @@ const WeightDashboard = () => {
 
             return (
               <div className="space-y-4">
-                {/* Show info banner about which unit is allowed */}
-                {(hasEstCarat || hasEstWeight) && (
-                  <div className={`p-3 rounded-xl border text-sm font-medium text-center ${hasEstCarat ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
-                    {hasEstCarat
-                      ? `📦 This lot is measured in Carat (${formData.estCarat} Crt) - Enter Official Qty in Carat only`
-                      : `📦 This lot is measured in Kg (${formData.estWeight} kg) - Enter Official Qty in Kg only`
-                    }
-                  </div>
-                )}
-
                 <div className="grid grid-cols-1 gap-4">
                   {/* Show Kg input ONLY when estWeight > 0 AND estCarat = 0 */}
                   {hasEstWeight && !hasEstCarat && (
@@ -791,6 +788,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedWeight}
                         onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
                       />
@@ -805,6 +803,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedCarat}
                         onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         className="w-full px-4 py-3 rounded-xl border-2 border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none bg-purple-50/30 text-purple-800 font-bold transition-all"
                       />
@@ -886,6 +885,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedWeight}
                         onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         autoFocus
                         disabled={isSold}
@@ -905,6 +905,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedCarat}
                         onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         autoFocus
                         disabled={isSold}

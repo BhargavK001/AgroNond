@@ -152,6 +152,23 @@ const recordSchema = new mongoose.Schema({
         type: String,
         enum: ['kg', 'carat'],
         default: 'kg'
+    },
+    // Split Record Fields (for multi-trader lot splitting)
+    parent_record_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Record'
+    },
+    is_parent: {
+        type: Boolean,
+        default: false
+    },
+    allocated_qty: {
+        type: Number,
+        default: 0
+    },
+    allocated_carat: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true

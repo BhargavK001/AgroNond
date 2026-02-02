@@ -103,7 +103,7 @@ export default function TransactionDetailsModal({ transaction, onClose }) {
                                 <span className="font-semibold text-slate-800">₹{transaction.grossAmount?.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-600">Market Commission (9%)</span>
+                                <span className="text-slate-600">Market Commission ({transaction.grossAmount ? Math.round((transaction.commission / transaction.grossAmount) * 100) : 0}%)</span>
                                 <span className="font-medium text-emerald-600">+₹{transaction.commission?.toLocaleString('en-IN')}</span>
                             </div>
                             <div className="h-px bg-slate-100 my-2" />
