@@ -1049,17 +1049,38 @@ const FarmerDashboard = () => {
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {sortedRecords.map((record) => {
-                      // Logic for Mobile View Sold Qty
+                      // Logic for Mobile View
                       const totalQty = record.quantity > 0 ? record.quantity : record.carat;
-                      // const unit = record.quantity > 0 ? 'kg' : 'Crt'; // Not used in mobile view yet, or can be used if needed
+                      const unit = record.quantity > 0 ? 'kg' : 'Crt';
                       const isParent = record.is_parent === true;
+
+                      let displayStatus = record.status;
+                      let awaitingQty = 0;
+                      let splits = record.splits || [];
+                      let totalSaleAmount = 0;
                       let soldQty = 0;
+
                       if (isParent) {
                         soldQty = record.quantity > 0 ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
+                        awaitingQty = record.quantity > 0 ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
+                        displayStatus = record.display_status || (awaitingQty > 0.01 ? 'Pending' : 'Sold');
+                        totalSaleAmount = record.aggregated_sale_amount || 0;
                       } else {
                         const officialQty = record.quantity > 0 ? (record.official_qty || 0) : (record.official_carat || 0);
                         const isSold = ['Sold', 'Completed'].includes(record.status);
                         soldQty = isSold ? (officialQty > 0 ? officialQty : totalQty) : 0;
+                        awaitingQty = totalQty - soldQty;
+                        displayStatus = awaitingQty > 0.01 ? 'Pending' : (isSold ? 'Sold' : 'Pending');
+
+                        if (isSold) {
+                          splits = [{
+                            qty: soldQty,
+                            rate: record.sale_rate,
+                            amount: record.sale_amount,
+                            date: record.sold_at || record.createdAt
+                          }];
+                          totalSaleAmount = record.sale_amount || 0;
+                        }
                       }
 
                       return (
@@ -1073,12 +1094,14 @@ const FarmerDashboard = () => {
                                 {formatTime(record.createdAt)}
                               </span>
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${['Sold', 'Completed'].includes(record.status)
+                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${['Sold', 'Completed'].includes(displayStatus)
                               ? 'bg-green-100 text-green-700 border border-green-200'
-                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                              : displayStatus === 'Partial'
+                                ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                : 'bg-amber-100 text-amber-700 border border-amber-200'
                               }`}>
-                              {['Sold', 'Completed'].includes(record.status) ? <CheckCircle size={10} /> : <Clock size={10} />}
-                              {record.status}
+                              {['Sold', 'Completed'].includes(displayStatus) ? <CheckCircle size={10} /> : <Clock size={10} />}
+                              {displayStatus}
                             </span>
                           </div>
 
@@ -1091,7 +1114,6 @@ const FarmerDashboard = () => {
                               </div>
                             </div>
                             <div className="text-right">
-                              {/* UPDATED LOGIC FOR QUANTITY DISPLAY */}
                               <p className="text-sm font-bold text-gray-900">
                                 {record.quantity > 0
                                   ? `${record.quantity} kg`
@@ -1102,6 +1124,39 @@ const FarmerDashboard = () => {
                               <p className="text-xs text-gray-500">Total</p>
                             </div>
                           </div>
+
+                          {/* Split Details for Mobile */}
+                          {splits.length > 0 && (
+                            <div className="bg-gray-50 rounded-lg p-3 mb-3 text-xs border border-gray-100">
+                              <div className="space-y-2">
+                                {splits.map((split, idx) => {
+                                  const splitAmount = split.amount || (split.qty * split.rate) || 0;
+                                  return (
+                                    <div key={idx} className="flex justify-between items-center text-gray-700">
+                                      <span>
+                                        <span className="font-semibold">{parseFloat((split.qty || 0).toFixed(2))} {unit}</span>
+                                        <span className="text-gray-400 mx-1">@</span>
+                                        <span>₹{split.rate}</span>
+                                      </span>
+                                      <span className="font-semibold">₹{splitAmount.toLocaleString('en-IN')}</span>
+                                    </div>
+                                  );
+                                })}
+                                <div className="border-t border-gray-200 pt-2 flex justify-between items-center text-sm font-bold text-green-700">
+                                  <span>Total Amount</span>
+                                  <span>₹{totalSaleAmount.toLocaleString('en-IN')}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Awaiting Qty if any */}
+                          {awaitingQty > 0.01 && (
+                            <div className="text-xs text-amber-600 font-medium mb-3 flex items-center gap-1">
+                              <Clock size={12} />
+                              Awaiting: {parseFloat(awaitingQty.toFixed(2))} {unit}
+                            </div>
+                          )}
 
                           <div className="flex gap-2 justify-end mt-2 pt-2 border-t border-gray-50">
                             <PDFDownloadLink
@@ -1128,24 +1183,24 @@ const FarmerDashboard = () => {
 
                             <button
                               onClick={() => handleEditClick(record)}
-                              disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                              className={`p-2 rounded-lg ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                              disabled={splits.length > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                              className={`p-2 rounded-lg ${splits.length > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
                                 ? 'bg-gray-50 text-gray-300 pointer-events-none'
                                 : 'bg-green-100 text-green-600'
                                 }`}
-                              title={soldQty > 0 ? "Cannot edit sold/partial item" : (record.official_qty > 0 ? "Cannot edit weighed item" : "Edit")}
+                              title={splits.length > 0 ? "Cannot edit sold/partial item" : (record.official_qty > 0 ? "Cannot edit weighed item" : "Edit")}
                             >
                               <Edit size={16} />
                             </button>
 
                             <button
                               onClick={() => initiateDelete(record._id)}
-                              disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                              className={`p-2 rounded-lg ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
+                              disabled={splits.length > 0 || record.official_qty > 0}
+                              className={`p-2 rounded-lg ${splits.length > 0 || record.official_qty > 0
                                 ? 'bg-gray-50 text-gray-300 pointer-events-none'
                                 : 'bg-red-50 text-red-600'
                                 }`}
-                              title={soldQty > 0 ? "Cannot delete sold/partial item" : (record.official_qty > 0 ? "Cannot delete weighed item" : "Delete")}
+                              title={splits.length > 0 ? "Cannot delete sold/partial item" : "Delete"}
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1163,15 +1218,15 @@ const FarmerDashboard = () => {
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
                       <th className="px-6 py-4 text-left font-semibold text-gray-900">Date</th>
-                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Time</th>
                       <th className="px-4 py-4 text-left font-semibold text-gray-900">Market</th>
                       <th className="px-4 py-4 text-left font-semibold text-gray-900">Item</th>
                       <th className="px-4 py-4 text-left font-semibold text-gray-900">Total Qty</th>
                       <th className="px-4 py-4 text-left font-semibold text-gray-900">Sold</th>
-                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Awaiting</th>
-                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Status</th>
                       <th className="px-4 py-4 text-left font-semibold text-gray-900">Rate</th>
                       <th className="px-4 py-4 text-left font-semibold text-gray-900">Amount</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Status</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Awaiting</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-900">Total Amount</th>
                       <th className="px-6 py-4 text-right font-semibold text-gray-900">Actions</th>
                     </tr>
                   </thead>
@@ -1186,143 +1241,159 @@ const FarmerDashboard = () => {
                       </tr>
                     ) : (
                       sortedRecords.map((record) => {
-                        // Calculate sold and pending quantities
+                        // Logic preparation
                         const totalQty = record.quantity > 0 ? record.quantity : record.carat;
                         const unit = record.quantity > 0 ? 'kg' : 'Crt';
-
-                        // Check if this is a parent record with aggregated data
                         const isParent = record.is_parent === true;
-                        let soldQty = 0;
-                        let awaitingQty = 0;
+
                         let displayStatus = record.status;
-                        let saleAmount = record.sale_amount || 0;
-                        let avgRate = record.sale_rate || 0;
+                        let awaitingQty = 0;
+                        let splits = record.splits || [];
+                        let totalSaleAmount = 0;
 
                         if (isParent) {
-                          // Use aggregated data from backend
-                          soldQty = record.quantity > 0
-                            ? (record.aggregated_sold_qty || 0)
-                            : (record.aggregated_sold_carat || 0);
                           awaitingQty = record.quantity > 0
                             ? (record.awaiting_qty || 0)
                             : (record.awaiting_carat || 0);
-                          // Status is Pending if there's still awaiting quantity
-                          displayStatus = awaitingQty > 0.01 ? 'Pending' : 'Sold';
-                          saleAmount = record.aggregated_sale_amount || 0;
-                          avgRate = record.aggregated_avg_rate || 0;
+                          displayStatus = record.display_status || (awaitingQty > 0.01 ? 'Pending' : 'Sold');
+                          totalSaleAmount = record.aggregated_sale_amount || 0;
                         } else {
-                          // Regular record logic
                           const officialQty = record.quantity > 0 ? (record.official_qty || 0) : (record.official_carat || 0);
                           const isSold = ['Sold', 'Completed'].includes(record.status);
-                          soldQty = isSold ? (officialQty > 0 ? officialQty : totalQty) : 0;
+                          const soldQty = isSold ? (officialQty > 0 ? officialQty : totalQty) : 0;
                           awaitingQty = totalQty - soldQty;
                           displayStatus = awaitingQty > 0.01 ? 'Pending' : (isSold ? 'Sold' : 'Pending');
+
+                          if (isSold) {
+                            splits = [{
+                              qty: soldQty,
+                              rate: record.sale_rate,
+                              amount: record.sale_amount,
+                              date: record.sold_at || record.createdAt
+                            }];
+                            totalSaleAmount = record.sale_amount || 0;
+                          }
                         }
+
+                        // Fallback: If no splits but status implies sold (legacy/edge case), prevent empty row?
+                        // But usually if sold, splits will be populated or logic above handles it.
+                        // If pending with no sales, splits is empty.
+
+                        const rowSpan = splits.length > 0 ? splits.length : 1;
+                        const firstSplit = splits.length > 0 ? splits[0] : null;
+
+                        // Helper to calculate amount if missing
+                        const getAmount = (s) => s.amount || (s.qty * s.rate) || 0;
 
                         const isSold = displayStatus === 'Sold';
 
                         return (
-                          <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
-                            <td className="px-6 py-4 text-gray-700">{new Date(record.createdAt).toLocaleDateString('en-GB')}</td>
-                            <td className="px-4 py-4 text-gray-600 text-xs">{formatTime(record.createdAt)}</td>
-                            <td className="px-4 py-4 text-gray-900 font-medium">{record.market}</td>
-                            <td className="px-4 py-4 text-gray-900 font-semibold">{record.vegetable}</td>
-                            {/* Total Qty */}
-                            <td className="px-4 py-4 text-gray-700">
-                              {record.quantity > 0
-                                ? `${record.quantity} kg`
-                                : record.carat > 0
-                                  ? `${record.carat} Crt`
-                                  : '-'}
-                            </td>
-                            {/* Sold Qty */}
-                            <td className="px-4 py-4">
-                              {soldQty > 0 ? (
-                                <span className="text-green-600 font-semibold">{parseFloat(soldQty.toFixed(2))} {unit}</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            {/* Pending/Awaiting Qty */}
-                            <td className="px-4 py-4">
-                              {awaitingQty > 0.01 ? (
-                                <span className="text-amber-600 font-semibold">{parseFloat(awaitingQty.toFixed(2))} {unit}</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            {/* Status */}
-                            <td className="px-4 py-4">
-                              {isSold ? (
-                                <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-green-100 text-green-700 border border-green-200">
-                                  <CheckCircle size={12} />
-                                  Sold
-                                </span>
-                              ) : displayStatus === 'Partial' ? (
-                                <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 border border-blue-200">
-                                  <Clock size={12} />
-                                  Partial
-                                </span>
-                              ) : (
-                                <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 border border-amber-200">
-                                  <Clock size={12} />
-                                  Pending
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-4 text-gray-700">{(soldQty > 0 || isSold) ? `₹${Math.round(avgRate || record.sale_rate || 0)} ` : '-'}</td>
-                            <td className="px-4 py-4 font-bold text-green-600">{(soldQty > 0 || isSold) ? `₹${Math.round(saleAmount || 0).toLocaleString('en-IN')} ` : '-'}</td>
-                            <td className="px-8 py-4 text-right">
-                              <div className="flex justify-end gap-2">
+                          <React.Fragment key={record._id}>
+                            {/* Primary Row (Contains RowSpanned cols + First Split) */}
+                            <tr className="hover:bg-gray-50 transition-colors group">
+                              <td rowSpan={rowSpan} className="px-6 py-4 text-gray-700 align-top border-b border-gray-100">
+                                <div>{new Date(record.createdAt).toLocaleDateString('en-GB')}</div>
+                                <div className="text-xs text-gray-400 mt-1">{formatTime(record.createdAt)}</div>
+                              </td>
+                              <td rowSpan={rowSpan} className="px-4 py-4 text-gray-900 font-medium align-top border-b border-gray-100">{record.market}</td>
+                              <td rowSpan={rowSpan} className="px-4 py-4 text-gray-900 font-semibold align-top border-b border-gray-100">{record.vegetable}</td>
+                              <td rowSpan={rowSpan} className="px-4 py-4 text-gray-700 align-top border-b border-gray-100">
+                                {record.quantity > 0 ? `${record.quantity} kg` : record.carat > 0 ? `${record.carat} Crt` : '-'}
+                              </td>
 
-                                <PDFDownloadLink
-                                  document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
-                                  fileName={`invoice-${record._id.slice(-6)}.pdf`}
-                                  className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
-                                  title="Download Data / Invoice"
-                                >
-                                  {({ loading }) => (
-                                    <Download size={18} className={loading ? 'animate-pulse' : ''} />
-                                  )}
-                                </PDFDownloadLink>
+                              {/* Split Columns (First Row) */}
+                              <td className={`px-4 py-4 align-top ${splits.length > 1 ? 'border-b border-gray-200' : 'border-b border-gray-100'}`}>
+                                {firstSplit ? (
+                                  <span className="text-green-600 font-semibold">{parseFloat(firstSplit.qty.toFixed(2))} {unit}</span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                              <td className={`px-4 py-4 align-top ${splits.length > 1 ? 'border-b border-gray-200' : 'border-b border-gray-100'}`}>
+                                {firstSplit ? (
+                                  <span>₹{firstSplit.rate}</span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                              <td className={`px-4 py-4 align-top ${splits.length > 1 ? 'border-b border-gray-200' : 'border-b border-gray-100'}`}>
+                                {firstSplit ? (
+                                  <span className="font-bold text-green-600">₹{getAmount(firstSplit).toLocaleString('en-IN')}</span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
 
-                                <button
-                                  onClick={() => {
-                                    setSelectedRecord(record);
-                                    setModals({ ...modals, details: true });
-                                  }}
-                                  className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
-                                  title="View Details"
-                                >
-                                  <Eye size={18} />
-                                </button>
+                              {/* Right Columns (RowSpanned) */}
+                              <td rowSpan={rowSpan} className="px-4 py-4 align-top border-b border-gray-100">
+                                {isSold ? (
+                                  <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-green-100 text-green-700 border border-green-200">
+                                    <CheckCircle size={12} /> Sold
+                                  </span>
+                                ) : displayStatus === 'Partial' ? (
+                                  <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 border border-blue-200">
+                                    <Clock size={12} /> Partial
+                                  </span>
+                                ) : (
+                                  <span className="px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 border border-amber-200">
+                                    <Clock size={12} /> Pending
+                                  </span>
+                                )}
+                              </td>
+                              <td rowSpan={rowSpan} className="px-4 py-4 align-top border-b border-gray-100">
+                                {awaitingQty > 0.01 ? (
+                                  <span className="text-amber-600 font-semibold">{parseFloat(awaitingQty.toFixed(2))} {unit}</span>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                              <td rowSpan={rowSpan} className="px-4 py-4 font-bold text-gray-900 align-top border-b border-gray-100">
+                                {totalSaleAmount > 0 ? `₹${totalSaleAmount.toLocaleString('en-IN')}` : '-'}
+                              </td>
+                              <td rowSpan={rowSpan} className="px-8 py-4 text-right align-top border-b border-gray-100">
+                                <div className="flex justify-end gap-2">
+                                  <PDFDownloadLink
+                                    document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
+                                    fileName={`invoice-${record._id.slice(-6)}.pdf`}
+                                    className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg transition border border-blue-200"
+                                    title="Download Invoice"
+                                  >
+                                    {({ loading }) => <Download size={18} className={loading ? 'animate-pulse' : ''} />}
+                                  </PDFDownloadLink>
+                                  <button
+                                    onClick={() => { setSelectedRecord(record); setModals({ ...modals, details: true }); }}
+                                    className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition"
+                                    title="View"
+                                  >
+                                    <Eye size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditClick(record)}
+                                    disabled={splits.length > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
+                                    className={`p-2.5 rounded-lg transition border ${splits.length > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status) ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed' : 'bg-green-100 hover:bg-green-200 text-green-600 border-green-200'}`}
+                                    title="Edit"
+                                  >
+                                    <Edit size={18} />
+                                  </button>
+                                  <button
+                                    onClick={() => initiateDelete(record._id)}
+                                    disabled={splits.length > 0 || record.official_qty > 0}
+                                    className={`p-2.5 rounded-lg transition border ${splits.length > 0 || record.official_qty > 0 ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed' : 'bg-red-100 hover:bg-red-200 text-red-600 border-red-200'}`}
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
 
-                                <button
-                                  onClick={() => handleEditClick(record)}
-                                  disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                                  className={`p-2.5 rounded-lg transition border ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
-                                    ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                                    : 'bg-green-100 hover:bg-green-200 text-green-600 border-green-200'
-                                    }`}
-                                  title={soldQty > 0 ? "Cannot edit sold/partial item" : (record.official_qty > 0 ? "Cannot edit weighed item" : "Edit")}
-                                >
-                                  <Edit size={18} />
-                                </button>
-
-                                <button
-                                  onClick={() => initiateDelete(record._id)}
-                                  disabled={soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)}
-                                  className={`p-2.5 rounded-lg transition border ${soldQty > 0 || record.official_qty > 0 || !['Pending', 'Weighed'].includes(record.status)
-                                    ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
-                                    : 'bg-red-100 hover:bg-red-200 text-red-600 border-red-200'
-                                    }`}
-                                  title={soldQty > 0 ? "Cannot delete sold/partial item" : (record.official_qty > 0 ? "Cannot delete weighed item" : "Delete")}
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                            {/* Secondary Rows (Remaining Splits) */}
+                            {splits.slice(1).map((split, idx) => (
+                              <tr key={`${record._id}-split-${idx}`} className="hover:bg-gray-50 transition-colors">
+                                <td className={`px-4 py-4 align-top ${idx === splits.length - 2 ? 'border-b border-gray-100' : 'border-b border-gray-200'}`}>
+                                  <span className="text-green-600 font-semibold">{parseFloat(split.qty.toFixed(2))} {unit}</span>
+                                </td>
+                                <td className={`px-4 py-4 align-top ${idx === splits.length - 2 ? 'border-b border-gray-100' : 'border-b border-gray-200'}`}>
+                                  <span>₹{split.rate}</span>
+                                </td>
+                                <td className={`px-4 py-4 align-top ${idx === splits.length - 2 ? 'border-b border-gray-100' : 'border-b border-gray-200'}`}>
+                                  <span className="font-bold text-green-600">₹{getAmount(split).toLocaleString('en-IN')}</span>
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
                         );
                       })
                     )}
@@ -1332,10 +1403,10 @@ const FarmerDashboard = () => {
             </>
           )}
         </div>
-      </main>
+      </main >
 
       {/* Details Modal */}
-      <Modal
+      < Modal
         isOpen={modals.details}
         onClose={() => setModals({ ...modals, details: false })}
         title="Record Details"
@@ -1407,10 +1478,10 @@ const FarmerDashboard = () => {
             )}
           </div>
         )}
-      </Modal>
+      </Modal >
 
       {/* Edit Record Modal */}
-      <Modal
+      < Modal
         isOpen={modals.editRecord}
         onClose={() => setModals({ ...modals, editRecord: false })}
         title="Edit Record"

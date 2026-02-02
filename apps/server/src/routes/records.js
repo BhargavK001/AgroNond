@@ -30,78 +30,87 @@ router.get('/my-records', requireAuth, async (req, res) => {
         const parentIds = records.filter(r => r.is_parent).map(r => r._id);
 
         if (parentIds.length > 0) {
-            // Get aggregated data from child records
-            const childAggregates = await Record.aggregate([
-                { $match: { parent_record_id: { $in: parentIds } } },
-                {
-                    $group: {
-                        _id: '$parent_record_id',
-                        soldQty: {
-                            $sum: {
-                                $cond: [
-                                    { $in: ['$status', ['Sold', 'Completed']] },
-                                    { $ifNull: ['$official_qty', '$quantity'] },
-                                    0
-                                ]
-                            }
-                        },
-                        soldCarat: {
-                            $sum: {
-                                $cond: [
-                                    { $in: ['$status', ['Sold', 'Completed']] },
-                                    { $ifNull: ['$official_carat', '$carat'] },
-                                    0
-                                ]
-                            }
-                        },
-                        totalSaleAmount: {
-                            $sum: {
-                                $cond: [
-                                    { $in: ['$status', ['Sold', 'Completed']] },
-                                    '$sale_amount',
-                                    0
-                                ]
-                            }
-                        },
-                        avgRate: { $avg: '$sale_rate' },
-                        childCount: { $sum: 1 },
-                        soldCount: {
-                            $sum: { $cond: [{ $in: ['$status', ['Sold', 'Completed']] }, 1, 0] }
-                        }
-                    }
-                }
-            ]);
+            // Fetch ALL child records for these parents
+            const childRecords = await Record.find({
+                parent_record_id: { $in: parentIds },
+                status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
+            }).sort({ createdAt: 1 }); // Sort by time
 
-            // Create a map for quick lookup
-            const aggregateMap = {};
-            childAggregates.forEach(agg => {
-                aggregateMap[agg._id.toString()] = agg;
+            // Group children by parent and calculate aggregates
+            const parentMap = {};
+
+            childRecords.forEach(child => {
+                const pId = child.parent_record_id.toString();
+                if (!parentMap[pId]) {
+                    parentMap[pId] = {
+                        splits: [],
+                        soldQty: 0,
+                        soldCarat: 0,
+                        totalSaleAmount: 0,
+                        childCount: 0,
+                        soldCount: 0
+                    };
+                }
+
+                const childQty = child.official_qty || child.quantity || 0;
+                const childCarat = child.official_carat || child.carat || 0;
+                const amount = child.sale_amount || child.total_amount || 0;
+
+                parentMap[pId].soldQty += childQty;
+                parentMap[pId].soldCarat += childCarat;
+                parentMap[pId].totalSaleAmount += amount;
+                parentMap[pId].childCount += 1;
+
+                if (['Sold', 'Completed'].includes(child.status)) {
+                    parentMap[pId].soldCount += 1;
+                }
+
+                // Add to splits details
+                parentMap[pId].splits.push({
+                    _id: child._id,
+                    qty: childQty,
+                    carat: childCarat,
+                    rate: child.sale_rate || 0,
+                    amount: amount,
+                    date: child.sold_at || child.createdAt,
+                    status: child.status
+                });
             });
 
-            // Enhance parent records with aggregated data
+            // Enhance parent records
             records.forEach(record => {
                 if (record.is_parent) {
-                    const agg = aggregateMap[record._id.toString()];
-                    if (agg) {
-                        record.aggregated_sold_qty = agg.soldQty || 0;
-                        record.aggregated_sold_carat = agg.soldCarat || 0;
-                        record.aggregated_sale_amount = agg.totalSaleAmount || 0;
-                        record.aggregated_avg_rate = agg.avgRate || 0;
-                        record.child_count = agg.childCount || 0;
-                        record.sold_count = agg.soldCount || 0;
+                    const data = parentMap[record._id.toString()];
+                    if (data) {
+                        record.aggregated_sold_qty = data.soldQty;
+                        record.aggregated_sold_carat = data.soldCarat;
+                        record.aggregated_sale_amount = data.totalSaleAmount;
+                        record.child_count = data.childCount;
+                        record.sold_count = data.soldCount;
+                        record.splits = data.splits; // New field
+
+                        // Calculate average rate if needed (total amount / total sold)
+                        const totalSold = record.sale_unit === 'carat' ? data.soldCarat : data.soldQty;
+                        record.aggregated_avg_rate = totalSold > 0 ? (data.totalSaleAmount / totalSold) : 0;
 
                         // Calculate awaiting
-                        record.awaiting_qty = (record.quantity || 0) - (agg.soldQty || 0);
-                        record.awaiting_carat = (record.carat || 0) - (agg.soldCarat || 0);
+                        record.awaiting_qty = (record.quantity || 0) - data.soldQty;
+                        record.awaiting_carat = (record.carat || 0) - data.soldCarat;
 
                         // Determine overall status
-                        if (agg.soldCount === agg.childCount && agg.childCount > 0) {
+                        if (data.soldCount === data.childCount && data.childCount > 0) {
                             record.display_status = 'Sold';
-                        } else if (agg.soldCount > 0) {
+                        } else if (data.soldCount > 0) {
                             record.display_status = 'Partial';
                         } else {
                             record.display_status = 'Pending';
                         }
+                    } else {
+                        // Parent with no children sold yet
+                        record.splits = [];
+                        record.awaiting_qty = record.quantity;
+                        record.awaiting_carat = record.carat;
+                        record.display_status = 'Pending';
                     }
                 }
             });
@@ -232,19 +241,40 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
             const children = await Record.find({ parent_record_id: parent._id });
 
             // Calculate sold quantity and find previous rate
+            // Calculate sold quantity and find previous rate
             let soldQty = 0;
             let soldCarat = 0;
             let prevRate = 0;
+            const splits = []; // New: Collect split details
+            let totalAmountSum = 0; // New: Sum of all amounts
 
             for (const child of children) {
                 // Include RateAssigned and Weighed as 'sold'/allocated so they don't show up as pending
                 if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
-                    soldQty += child.official_qty || child.quantity || 0;
-                    soldCarat += child.official_carat || child.carat || 0;
-                    // Capture rate from first sold child to lock it for subsequent splits
+                    const childQty = child.official_qty || child.quantity || 0;
+                    const childCarat = child.official_carat || child.carat || 0;
+
+                    soldQty += childQty;
+                    soldCarat += childCarat;
+
+                    // Capture rate from first sold child to lock it for subsequent splits (legacy behavior, kept for reference)
                     if (!prevRate && child.sale_rate) {
                         prevRate = child.sale_rate;
                     }
+
+                    // Add to splits array
+                    splits.push({
+                        _id: child._id,
+                        qty: childQty,
+                        carat: childCarat,
+                        rate: child.sale_rate || 0,
+                        amount: child.sale_amount || child.total_amount || 0, // Fallback
+                        date: child.sold_at || child.createdAt,
+                        trader: child.trader_id, // Will be populated if available
+                        status: child.status
+                    });
+
+                    totalAmountSum += (child.sale_amount || child.total_amount || 0);
                 }
             }
 
@@ -261,7 +291,9 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
                     sold_qty: parseFloat(soldQty.toFixed(2)),
                     sold_carat: parseFloat(soldCarat.toFixed(2)),
                     has_remaining: true,
-                    prev_rate: prevRate // Send previous rate to frontend
+                    prev_rate: prevRate, // Send previous rate to frontend
+                    splits: splits, // New: Send split details
+                    total_amount_sum: totalAmountSum // New: Total amount
                 });
             }
         }

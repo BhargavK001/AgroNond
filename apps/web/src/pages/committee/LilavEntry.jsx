@@ -160,7 +160,7 @@ export default function LilavEntry() {
             open: true,
             record,
             lockedUnit: recordUnit,
-            lockedRate: lockedRate // Pass locked rate to modal
+            lockedRate: null // No locking, allow editing
         });
     };
 
@@ -667,20 +667,13 @@ export default function LilavEntry() {
                                                     value={saleForm.sale_rate}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        // Prevent changing if locked (double check)
-                                                        if (saleModal.lockedRate) return;
                                                         setSaleForm(prev => ({ ...prev, sale_rate: val === '' ? '' : parseFloat(val) }));
                                                     }}
                                                     onWheel={(e) => e.target.blur()}
                                                     placeholder="0"
-                                                    disabled={!!saleModal.lockedRate}
-                                                    className={`w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none ${saleModal.lockedRate ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gray-50'}`}
+                                                    disabled={false}
+                                                    className={`w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none bg-gray-50`}
                                                 />
-                                                {saleModal.lockedRate && (
-                                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" title="Rate locked for partial sale">
-                                                        <Lock size={16} />
-                                                    </span>
-                                                )}
                                             </div>
                                         </div>
 
