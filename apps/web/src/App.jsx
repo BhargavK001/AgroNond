@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 
 // Auth Provider
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // Components
 // Components
@@ -105,7 +106,10 @@ function DashboardRedirect() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
+      staleTime: 1000 * 30, // 30 seconds - data considered fresh
+      refetchOnWindowFocus: true, // Auto-refresh when user returns to tab
+      refetchOnReconnect: true, // Auto-refresh on network reconnect
+      refetchInterval: false, // Disable global polling (handled per-component)
       retry: 1,
     },
   },
@@ -115,123 +119,125 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <Toaster position="top-right" />
-          <ErrorBoundary>
-            <ScrollToTop />
-            <Suspense fallback={<Loading />}>
-              <Routes>
-                {/* Login & Public Routes */}
-                <Route path="/login" element={
-                  <Layout hideNav hideFooter>
-                    <Login />
-                  </Layout>
-                }
-                />
+        <NotificationProvider>
+          <Router>
+            <Toaster position="top-right" />
+            <ErrorBoundary>
+              <ScrollToTop />
+              <Suspense fallback={<Loading />}>
+                <Routes>
+                  {/* Login & Public Routes */}
+                  <Route path="/login" element={
+                    <Layout hideNav hideFooter>
+                      <Login />
+                    </Layout>
+                  }
+                  />
 
-                {/* Admin Login */}
-                <Route path="/admin/login" element={
-                  <Layout hideNav hideFooter>
-                    <AdminLogin />
-                  </Layout>
-                }
-                />
+                  {/* Admin Login */}
+                  <Route path="/admin/login" element={
+                    <Layout hideNav hideFooter>
+                      <AdminLogin />
+                    </Layout>
+                  }
+                  />
 
-                {/* --- DASHBOARDS --- */}
+                  {/* --- DASHBOARDS --- */}
 
-                {/* Farmer Dashboard */}
-                <Route path="/dashboard/farmer" element={
-                  <ProtectedRoute requireRole="farmer">
-                    <FarmerDashboard />
-                  </ProtectedRoute>
-                }
-                />
+                  {/* Farmer Dashboard */}
+                  <Route path="/dashboard/farmer" element={
+                    <ProtectedRoute requireRole="farmer">
+                      <FarmerDashboard />
+                    </ProtectedRoute>
+                  }
+                  />
 
-                <Route path="/dashboard/weight" element={
-                  <ProtectedRoute requireRole="weight">
-                    <WeightDashboard />
-                  </ProtectedRoute>
-                }
-                />
+                  <Route path="/dashboard/weight" element={
+                    <ProtectedRoute requireRole="weight">
+                      <WeightDashboard />
+                    </ProtectedRoute>
+                  }
+                  />
 
-                {/* Trader Dashboard */}
-                <Route path="/dashboard/trader" element={
-                  <ProtectedRoute requireRole="trader">
-                    <UnifiedLayout role="trader" />
-                  </ProtectedRoute>
-                }
-                >
-                  <Route index element={<TraderDashboardContent />} />
-                  <Route path="transactions" element={<TraderTransactions />} />
+                  {/* Trader Dashboard */}
+                  <Route path="/dashboard/trader" element={
+                    <ProtectedRoute requireRole="trader">
+                      <UnifiedLayout role="trader" />
+                    </ProtectedRoute>
+                  }
+                  >
+                    <Route index element={<TraderDashboardContent />} />
+                    <Route path="transactions" element={<TraderTransactions />} />
 
-                  <Route path="profile" element={<TraderProfile />} />
-                </Route>
+                    <Route path="profile" element={<TraderProfile />} />
+                  </Route>
 
-                <Route path="/dashboard/committee" element={
-                  <ProtectedRoute requireRole="committee">
-                    <UnifiedLayout role="committee" />
-                  </ProtectedRoute>
-                }
-                >
-                  <Route index element={<CommitteeDashboard />} />
-                  <Route path="farmers" element={<FarmersList />} />
-                  <Route path="farmers/:id" element={<FarmerDetail />} />
-                  <Route path="traders" element={<TradersList />} />
-                  <Route path="weight" element={<WeightList />} />
-                  <Route path="activity" element={<MarketActivity />} />
+                  <Route path="/dashboard/committee" element={
+                    <ProtectedRoute requireRole="committee">
+                      <UnifiedLayout role="committee" />
+                    </ProtectedRoute>
+                  }
+                  >
+                    <Route index element={<CommitteeDashboard />} />
+                    <Route path="farmers" element={<FarmersList />} />
+                    <Route path="farmers/:id" element={<FarmerDetail />} />
+                    <Route path="traders" element={<TradersList />} />
+                    <Route path="weight" element={<WeightList />} />
+                    <Route path="activity" element={<MarketActivity />} />
 
-                  <Route path="billing" element={<BillingReports />} />
-                  <Route path="payments" element={<PaymentManagement />} />
+                    <Route path="billing" element={<BillingReports />} />
+                    <Route path="payments" element={<PaymentManagement />} />
 
-                  {/* Lilav (Auction) Section */}
-                  <Route path="lilav" element={<LilavEntry />} />
-                </Route>
+                    {/* Lilav (Auction) Section */}
+                    <Route path="lilav" element={<LilavEntry />} />
+                  </Route>
 
-                {/* Lilav Dashboard - Replaces Accounting */}
-                <Route path="/dashboard/lilav" element={
-                  <ProtectedRoute requireRole="lilav">
-                    <UnifiedLayout role="lilav" />
-                  </ProtectedRoute>
-                }
-                >
-                  <Route index element={<LilavEntry />} />
-                  <Route path="transactions" element={<LilavTransactions />} />
-                </Route>
+                  {/* Lilav Dashboard - Replaces Accounting */}
+                  <Route path="/dashboard/lilav" element={
+                    <ProtectedRoute requireRole="lilav">
+                      <UnifiedLayout role="lilav" />
+                    </ProtectedRoute>
+                  }
+                  >
+                    <Route index element={<LilavEntry />} />
+                    <Route path="transactions" element={<LilavTransactions />} />
+                  </Route>
 
-                {/* Admin Dashboard */}
-                <Route path="/dashboard/admin" element={
-                  <ProtectedRoute requireRole="admin">
-                    <UnifiedLayout role="admin" />
-                  </ProtectedRoute>
-                }
-                >
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="users" element={<UserManagement />} />
-                  <Route path="commission" element={<CommissionRules />} />
-                  <Route path="transactions" element={<TransactionHistory />} />
-                  {/* New Management Routes */}
-                  <Route path="farmers" element={<FarmerManagement />} />
-                  <Route path="traders" element={<TraderManagement />} />
-                  <Route path="weight" element={<WeightManagement />} />
-                  <Route path="lilav" element={<LilavManagement />} />
-                  <Route path="committee" element={<CommitteeManagement />} />
-                </Route>
+                  {/* Admin Dashboard */}
+                  <Route path="/dashboard/admin" element={
+                    <ProtectedRoute requireRole="admin">
+                      <UnifiedLayout role="admin" />
+                    </ProtectedRoute>
+                  }
+                  >
+                    <Route index element={<AdminDashboard />} />
+                    <Route path="users" element={<UserManagement />} />
+                    <Route path="commission" element={<CommissionRules />} />
+                    <Route path="transactions" element={<TransactionHistory />} />
+                    {/* New Management Routes */}
+                    <Route path="farmers" element={<FarmerManagement />} />
+                    <Route path="traders" element={<TraderManagement />} />
+                    <Route path="weight" element={<WeightManagement />} />
+                    <Route path="lilav" element={<LilavManagement />} />
+                    <Route path="committee" element={<CommitteeManagement />} />
+                  </Route>
 
-                {/* FIXED: Smart redirect based on user role - Prevents infinite loop */}
-                <Route path="/dashboard" element={<DashboardRedirect />} />
+                  {/* FIXED: Smart redirect based on user role - Prevents infinite loop */}
+                  <Route path="/dashboard" element={<DashboardRedirect />} />
 
-                {/* Public Pages */}
-                <Route path="/" element={<Layout><Home /></Layout>} />
-                <Route path="/about" element={<Layout><About /></Layout>} />
-                <Route path="/services" element={<Layout><Services /></Layout>} />
-                <Route path="/contact" element={<Layout><Contact /></Layout>} />
-                <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
-                <Route path="/status" element={<Layout><StatusPage /></Layout>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </ErrorBoundary>
-        </Router>
+                  {/* Public Pages */}
+                  <Route path="/" element={<Layout><Home /></Layout>} />
+                  <Route path="/about" element={<Layout><About /></Layout>} />
+                  <Route path="/services" element={<Layout><Services /></Layout>} />
+                  <Route path="/contact" element={<Layout><Contact /></Layout>} />
+                  <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
+                  <Route path="/status" element={<Layout><StatusPage /></Layout>} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
+          </Router>
+        </NotificationProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -168,6 +168,9 @@ export const api = {
         return apiRequest(`/api/finance/billing-records${query ? '?' + query : ''}`, { method: 'GET' });
       },
     },
+    commissionRates: {
+      list: () => apiRequest('/api/finance/commission-rates', { method: 'GET' }),
+    },
     payments: {
       create: (data) => apiRequest('/api/finance/payments', { method: 'POST', body: JSON.stringify(data) }),
       payFarmer: (id, data) => apiRequest(`/api/finance/pay-farmer/${id}`, { method: 'POST', body: JSON.stringify(data) }),
@@ -197,6 +200,13 @@ export const api = {
     deleteRecord: (id) => apiRequest(`/api/weight/record/${id}`, { method: 'DELETE' }),
     getProfile: () => apiRequest('/api/weight/profile', { method: 'GET' }),
     updateProfile: (data) => apiRequest('/api/weight/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  },
+
+  // Notifications
+  notifications: {
+    list: () => apiRequest('/api/notifications', { method: 'GET' }),
+    markRead: (id) => apiRequest(`/api/notifications/${id}/read`, { method: 'PATCH' }),
+    markAllRead: () => apiRequest('/api/notifications/read-all', { method: 'PATCH' }),
   },
 };
 

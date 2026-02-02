@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, ChevronRight, Phone, Calendar, Store, Plus } from 'lucide-react';
@@ -21,22 +22,25 @@ export default function TradersList() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   // Fetch traders from API
-  const fetchTraders = async () => {
-    setIsLoading(true);
+  const fetchTraders = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const response = await api.get('/api/users?role=trader');
       setTraders(response || []);
     } catch (error) {
       console.error('Failed to fetch traders:', error);
-      toast.error('Failed to load traders');
+      if (showLoading) toast.error('Failed to load traders');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTraders();
-  }, []);
+  }, [fetchTraders]);
+
+  // ✅ Auto-refresh traders every 30 seconds
+  useAutoRefresh(() => fetchTraders(false), { interval: 30000 });
 
   const filteredTraders = traders.filter(trader => {
     const matchesSearch =

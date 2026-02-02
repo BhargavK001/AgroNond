@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -20,13 +21,9 @@ export default function TransactionHistory() {
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  const fetchTransactions = async () => {
+  const fetchTransactions = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const data = await api.purchases.list({ limit: 500 }); // Fetch sufficient history
 
       const formattedData = data.map(t => ({
@@ -47,9 +44,16 @@ export default function TransactionHistory() {
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // ✅ Auto-refresh transactions every 30 seconds
+  useAutoRefresh(() => fetchTransactions(false), { interval: 30000 });
 
   const filteredTransactions = useMemo(() => {
     let result = [...transactions];

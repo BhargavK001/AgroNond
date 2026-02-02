@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import api from '../../lib/api';
 import { exportToCSV } from '../../lib/csvExport';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Download, Filter, Calendar, Users, ShoppingBag, X, CheckCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { FileText, Download, Calendar, Users, ShoppingBag, X, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import BillingInvoice from '../../components/committee/BillingInvoice';
+import InvoiceDownloadModal from '../../components/committee/InvoiceDownloadModal';
 
 // Payment Modal Component
 const PaymentModal = ({ isOpen, onClose, onSubmit, type, amount, name }) => {
@@ -71,16 +71,27 @@ const formatQtyDisplay = (qty, carat) => {
   const hasCarat = carat && carat > 0;
 
   if (hasQty && hasCarat) {
-    // Both have values - show both
     return <>{qty}kg <span className="text-purple-600 font-medium">| {carat}Crt</span></>;
   } else if (hasCarat) {
-    // Only carat - show carat only (no 0kg)
     return <span className="text-purple-600 font-medium">{carat}Crt</span>;
   } else {
-    // Only kg or default - show kg
     return <>{qty || 0}kg</>;
   }
 };
+
+// Skeleton Loading Row for better perceived performance
+const SkeletonRow = () => (
+  <tr className="animate-pulse">
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-16"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-20"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-16 ml-auto"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-12 ml-auto"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-16 ml-auto"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-12 mx-auto"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-20 mx-auto"></div></td>
+  </tr>
+);
 
 // Main Component
 export default function BillingReports() {
@@ -94,14 +105,32 @@ export default function BillingReports() {
   // Payment Modal State
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [commissionRates, setCommissionRates] = useState({ farmer: 4, trader: 9 });
 
-  useEffect(() => {
-    fetchRecords();
-  }, [activeTab, dateFilter, page]);
+  // Invoice Modal State - PERFORMANCE: Lazy loaded PDF
+  const [invoiceRecord, setInvoiceRecord] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
-  const fetchRecords = async () => {
+  const fetchCommissionRates = useCallback(async () => {
     try {
-      setLoading(true);
+      const rules = await api.finance.commissionRates.list();
+      if (rules && rules.length > 0) {
+        const farmerRule = rules.find(r => r.role_type === 'farmer' && r.crop_type === 'All');
+        const traderRule = rules.find(r => r.role_type === 'trader' && r.crop_type === 'All');
+
+        setCommissionRates({
+          farmer: farmerRule ? parseFloat(farmerRule.rate) * 100 : 4,
+          trader: traderRule ? parseFloat(traderRule.rate) * 100 : 9
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch commission rates:", error);
+    }
+  }, []);
+
+  const fetchRecords = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
       const response = await api.finance.billingRecords.list({
         limit: 20,
         page,
@@ -115,11 +144,21 @@ export default function BillingReports() {
     } catch (error) {
       console.error("Failed to fetch billing records:", error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [page, dateFilter]);
 
-  const processRecord = (record) => {
+  // FIXED: Single useEffect instead of duplicate calls
+  useEffect(() => {
+    fetchRecords();
+    fetchCommissionRates();
+  }, [fetchRecords, fetchCommissionRates]);
+
+  // Auto-refresh records every 60 seconds (increased from 30s for better performance)
+  useAutoRefresh(() => fetchRecords(false), { interval: 60000 });
+
+  // PERFORMANCE: Memoize processRecord function
+  const processRecord = useCallback((record) => {
     const hasNewFields = record.net_payable_to_farmer !== undefined;
     const baseAmount = record.sale_amount || 0;
 
@@ -138,7 +177,6 @@ export default function BillingReports() {
       netTrader = baseAmount + traderComm;
     }
 
-    // Get carat and qty values
     const caratValue = (record.official_carat && record.official_carat > 0)
       ? record.official_carat
       : (record.carat || 0);
@@ -173,12 +211,34 @@ export default function BillingReports() {
         type: 'receive'
       };
     }
-  };
+  }, [activeTab]);
+
+  // PERFORMANCE: Memoize processed data
+  const currentData = useMemo(() =>
+    data.map(processRecord),
+    [data, processRecord]
+  );
+
+  // PERFORMANCE: Memoize totals calculation
+  const { totalBase, totalCommission, totalFinal } = useMemo(() => ({
+    totalBase: currentData.reduce((acc, item) => acc + item.baseAmount, 0),
+    totalCommission: currentData.reduce((acc, item) => acc + item.commission, 0),
+    totalFinal: currentData.reduce((acc, item) => acc + item.finalAmount, 0)
+  }), [currentData]);
+
+  const commissionLabel = activeTab === 'farmers' ? `${commissionRates.farmer}%` : `${commissionRates.trader}%`;
+  const commissionColor = activeTab === 'farmers' ? 'blue' : 'purple';
 
   const handlePayment = (record) => {
     if (record.status === 'Paid') return;
     setSelectedRecord(record);
     setShowPaymentModal(true);
+  };
+
+  const handleDownloadInvoice = (record, e) => {
+    e?.stopPropagation();
+    setInvoiceRecord(record);
+    setShowInvoiceModal(true);
   };
 
   const confirmPayment = async ({ mode, ref }) => {
@@ -200,14 +260,6 @@ export default function BillingReports() {
       toast.error("Transaction failed");
     }
   };
-
-  const currentData = data.map(processRecord);
-  const commissionLabel = activeTab === 'farmers' ? '4%' : '9%';
-  const commissionColor = activeTab === 'farmers' ? 'blue' : 'purple';
-
-  const totalBase = currentData.reduce((acc, item) => acc + item.baseAmount, 0);
-  const totalCommission = currentData.reduce((acc, item) => acc + item.commission, 0);
-  const totalFinal = currentData.reduce((acc, item) => acc + item.finalAmount, 0);
 
   const handleExport = () => {
     const headers = ['Date', activeTab === 'farmers' ? 'Farmer' : 'Trader', 'Crop', 'Qty (kg)', 'Carat', 'Base Amt', 'Commission', 'Final Amt', 'Status'];
@@ -238,6 +290,14 @@ export default function BillingReports() {
         onSubmit={confirmPayment}
       />
 
+      {/* PERFORMANCE: Lazy-loaded Invoice Modal */}
+      <InvoiceDownloadModal
+        isOpen={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        data={invoiceRecord}
+        type={activeTab === 'farmers' ? 'farmer' : 'trader'}
+      />
+
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -248,12 +308,7 @@ export default function BillingReports() {
       </motion.div>
 
       {/* Tab Switcher */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit"
-      >
+      <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
         <button
           onClick={() => setActiveTab('farmers')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${activeTab === 'farmers'
@@ -274,48 +329,28 @@ export default function BillingReports() {
           <ShoppingBag className="w-4 h-4" />
           Receive from Traders
         </button>
-      </motion.div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.15 }}
-          className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm"
-        >
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
           <p className="text-xs text-slate-500 font-medium uppercase mb-1">Base Sales Amount</p>
           <p className="text-2xl font-bold text-slate-800">₹{totalBase.toLocaleString()}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className={`bg-${commissionColor}-50 rounded-xl p-4 border border-${commissionColor}-100`}
-        >
+        </div>
+        <div className={`bg-${commissionColor}-50 rounded-xl p-4 border border-${commissionColor}-100`}>
           <p className={`text-xs text-${commissionColor}-600 font-medium uppercase mb-1`}>Market Commission ({commissionLabel})</p>
           <p className={`text-2xl font-bold text-${commissionColor}-700`}>₹{totalCommission.toLocaleString()}</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.25 }}
-          className="bg-emerald-50 rounded-xl p-4 border border-emerald-100"
-        >
+        </div>
+        <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
           <p className="text-xs text-emerald-600 font-medium uppercase mb-1">
             {activeTab === 'farmers' ? 'Total Payable to Farmers' : 'Total Receivable from Traders'}
           </p>
           <p className="text-2xl font-bold text-emerald-700">₹{totalFinal.toLocaleString()}</p>
-        </motion.div>
+        </div>
       </div>
 
       {/* Filter & Export */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="flex flex-col sm:flex-row gap-3 justify-between"
-      >
+      <div className="flex flex-col sm:flex-row gap-3 justify-between">
         <div className="flex gap-2">
           <select
             value={dateFilter}
@@ -335,15 +370,10 @@ export default function BillingReports() {
           <Download className="w-4 h-4" />
           Export Report
         </button>
-      </motion.div>
+      </div>
 
       {/* Billing Table - Desktop */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
-      >
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-100">
             <tr>
@@ -360,166 +390,191 @@ export default function BillingReports() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {currentData.map((item, index) => (
-              <motion.tr
-                key={item.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + index * 0.03 }}
-                className="hover:bg-slate-50/50 transition-colors"
-                onClick={() => handlePayment(item)}
-              >
-                <td className="px-6 py-4 text-sm text-slate-600">
-                  {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+            {loading ? (
+              // Skeleton loading for better perceived performance
+              [...Array(5)].map((_, i) => <SkeletonRow key={i} />)
+            ) : currentData.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
+                  No billing records found
                 </td>
-                <td className="px-6 py-4 font-medium text-slate-800">{item.name}</td>
-                {/* CLEAN DISPLAY: Show only kg OR carat based on which has value */}
-                <td className="px-6 py-4">
-                  <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
-                    {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right font-medium text-slate-700">₹{item.baseAmount.toLocaleString()}</td>
-                <td className="px-6 py-4 text-right">
-                  <span className={`text-sm font-medium ${activeTab === 'farmers' ? 'text-red-600' : 'text-purple-600'}`}>
-                    {activeTab === 'farmers' ? '-' : '+'}₹{item.commission.toLocaleString()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{item.finalAmount.toLocaleString()}</td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${item.status === 'Paid'
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-amber-100 text-amber-700'
-                    }`}>
-                    {item.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-center gap-3">
-                    {item.status !== 'Paid' ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm"
-                      >
-                        {activeTab === 'farmers' ? 'Pay' : 'Receive'}
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                        <CheckCircle size={14} />
-                        <span className="text-xs font-bold">Paid</span>
-                      </div>
-                    )}
+              </tr>
+            ) : (
+              currentData.map((item) => (
+                <tr
+                  key={item.id}
+                  className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                  onClick={() => handlePayment(item)}
+                >
+                  <td className="px-6 py-4 text-sm text-slate-600">
+                    {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                  </td>
+                  <td className="px-6 py-4 font-medium text-slate-800">{item.name}</td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
+                      {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right font-medium text-slate-700">₹{item.baseAmount.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-right">
+                    <span className={`text-sm font-medium ${activeTab === 'farmers' ? 'text-red-600' : 'text-purple-600'}`}>
+                      {activeTab === 'farmers' ? '-' : '+'}₹{item.commission.toLocaleString()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{item.finalAmount.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${item.status === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-amber-100 text-amber-700'
+                      }`}>
+                      {item.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-3">
+                      {item.status !== 'Paid' ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-sm"
+                        >
+                          {activeTab === 'farmers' ? 'Pay' : 'Receive'}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                          <CheckCircle size={14} />
+                          <span className="text-xs font-bold">Paid</span>
+                        </div>
+                      )}
 
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <PDFDownloadLink
-                        document={<BillingInvoice data={item} type={activeTab === 'farmers' ? 'farmer' : 'trader'} />}
-                        fileName={`invoice_${item.id.slice(-6)}.pdf`}
+                      {/* PERFORMANCE: Lightweight button instead of inline PDFDownloadLink */}
+                      <button
+                        onClick={(e) => handleDownloadInvoice(item, e)}
+                        className="p-2 rounded-lg transition-all duration-200 border bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 border-slate-200 shadow-sm"
+                        title="Download Invoice"
                       >
-                        {({ loading }) => (
-                          <div
-                            className={`p-2 rounded-lg transition-all duration-200 border ${loading
-                              ? 'bg-slate-100 text-slate-400 border-slate-200'
-                              : 'bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 border-slate-200 shadow-sm'
-                              }`}
-                            title="Download Invoice"
-                          >
-                            {loading ? <Download size={16} className="animate-pulse" /> : <Download size={16} />}
-                          </div>
-                        )}
-                      </PDFDownloadLink>
+                        <Download size={16} />
+                      </button>
                     </div>
-                  </div>
-                </td>
-              </motion.tr>
-            ))}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-      </motion.div>
+      </div>
 
       {/* Billing Cards - Mobile */}
       <div className="md:hidden space-y-3">
-        {currentData.map((item, index) => (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 + index * 0.05 }}
-            className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm"
-            onClick={() => handlePayment(item)}
-          >
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <p className="text-[10px] text-slate-400 font-medium mb-0.5">
-                  {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </p>
-                <h3 className="font-bold text-slate-800">{item.name}</h3>
-                {/* CLEAN DISPLAY for Mobile */}
-                <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium mt-1">
-                  {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
+        {loading ? (
+          // Mobile skeleton
+          [...Array(3)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm animate-pulse">
+              <div className="h-4 bg-slate-200 rounded w-1/3 mb-2"></div>
+              <div className="h-5 bg-slate-200 rounded w-1/2 mb-3"></div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="h-12 bg-slate-100 rounded-lg"></div>
+                <div className="h-12 bg-slate-100 rounded-lg"></div>
+                <div className="h-12 bg-slate-100 rounded-lg"></div>
+              </div>
+            </div>
+          ))
+        ) : (
+          currentData.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm"
+              onClick={() => handlePayment(item)}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-medium mb-0.5">
+                    {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                  <h3 className="font-bold text-slate-800">{item.name}</h3>
+                  <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium mt-1">
+                    {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
+                  </span>
+                </div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700'
+                  }`}>
+                  {item.status}
                 </span>
               </div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'Paid'
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-amber-100 text-amber-700'
-                }`}>
-                {item.status}
-              </span>
-            </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-slate-50 rounded-lg p-2 text-center">
-                <p className="text-[10px] text-slate-400 uppercase">Base</p>
-                <p className="font-bold text-sm text-slate-700">₹{(item.baseAmount / 1000).toFixed(1)}K</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-slate-50 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-slate-400 uppercase">Base</p>
+                  <p className="font-bold text-sm text-slate-700">₹{(item.baseAmount / 1000).toFixed(1)}K</p>
+                </div>
+                <div className={`${activeTab === 'farmers' ? 'bg-blue-50' : 'bg-purple-50'} rounded-lg p-2 text-center`}>
+                  <p className={`text-[10px] ${activeTab === 'farmers' ? 'text-blue-600' : 'text-purple-600'} uppercase`}>
+                    Comm
+                  </p>
+                  <p className={`font-bold text-sm ${activeTab === 'farmers' ? 'text-blue-700' : 'text-purple-700'}`}>
+                    {activeTab === 'farmers' ? '-' : '+'}₹{item.commission}
+                  </p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-emerald-600 uppercase">Final</p>
+                  <p className="font-bold text-sm text-emerald-700">₹{(item.finalAmount / 1000).toFixed(1)}K</p>
+                </div>
               </div>
-              <div className={`${activeTab === 'farmers' ? 'bg-blue-50' : 'bg-purple-50'} rounded-lg p-2 text-center`}>
-                <p className={`text-[10px] ${activeTab === 'farmers' ? 'text-blue-600' : 'text-purple-600'} uppercase`}>
-                  Comm
-                </p>
-                <p className={`font-bold text-sm ${activeTab === 'farmers' ? 'text-blue-700' : 'text-purple-700'}`}>
-                  {activeTab === 'farmers' ? '-' : '+'}₹{item.commission}
-                </p>
-              </div>
-              <div className="bg-emerald-50 rounded-lg p-2 text-center">
-                <p className="text-[10px] text-emerald-600 uppercase">Final</p>
-                <p className="font-bold text-sm text-emerald-700">₹{(item.finalAmount / 1000).toFixed(1)}K</p>
-              </div>
+              {item.status !== 'Paid' && (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
+                    className="flex-1 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg"
+                  >
+                    {activeTab === 'farmers' ? 'Pay Now' : 'Mark Received'}
+                  </button>
+                  <button
+                    onClick={(e) => handleDownloadInvoice(item, e)}
+                    className="flex items-center justify-center w-10 bg-slate-100 text-emerald-600 rounded-lg"
+                  >
+                    <FileText size={18} />
+                  </button>
+                </div>
+              )}
+              {item.status === 'Paid' && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={(e) => handleDownloadInvoice(item, e)}
+                    className="flex items-center justify-center px-4 py-2 bg-slate-100 text-emerald-600 text-xs font-bold rounded-lg gap-2"
+                  >
+                    <FileText size={16} />
+                    <span>Download Invoice</span>
+                  </button>
+                </div>
+              )}
             </div>
-            {item.status !== 'Paid' && (
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handlePayment(item); }}
-                  className="flex-1 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg"
-                >
-                  {activeTab === 'farmers' ? 'Pay Now' : 'Mark Received'}
-                </button>
-                <PDFDownloadLink
-                  document={<BillingInvoice data={item} type={activeTab === 'farmers' ? 'farmer' : 'trader'} />}
-                  fileName={`invoice_${item.id.slice(-6)}.pdf`}
-                  className="flex items-center justify-center w-10 bg-slate-100 text-emerald-600 rounded-lg"
-                >
-                  {({ loading }) => <FileText size={18} />}
-                </PDFDownloadLink>
-              </div>
-            )}
-            {item.status === 'Paid' && (
-              <div className="mt-3 flex justify-end">
-                <PDFDownloadLink
-                  document={<BillingInvoice data={item} type={activeTab === 'farmers' ? 'farmer' : 'trader'} />}
-                  fileName={`invoice_${item.id.slice(-6)}.pdf`}
-                  className="flex items-center justify-center px-4 py-2 bg-slate-100 text-emerald-600 text-xs font-bold rounded-lg"
-                >
-                  {({ loading }) => (
-                    <div className="flex items-center gap-2">
-                      <FileText size={16} />
-                      <span>Download Invoice</span>
-                    </div>
-                  )}
-                </PDFDownloadLink>
-              </div>
-            )}
-          </motion.div>
-        ))}
+          ))
+        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+          >
+            Previous
+          </button>
+          <span className="px-4 py-2 text-sm text-slate-600">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

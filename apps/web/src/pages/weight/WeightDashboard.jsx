@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import WeightNavbar from '../../components/navigation/WeightNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import {
@@ -66,13 +67,6 @@ const WeightDashboard = () => {
   const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
 
-  // --- FETCH RECORDS ---
-  useEffect(() => {
-    fetchWeightRecords();
-    fetchMarketData();
-    loadProfile();
-  }, []);
-
   const loadProfile = async () => {
     try {
       const data = await api.weight.getProfile();
@@ -97,7 +91,7 @@ const WeightDashboard = () => {
   };
 
   // 1. Fetch Weight Records (Combined Pending + Done)
-  const fetchWeightRecords = async () => {
+  const fetchWeightRecords = useCallback(async (showLoading = true) => {
     try {
       const [done, pending] = await Promise.all([
         api.weight.records(),
@@ -122,12 +116,12 @@ const WeightDashboard = () => {
       setRecords(allRecords);
     } catch (err) {
       console.error('Error fetching weight records:', err);
-      toast.error('Failed to fetch records');
+      if (showLoading) toast.error('Failed to fetch records');
     }
-  };
+  }, []);
 
   // 2. Fetch Market Data (Source for Auto-Fill) - Now fetches "RateAssigned" records
-  const fetchMarketData = async () => {
+  const fetchMarketData = useCallback(async () => {
     try {
       const data = await api.weight.pendingRecords();
       // Map to format expected by dropdown
@@ -138,8 +132,6 @@ const WeightDashboard = () => {
         est_qty: r.quantity,
         est_carat: r.carat,
         date: r.createdAt,
-        est_carat: r.carat,
-        date: r.createdAt,
         status: r.status, // Capture status
         sale_unit: r.sale_unit || (r.carat > 0 ? 'carat' : 'kg') // Capture unit
       }));
@@ -147,7 +139,20 @@ const WeightDashboard = () => {
     } catch (err) {
       console.error('Error fetching market data:', err);
     }
-  };
+  }, []);
+
+  // --- FETCH RECORDS ---
+  useEffect(() => {
+    fetchWeightRecords();
+    fetchMarketData();
+    loadProfile();
+  }, [fetchWeightRecords, fetchMarketData]);
+
+  // ✅ Auto-refresh records every 30 seconds
+  useAutoRefresh(() => {
+    fetchWeightRecords(false);
+    fetchMarketData();
+  }, { interval: 30000 });
 
   // --- AUTO FILL HANDLER ---
   const handleSelectMarketRecord = (e) => {
@@ -767,36 +772,45 @@ const WeightDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Qty (Kg)</label>
-              <input
-                type="number"
-                value={formData.updatedWeight}
-                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value })}
-                disabled={formData.saleUnit === 'carat'}
-                className={`w-full px-4 py-3 rounded-xl border-2 outline-none font-bold transition-all ${formData.saleUnit === 'carat'
-                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 bg-green-50/30 text-green-800'
-                  }`}
-              />
-            </div>
-            {/* ✅ NEW: Official Carat Input */}
-            <div>
-              <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Carat</label>
-              <input
-                type="number"
-                value={formData.updatedCarat}
-                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value })}
-                placeholder="0.00"
-                disabled={formData.saleUnit === 'kg'}
-                className={`w-full px-4 py-3 rounded-xl border-2 outline-none font-bold transition-all ${formData.saleUnit === 'kg'
-                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 bg-purple-50/30 text-purple-800'
-                  }`}
-              />
-            </div>
-          </div>
+          {/* Conditional Official Qty Input - Based on Est. values */}
+          {(() => {
+            const hasEstCarat = parseFloat(formData.estCarat) > 0;
+            const hasEstWeight = parseFloat(formData.estWeight) > 0;
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Show Kg input ONLY when estWeight > 0 AND estCarat = 0 */}
+                  {hasEstWeight && !hasEstCarat && (
+                    <div>
+                      <label className="block text-xs font-bold text-green-700 uppercase mb-2 tracking-wide">Official Qty (Kg)</label>
+                      <input
+                        type="number"
+                        value={formData.updatedWeight}
+                        onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
+                      />
+                    </div>
+                  )}
+
+                  {/* Show Crt input ONLY when estCarat > 0 */}
+                  {hasEstCarat && (
+                    <div>
+                      <label className="block text-xs font-bold text-purple-700 uppercase mb-2 tracking-wide">Official Carat</label>
+                      <input
+                        type="number"
+                        value={formData.updatedCarat}
+                        onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        placeholder="0.00"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none bg-purple-50/30 text-purple-800 font-bold transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100">
             * Enter "Official Qty" to mark status as "Done". Leaving empty keeps it "Pending".
@@ -852,39 +866,56 @@ const WeightDashboard = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Kg)</label>
-              <input
-                type="number"
-                value={formData.updatedWeight}
-                // ✅ CHANGED: Clears updatedCarat when typing in updatedWeight
-                onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
-                placeholder="0.00"
-                autoFocus
-                disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'}
-                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'carat'
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
-                  }`}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Crt)</label>
-              <input
-                type="number"
-                value={formData.updatedCarat}
-                // ✅ CHANGED: Clears updatedWeight when typing in updatedCarat
-                onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
-                placeholder="0.00"
-                disabled={(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'}
-                className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${(selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status)) || formData.saleUnit === 'kg'
-                    ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
-                  }`}
-              />
-            </div>
-          </div>
+          {/* Conditional Weight Input - Based on Est. Weight values */}
+          {(() => {
+            const hasEstCarat = parseFloat(formData.estCarat) > 0;
+            const hasEstWeight = parseFloat(formData.estWeight) > 0;
+            const isSold = selectedRecord && ['Sold', 'Completed'].includes(selectedRecord.status);
+
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Show Kg input ONLY when estWeight > 0 AND estCarat = 0 */}
+                  {hasEstWeight && !hasEstCarat && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Kg)</label>
+                      <input
+                        type="number"
+                        value={formData.updatedWeight}
+                        onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        placeholder="0.00"
+                        autoFocus
+                        disabled={isSold}
+                        className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${isSold
+                          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                          : 'border-green-500 focus:ring-green-100 bg-white text-green-700'
+                          }`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Show Crt input ONLY when estCarat > 0 */}
+                  {hasEstCarat && (
+                    <div>
+                      <label className="block text-sm font-bold text-gray-900 mb-2">Updated Weight (Crt)</label>
+                      <input
+                        type="number"
+                        value={formData.updatedCarat}
+                        onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        placeholder="0.00"
+                        autoFocus
+                        disabled={isSold}
+                        className={`w-full px-4 py-4 rounded-xl border-2 focus:ring-4 outline-none text-3xl font-bold text-center ${isSold
+                          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                          : 'border-purple-500 focus:ring-purple-100 bg-white text-purple-700'
+                          }`}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="pt-2">
             <button

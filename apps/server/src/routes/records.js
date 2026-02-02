@@ -13,12 +13,100 @@ const router = express.Router();
  * GET /api/records/my-records
  * Fetch all records for the logged-in farmer
  * PRIVACY: Exclude trader details
+ * NOTE: For split lots, shows parent record with aggregated sold/awaiting from children
  */
 router.get('/my-records', requireAuth, async (req, res) => {
     try {
-        const records = await Record.find({ farmer_id: req.user._id })
-            .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission') // Exclude trader info
-            .sort({ createdAt: -1 });
+        // Get all records for this farmer (excluding child records of split lots)
+        const records = await Record.find({
+            farmer_id: req.user._id,
+            parent_record_id: { $exists: false } // Exclude child records (they belong to parent)
+        })
+            .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
+            .sort({ createdAt: -1 })
+            .lean(); // Use lean for better performance
+
+        // For parent records (is_parent: true), aggregate data from child records
+        const parentIds = records.filter(r => r.is_parent).map(r => r._id);
+
+        if (parentIds.length > 0) {
+            // Get aggregated data from child records
+            const childAggregates = await Record.aggregate([
+                { $match: { parent_record_id: { $in: parentIds } } },
+                {
+                    $group: {
+                        _id: '$parent_record_id',
+                        soldQty: {
+                            $sum: {
+                                $cond: [
+                                    { $in: ['$status', ['Sold', 'Completed']] },
+                                    { $ifNull: ['$official_qty', '$quantity'] },
+                                    0
+                                ]
+                            }
+                        },
+                        soldCarat: {
+                            $sum: {
+                                $cond: [
+                                    { $in: ['$status', ['Sold', 'Completed']] },
+                                    { $ifNull: ['$official_carat', '$carat'] },
+                                    0
+                                ]
+                            }
+                        },
+                        totalSaleAmount: {
+                            $sum: {
+                                $cond: [
+                                    { $in: ['$status', ['Sold', 'Completed']] },
+                                    '$sale_amount',
+                                    0
+                                ]
+                            }
+                        },
+                        avgRate: { $avg: '$sale_rate' },
+                        childCount: { $sum: 1 },
+                        soldCount: {
+                            $sum: { $cond: [{ $in: ['$status', ['Sold', 'Completed']] }, 1, 0] }
+                        }
+                    }
+                }
+            ]);
+
+            // Create a map for quick lookup
+            const aggregateMap = {};
+            childAggregates.forEach(agg => {
+                aggregateMap[agg._id.toString()] = agg;
+            });
+
+            // Enhance parent records with aggregated data
+            records.forEach(record => {
+                if (record.is_parent) {
+                    const agg = aggregateMap[record._id.toString()];
+                    if (agg) {
+                        record.aggregated_sold_qty = agg.soldQty || 0;
+                        record.aggregated_sold_carat = agg.soldCarat || 0;
+                        record.aggregated_sale_amount = agg.totalSaleAmount || 0;
+                        record.aggregated_avg_rate = agg.avgRate || 0;
+                        record.child_count = agg.childCount || 0;
+                        record.sold_count = agg.soldCount || 0;
+
+                        // Calculate awaiting
+                        record.awaiting_qty = (record.quantity || 0) - (agg.soldQty || 0);
+                        record.awaiting_carat = (record.carat || 0) - (agg.soldCarat || 0);
+
+                        // Determine overall status
+                        if (agg.soldCount === agg.childCount && agg.childCount > 0) {
+                            record.display_status = 'Sold';
+                        } else if (agg.soldCount > 0) {
+                            record.display_status = 'Partial';
+                        } else {
+                            record.display_status = 'Pending';
+                        }
+                    }
+                }
+            });
+        }
+
         res.json(records);
     } catch (error) {
         console.error('Fetch my records error:', error);
@@ -118,16 +206,70 @@ router.get('/search-farmer', requireAuth, async (req, res) => {
 /**
  * GET /api/records/pending/:farmerId
  * Get pending records for a farmer (Specific param route)
+ * Also includes parent records that have remaining quantity to sell (partial sales)
  */
 router.get('/pending/:farmerId', requireAuth, async (req, res) => {
     try {
         const { farmerId } = req.params;
-        const records = await Record.find({
-            farmer_id: farmerId,
-            status: 'Pending'
-        }).sort({ createdAt: -1 });
 
-        res.json(records);
+        // Get regular pending records (not split/child records)
+        const pendingRecords = await Record.find({
+            farmer_id: farmerId,
+            status: 'Pending',
+            parent_record_id: { $exists: false } // Exclude child records
+        }).sort({ createdAt: -1 }).lean();
+
+        // Get parent records that might have remaining quantity
+        const parentRecords = await Record.find({
+            farmer_id: farmerId,
+            is_parent: true
+        }).lean();
+
+        // For each parent record, calculate remaining quantity from children
+        const enrichedParentRecords = [];
+        for (const parent of parentRecords) {
+            // Get child records for this parent
+            const children = await Record.find({ parent_record_id: parent._id });
+
+            // Calculate sold quantity and find previous rate
+            let soldQty = 0;
+            let soldCarat = 0;
+            let prevRate = 0;
+
+            for (const child of children) {
+                // Include RateAssigned and Weighed as 'sold'/allocated so they don't show up as pending
+                if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
+                    soldQty += child.official_qty || child.quantity || 0;
+                    soldCarat += child.official_carat || child.carat || 0;
+                    // Capture rate from first sold child to lock it for subsequent splits
+                    if (!prevRate && child.sale_rate) {
+                        prevRate = child.sale_rate;
+                    }
+                }
+            }
+
+            // Calculate remaining
+            const remainingQty = (parent.quantity || 0) - soldQty;
+            const remainingCarat = (parent.carat || 0) - soldCarat;
+
+            // Only include if there's remaining quantity to sell
+            if (remainingQty > 0.01 || remainingCarat > 0.01) {
+                enrichedParentRecords.push({
+                    ...parent,
+                    remaining_qty: parseFloat(remainingQty.toFixed(2)),
+                    remaining_carat: parseFloat(remainingCarat.toFixed(2)),
+                    sold_qty: parseFloat(soldQty.toFixed(2)),
+                    sold_carat: parseFloat(soldCarat.toFixed(2)),
+                    has_remaining: true,
+                    prev_rate: prevRate // Send previous rate to frontend
+                });
+            }
+        }
+
+        // Combine both lists
+        const allRecords = [...pendingRecords, ...enrichedParentRecords];
+
+        res.json(allRecords);
     } catch (error) {
         console.error('Fetch pending records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });
@@ -156,7 +298,7 @@ router.post('/add', requireAuth, async (req, res) => {
             vegetable: item.vegetable,
             quantity: item.quantity,
             carat: item.carat || 0,
-            sale_unit: (item.carat && item.carat > 0) ? 'carat' : 'kg', // ✅ Set unit
+            sale_unit: (item.carat && item.carat > 0) ? 'carat' : 'kg',
             status: 'Pending',
             qtySold: 0,
             rate: 0,
@@ -276,8 +418,11 @@ router.get('/farmer/:farmerId/history', requireAuth, async (req, res) => {
     try {
         const { farmerId } = req.params;
 
-        // Fetch all records for this farmer
-        const records = await Record.find({ farmer_id: farmerId })
+        // Fetch all records for this farmer (exclude parent records)
+        const records = await Record.find({
+            farmer_id: farmerId,
+            is_parent: { $ne: true } // Exclude parent records, show only actual sales
+        })
             .populate('trader_id', 'full_name business_name phone')
             .sort({ createdAt: -1 });
 
@@ -383,44 +528,191 @@ router.get('/all-weighed', requireAuth, async (req, res) => {
 
 /**
  * PATCH /api/records/:id/sell
- * Assign Rate and Trader (Committee Step 1)
+ * Assign Rate and Trader(s) (Committee Step 1)
+ * Supports multiple trader allocations - creates split records
  * Moves Status: Pending -> RateAssigned
  */
 router.patch('/:id/sell', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { trader_id, sale_rate, sale_unit } = req.body;
+        const { allocations, sale_unit, trader_id, sale_rate } = req.body;
 
-        if (!trader_id || sale_rate == null) {
-            return res.status(400).json({ error: 'Trader and sale rate required' });
-        }
+        console.log('=== SELL ENDPOINT CALLED ===');
+        console.log('Record ID:', id);
+        console.log('Allocations:', JSON.stringify(allocations, null, 2));
+        console.log('Sale Unit:', sale_unit);
 
+        // Get the original record
         const record = await Record.findById(id);
 
         if (!record) {
+            console.log('ERROR: Record not found');
             return res.status(404).json({ error: 'Record not found' });
         }
 
-        // Allow 'Pending' records to be assigned a rate
-        if (record.status !== 'Pending' && record.status !== 'RateAssigned') {
-            return res.status(400).json({ error: 'Record status must be Pending to assign rate' });
+        console.log('Record found:', record.lot_id, 'Status:', record.status);
+
+        // Allow 'Pending', 'Weighed', or 'RateAssigned' records to be assigned a rate
+        // Exception: Parent records that are 'Completed' (split lots) can still be sold if they have remaining quantity
+        const allowedStatuses = ['Pending', 'Weighed', 'RateAssigned'];
+        if (record.is_parent) allowedStatuses.push('Completed');
+
+        if (!allowedStatuses.includes(record.status)) {
+            console.log('ERROR: Invalid status', record.status);
+            return res.status(400).json({ error: `Record status is ${record.status}. Must be Pending or Weighed to assign rate.` });
         }
 
-        const updatedRecord = await Record.findByIdAndUpdate(
-            id,
-            {
-                trader_id,
-                sale_rate,
-                sale_unit: sale_unit || 'kg',
-                status: 'RateAssigned',
-                // No calculations yet - wait for weight
-            },
-            { new: true }
-        )
-            .populate('farmer_id', 'full_name phone')
-            .populate('trader_id', 'full_name phone business_name');
+        // Check if we have multiple allocations (new multi-trader flow)
+        if (allocations && Array.isArray(allocations) && allocations.length > 0) {
+            console.log('Multi-trader flow detected with', allocations.length, 'allocations');
+            // Multi-trader allocation flow
 
-        res.json(updatedRecord);
+            let alreadySold = 0;
+            // If it's already a parent record, subtract what's already been sold to child records
+            if (record.is_parent) {
+                const existingChildren = await Record.find({ parent_record_id: record._id });
+                for (const child of existingChildren) {
+                    if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
+                        // This `alreadySold` is a bit ambiguous as it doesn't specify unit.
+                        // It's used in the `availableKg` and `availableCarat` calculations below
+                        // with an `approx check`. This might need refinement if `alreadySold`
+                        // needs to be unit-specific. For now, keeping it as is from the original context.
+                        const childQty = (child.official_qty || child.quantity || child.official_carat || child.carat || 0);
+                        alreadySold += childQty;
+                    }
+                }
+            }
+
+            // Calculate availability for BOTH units
+            const availableKg = (record.official_qty || record.quantity || 0) -
+                (record.sale_unit === 'kg' && record.is_parent ? alreadySold : 0); // Approx check for alreadySold
+
+            const availableCarat = (record.official_carat || record.carat || 0) -
+                (record.sale_unit === 'carat' && record.is_parent ? alreadySold : 0);
+
+            // Determine intention
+            const totalAllocated = allocations.reduce((sum, a) => sum + parseFloat(a.quantity || 0), 0);
+
+            // Initial assumption from request or record
+            let targetUnit = sale_unit || (availableCarat > 0 ? 'carat' : 'kg');
+            let totalAvailable = targetUnit === 'carat' ? availableCarat : availableKg;
+
+            // SMART FIX: If selected unit has 0 availability (or less than allocated) BUT other unit has enough
+            // explicitly switch to the other unit.
+            // This handles mismatch where frontend sends 'carat' but we only have 'kg', or vice versa.
+            if (totalAvailable < totalAllocated) {
+                const otherUnit = targetUnit === 'carat' ? 'kg' : 'carat';
+                const otherAvailable = targetUnit === 'carat' ? availableKg : availableCarat;
+
+                console.log(`Mismatch detected! Requested ${targetUnit} (${totalAvailable}) < Allocated (${totalAllocated}). Checking ${otherUnit} (${otherAvailable})...`);
+
+                if (otherAvailable >= totalAllocated - 0.01) {
+                    console.log(`Substituted unit to ${otherUnit} to allow sale.`);
+                    targetUnit = otherUnit;
+                    totalAvailable = otherAvailable;
+                }
+            }
+
+            const isCarat = targetUnit === 'carat';
+
+            // Use small epsilon for floating point comparison
+            if (totalAllocated > totalAvailable + 0.01) {
+                console.error(`FAIL: Allocated ${totalAllocated} > Available ${totalAvailable} (${targetUnit})`);
+                return res.status(400).json({
+                    error: `Total allocated (${totalAllocated}) exceeds available quantity (${parseFloat(totalAvailable.toFixed(2))})`
+                });
+            }
+
+            // Ensure parent record has a lot_id
+            let parentLotId = record.lot_id;
+            if (!parentLotId) {
+                const currentYear = new Date().getFullYear();
+                const count = await Record.countDocuments();
+                parentLotId = `LOT-${currentYear}-${(count + 1).toString().padStart(3, '0')}`;
+                record.lot_id = parentLotId;
+                console.log('Generated parent lot_id:', parentLotId);
+            }
+
+            // Create child records for each allocation
+            const createdRecords = [];
+            // isCarat is already determined above
+
+            for (let i = 0; i < allocations.length; i++) {
+                const allocation = allocations[i];
+
+                // Generate unique lot_id for this child using timestamp to ensure uniqueness
+                const suffix = String.fromCharCode(65 + i); // A, B, C, etc.
+                const timestamp = Date.now();
+                const childLotId = `${parentLotId}-${suffix}-${timestamp}`;
+
+                console.log(`Creating child record ${i}: lot_id=${childLotId}, trader=${allocation.trader_id}, qty=${allocation.quantity}`);
+
+                // Create a new child record for this trader
+                // NOTE: official_qty and official_carat are left as 0 - weight staff will fill them
+                const childRecord = new Record({
+                    farmer_id: record.farmer_id,
+                    vegetable: record.vegetable,
+                    market: record.market,
+                    quantity: isCarat ? 0 : parseFloat(allocation.quantity), // Estimated/allocated qty
+                    carat: isCarat ? parseFloat(allocation.quantity) : 0,
+                    // official_qty/official_carat left as default 0 - to be filled by weight staff
+                    allocated_qty: isCarat ? 0 : parseFloat(allocation.quantity),
+                    allocated_carat: isCarat ? parseFloat(allocation.quantity) : 0,
+                    trader_id: allocation.trader_id,
+                    sale_rate: parseFloat(allocation.rate),
+                    sale_unit: targetUnit,
+                    status: 'RateAssigned',
+                    parent_record_id: record._id,
+                    is_parent: false,
+                    lot_id: childLotId // Set lot_id here so pre-save hook skips
+                });
+
+                try {
+                    await childRecord.save();
+                    console.log(`Child record ${i} saved successfully`);
+                } catch (saveError) {
+                    console.error('Error saving child record:', saveError.message);
+                    console.error('Full error:', saveError);
+                    throw saveError;
+                }
+
+                // Populate trader info for response
+                await childRecord.populate('trader_id', 'full_name phone business_name');
+                createdRecords.push(childRecord);
+            }
+
+            // Mark the parent record as split and completed
+            record.is_parent = true;
+            record.status = 'Completed';
+            await record.save();
+
+            res.json({
+                message: `Lot split successfully among ${allocations.length} traders`,
+                parentRecord: record,
+                childRecords: createdRecords
+            });
+
+        } else {
+            // Legacy single-trader flow (backward compatible)
+            if (!trader_id || sale_rate == null) {
+                return res.status(400).json({ error: 'Trader and sale rate required' });
+            }
+
+            const updatedRecord = await Record.findByIdAndUpdate(
+                id,
+                {
+                    trader_id,
+                    sale_rate,
+                    sale_unit: sale_unit || 'kg',
+                    status: 'RateAssigned',
+                },
+                { new: true }
+            )
+                .populate('farmer_id', 'full_name phone')
+                .populate('trader_id', 'full_name phone business_name');
+
+            res.json(updatedRecord);
+        }
     } catch (error) {
         console.error('Assign rate error:', error);
         res.status(500).json({ error: 'Failed to assign rate' });
@@ -430,12 +722,16 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
 /**
  * GET /api/records/completed
  * Get completed sales (transaction history)
+ * Excludes parent records (only shows actual trader assignments)
  */
 router.get('/completed', requireAuth, async (req, res) => {
     try {
         const { date } = req.query;
 
-        let query = { status: { $in: ['Sold', 'Completed'] } };
+        let query = {
+            status: { $in: ['Sold', 'Completed'] },
+            is_parent: { $ne: true } // Exclude parent records (split lots)
+        };
 
         if (date) {
             const startDate = new Date(date);

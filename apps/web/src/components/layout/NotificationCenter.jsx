@@ -40,7 +40,7 @@ export default function NotificationCenter() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-[360px] rounded-2xl shadow-xl border border-[var(--border)] bg-white/95 backdrop-blur-sm z-50 origin-top-right animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute right-0 mt-2 w-[360px] rounded-2xl shadow-xl border border-[var(--border)] bg-white/95 backdrop-blur-sm z-[9999] origin-top-right animate-in fade-in zoom-in-95 duration-200">
           <div className="w-full px-5 py-3 border-b border-[var(--border)] flex justify-between items-center bg-[var(--surface-50)] gap-4 rounded-t-2xl">
             <h4 className="font-bold text-[var(--text-primary)] text-lg">Notifications</h4>
             {unreadCount > 0 && (

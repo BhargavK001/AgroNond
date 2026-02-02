@@ -163,7 +163,7 @@ export default function CommissionRules() {
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                Default: 4% • Applied on farmer's sale amount
+                Applied on farmer's sale amount
               </p>
             </div>
 
@@ -185,7 +185,7 @@ export default function CommissionRules() {
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">%</span>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                Default: 9% • Applied on trader's purchase amount
+                Applied on trader's purchase amount
               </p>
             </div>
 

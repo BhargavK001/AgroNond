@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { RefreshCw, Search, CheckCircle, Clock, IndianRupee, ArrowUpRight, ArrowDownLeft, X, Filter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -23,13 +24,9 @@ const PaymentManagement = () => {
     const [selectedPendingIds, setSelectedPendingIds] = useState([]);
     const [bulkStep, setBulkStep] = useState(1); // 1: Select Trader, 2: Select Invoices, 3: Confirm
 
-    useEffect(() => {
-        fetchRecords();
-    }, []);
-
-    const fetchRecords = async () => {
+    const fetchRecords = useCallback(async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const data = await api.finance.billingRecords.list({ limit: 100 }); // increased limit for demo
             if (data && data.records) {
                 setRecords(data.records);
@@ -41,11 +38,18 @@ const PaymentManagement = () => {
             }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load records");
+            if (showLoading) toast.error("Failed to load records");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchRecords();
+    }, [fetchRecords]);
+
+    // ✅ Auto-refresh records every 30 seconds
+    useAutoRefresh(() => fetchRecords(false), { interval: 30000 });
 
     const handleOpenPaymentModal = (record, type) => {
         if (type === 'bulk-receive') {
@@ -187,20 +191,22 @@ const PaymentManagement = () => {
                         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Payment Management</h1>
                         <p className="text-slate-500 mt-1">Track market cashflow and settle accounts</p>
                     </div>
-                    <button
-                        onClick={fetchRecords}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition"
-                    >
-
-                        Refresh
-                    </button>
-                    <button
-                        onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
-                        className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all"
-                    >
-                        <IndianRupee size={18} />
-                        Bulk Receive
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={fetchRecords}
+                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition h-full"
+                        >
+                            <RefreshCw size={18} />
+                            Refresh
+                        </button>
+                        <button
+                            onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
+                            className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all"
+                        >
+                            <IndianRupee size={18} />
+                            Bulk Receive
+                        </button>
+                    </div>
                 </div>
 
                 {/* Stats Cards */}

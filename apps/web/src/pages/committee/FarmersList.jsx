@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
 import { Search, Filter, Phone, Plus, Users } from 'lucide-react';
 import AddFarmerModal from '../../components/committee/AddFarmerModal';
@@ -19,22 +20,25 @@ export default function FarmersList() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   // Fetch farmers from API
-  const fetchFarmers = async () => {
-    setIsLoading(true);
+  const fetchFarmers = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true);
     try {
       const response = await api.get('/api/users?role=farmer');
       setFarmers(response || []);
     } catch (error) {
       console.error('Failed to fetch farmers:', error);
-      toast.error('Failed to load farmers');
+      if (showLoading) toast.error('Failed to load farmers');
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFarmers();
-  }, []);
+  }, [fetchFarmers]);
+
+  // ✅ Auto-refresh farmers every 30 seconds
+  useAutoRefresh(() => fetchFarmers(false), { interval: 30000 });
 
   const filteredFarmers = farmers.filter(farmer => {
     const matchesSearch =
