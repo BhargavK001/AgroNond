@@ -1,9 +1,220 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, MapPin, Phone, User, Tractor, Eye, X, ChevronRight, Filter } from 'lucide-react';
+import { Search, MapPin, Phone, ChevronRight, Filter, X, IndianRupee, Package, Wheat, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
+
+// --- Helper Functions ---
+const formatQtyDisplay = (qty, carat) => {
+    const hasQty = qty && qty > 0;
+    const hasCarat = carat && carat > 0;
+
+    if (hasQty && hasCarat) {
+        return <>{qty} kg <span className="text-purple-600 font-medium">| {carat} Crt</span></>;
+    } else if (hasCarat) {
+        return <span className="text-purple-600 font-medium">{carat} Crt</span>;
+    } else {
+        return <>{qty || 0} kg</>;
+    }
+};
+
+const getRateUnit = (qty, carat) => {
+    const hasCarat = carat && carat > 0;
+    const hasQty = qty && qty > 0;
+    return hasCarat && !hasQty ? 'Crt' : 'kg';
+};
+
+const vegetableColors = {
+    'Tomato': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+    'Onion': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    'Potato': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    'Cabbage': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
+    'Cauliflower': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' },
+    'Green Chilli': { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200' },
+    'Capsicum': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    'Garlic': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+    'Ginger': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    'Brinjal': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
+};
+
+const getVegetableColor = (veg) => vegetableColors[veg] || { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+
+// --- Sub-Component for Detailed Stats ---
+function FarmerAnalytics({ farmerId }) {
+    const [history, setHistory] = useState([]);
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (farmerId) {
+            fetchHistory();
+        }
+    }, [farmerId]);
+
+    const fetchHistory = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get(`/api/records/farmer/${farmerId}/history`);
+            setHistory(response.records || []);
+            setStats(response.stats);
+        } catch (error) {
+            console.error('Failed to fetch farmer history:', error);
+            setHistory([]);
+            setStats(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64 border border-emerald-100 rounded-2xl bg-slate-50">
+                <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                            <IndianRupee className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <p className="text-sm font-medium text-emerald-900">Total Revenue</p>
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-700">₹{stats?.totalRevenue?.toLocaleString() || 0}</p>
+                </div>
+
+                <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                            <Package className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <p className="text-sm font-medium text-blue-900">Total Quantity</p>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-700">{stats?.totalQuantity?.toLocaleString() || 0} kg</p>
+                </div>
+
+                <div className="bg-purple-50/50 rounded-2xl p-4 border border-purple-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                            <Wheat className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <p className="text-sm font-medium text-purple-900">Vegetables</p>
+                    </div>
+                    <p className="text-2xl font-bold text-purple-700">{stats?.vegetableSummary?.length || 0} types</p>
+                </div>
+
+                <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-100">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                            <TrendingUp className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <p className="text-sm font-medium text-amber-900">Pending Payment</p>
+                    </div>
+                    <p className="text-2xl font-bold text-amber-600">₹{stats?.pendingPayment?.toLocaleString() || 0}</p>
+                </div>
+            </div>
+
+            {/* Vegetable Breakdown */}
+            {stats?.vegetableSummary?.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Vegetables Brought</h3>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        {stats.vegetableSummary.map((veg) => {
+                            const colors = getVegetableColor(veg.name);
+                            const hasCarat = veg.carat && veg.carat > 0;
+                            const hasQty = veg.quantity && veg.quantity > 0;
+                            return (
+                                <div key={veg.name} className={`${colors.bg} ${colors.border} border rounded-xl p-3`}>
+                                    <p className={`text-xs font-bold ${colors.text} uppercase mb-1`}>{veg.name}</p>
+                                    <p className="text-lg font-bold text-slate-800">
+                                        {hasQty && hasCarat ? (
+                                            <>{veg.quantity} kg <span className="text-purple-600">| {veg.carat} Crt</span></>
+                                        ) : hasCarat ? (
+                                            <span className="text-purple-600">{veg.carat} Crt</span>
+                                        ) : (
+                                            <>{veg.quantity || 0} kg</>
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-slate-500 opacity-80">{veg.count} lots</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Transaction History Table */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50">
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Transaction History</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Date</th>
+                                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Item</th>
+                                <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Trader</th>
+                                <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Qty</th>
+                                <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Rate</th>
+                                <th className="text-right text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 py-3">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {history.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-4 py-8 text-center text-slate-500">
+                                        No sales history found.
+                                    </td>
+                                </tr>
+                            ) : (
+                                history.map((record) => {
+                                    const colors = getVegetableColor(record.vegetable);
+                                    const qty = record.official_qty || record.quantity || 0;
+                                    const carat = record.official_carat || record.carat || 0;
+                                    const rateUnit = getRateUnit(qty, carat);
+
+                                    return (
+                                        <tr key={record._id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-4 py-3 text-sm text-slate-600">
+                                                {new Date(record.sold_at || record.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colors.bg} ${colors.text} border ${colors.border}`}>
+                                                    {record.vegetable}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">
+                                                {record.trader_id?.business_name || record.trader_id?.full_name || '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">
+                                                {formatQtyDisplay(qty, carat)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-sm text-slate-600">
+                                                {record.sale_rate ? `₹${record.sale_rate}/${rateUnit}` : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                {record.total_amount ? (
+                                                    <span className="font-bold text-emerald-600">₹{record.total_amount.toLocaleString()}</span>
+                                                ) : '-'}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function FarmerManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -128,9 +339,10 @@ export default function FarmerManagement() {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 p-6 overflow-y-auto"
+                            className="fixed inset-y-0 right-0 w-full max-w-5xl bg-white shadow-2xl z-50 overflow-hidden flex flex-col"
                         >
-                            <div className="flex items-center justify-between mb-8">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                                 <h2 className="text-xl font-bold text-slate-800">Farmer Profile</h2>
                                 <button
                                     onClick={() => setSelectedFarmer(null)}
@@ -140,35 +352,46 @@ export default function FarmerManagement() {
                                 </button>
                             </div>
 
-                            <div className="space-y-6">
-                                <div className="flex flex-col items-center p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                    <div className="w-20 h-20 rounded-full bg-white text-emerald-600 flex items-center justify-center font-bold text-2xl shadow-sm mb-3">
-                                        {selectedFarmer.initials || 'F'}
-                                    </div>
-                                    <h3 className="text-lg font-bold text-slate-900">{selectedFarmer.full_name}</h3>
-                                    <p className="text-emerald-600 font-medium bg-white px-3 py-1 rounded-full text-sm mt-1 shadow-sm border border-emerald-100">
-                                        {selectedFarmer.farmerId || 'ID Pending'}
-                                    </p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">Contact Information</h4>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-3 bg-slate-50 rounded-xl">
-                                            <p className="text-xs text-slate-500 mb-1">Phone Number</p>
-                                            <p className="font-medium text-slate-800">{selectedFarmer.phone}</p>
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                <div className="flex flex-col md:flex-row gap-6">
+                                    {/* Left Column: Basic Info */}
+                                    <div className="w-full md:w-1/3 space-y-6">
+                                        <div className="flex flex-col items-center p-6 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                            <div className="w-20 h-20 rounded-full bg-white text-emerald-600 flex items-center justify-center font-bold text-2xl shadow-sm mb-3">
+                                                {selectedFarmer.initials || 'F'}
+                                            </div>
+                                            <h3 className="text-lg font-bold text-slate-900 text-center">{selectedFarmer.full_name}</h3>
+                                            <p className="text-emerald-600 font-medium bg-white px-3 py-1 rounded-full text-sm mt-1 shadow-sm border border-emerald-100">
+                                                {selectedFarmer.farmerId || 'ID Pending'}
+                                            </p>
                                         </div>
-                                        <div className="p-3 bg-slate-50 rounded-xl">
-                                            <p className="text-xs text-slate-500 mb-1">City/Village</p>
-                                            <p className="font-medium text-slate-800">{selectedFarmer.location || 'N/A'}</p>
+
+                                        <div className="space-y-4">
+                                            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide border-b border-slate-100 pb-2">Contact Information</h4>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                                    <Phone className="w-5 h-5 text-slate-400" />
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">Mobile</p>
+                                                        <p className="font-medium text-slate-800">{selectedFarmer.phone}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                                                    <MapPin className="w-5 h-5 text-slate-400" />
+                                                    <div>
+                                                        <p className="text-xs text-slate-500">City/Village</p>
+                                                        <p className="font-medium text-slate-800">{selectedFarmer.location || 'N/A'}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {/* Right Column: Detailed Stats & History */}
+                                    <div className="w-full md:w-2/3 space-y-6">
+                                        <FarmerAnalytics farmerId={selectedFarmer._id} />
+                                    </div>
                                 </div>
-
-
-
-
                             </div>
                         </motion.div>
                     </>
@@ -177,3 +400,4 @@ export default function FarmerManagement() {
         </div>
     );
 }
+

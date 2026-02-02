@@ -8,6 +8,8 @@ import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
   Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History, Download
 } from 'lucide-react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import BillingInvoice from '../../components/committee/BillingInvoice';
 
 // --- MODAL COMPONENT ---
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
@@ -307,6 +309,15 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
       return;
     }
 
+    // ✅ VALIDATION: Quantity must be a multiple of 10
+    if (hasQuantity) {
+      const qty = parseFloat(quantities.kg);
+      if (qty % 10 !== 0) {
+        toast.error('Quantity (Kg) must be a multiple of 10 (e.g., 10, 20, 30, 110, 150)');
+        return;
+      }
+    }
+
     const isDuplicate = addedItems.some(item => item.vegetable === selectedVegetable);
     if (isDuplicate) {
       toast.error('This vegetable is already added. Remove it first to change quantity.');
@@ -528,8 +539,9 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                   type="number"
                   value={quantities.kg}
                   onChange={(e) => handleQuantityChange(e.target.value, 'kg')}
-                  placeholder="0.00"
-                  step="0.01"
+                  onWheel={(e) => e.target.blur()}
+                  placeholder="0"
+                  step="10"
                   min="0"
                   className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
                 />
@@ -543,6 +555,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                   type="number"
                   value={carat}
                   onChange={(e) => handleCaratChange(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   placeholder="Enter carat (e.g., 1, 2, 3...)"
                   step="1"
                   min="0"
@@ -1436,8 +1449,9 @@ const FarmerDashboard = () => {
                   type="number"
                   value={editFormData.quantities.kg}
                   onChange={(e) => handleEditQuantityChange(e.target.value, 'kg')}
-                  placeholder="0.00"
-                  step="0.01"
+                  onWheel={(e) => e.target.blur()}
+                  placeholder="0"
+                  step="10"
                   min="0"
                   className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
                 />
@@ -1450,6 +1464,7 @@ const FarmerDashboard = () => {
                     type="number"
                     value={editFormData.quantities.ton}
                     onChange={(e) => handleEditQuantityChange(e.target.value, 'ton')}
+                    onWheel={(e) => e.target.blur()}
                     placeholder="0.00"
                     step="0.001"
                     min="0"
@@ -1462,6 +1477,7 @@ const FarmerDashboard = () => {
                     type="number"
                     value={editFormData.quantities.quintal}
                     onChange={(e) => handleEditQuantityChange(e.target.value, 'quintal')}
+                    onWheel={(e) => e.target.blur()}
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -1478,8 +1494,9 @@ const FarmerDashboard = () => {
                 type="number"
                 value={editFormData.carat}
                 onChange={(e) => setEditFormData({ ...editFormData, carat: e.target.value })}
-                placeholder="0.00"
-                step="0.01"
+                onWheel={(e) => e.target.blur()}
+                placeholder="0"
+                step="1"
                 min="0"
                 className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-green-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
               />

@@ -671,6 +671,7 @@ export default function LilavEntry() {
                                                         if (saleModal.lockedRate) return;
                                                         setSaleForm(prev => ({ ...prev, sale_rate: val === '' ? '' : parseFloat(val) }));
                                                     }}
+                                                    onWheel={(e) => e.target.blur()}
                                                     placeholder="0"
                                                     disabled={!!saleModal.lockedRate}
                                                     className={`w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none ${saleModal.lockedRate ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gray-50'}`}
@@ -694,6 +695,7 @@ export default function LilavEntry() {
                                                     max={getRemainingQuantity()}
                                                     value={saleForm.allocation_qty}
                                                     onChange={(e) => setSaleForm(prev => ({ ...prev, allocation_qty: e.target.value }))}
+                                                    onWheel={(e) => e.target.blur()}
                                                     placeholder={`Max: ${getRemainingQuantity()}`}
                                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-lg outline-none"
                                                 />

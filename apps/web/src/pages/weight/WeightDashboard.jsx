@@ -788,6 +788,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedWeight}
                         onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         className="w-full px-4 py-3 rounded-xl border-2 border-green-100 focus:border-green-500 focus:ring-4 focus:ring-green-100 outline-none bg-green-50/30 text-green-800 font-bold transition-all"
                       />
@@ -802,6 +803,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedCarat}
                         onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         className="w-full px-4 py-3 rounded-xl border-2 border-purple-100 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none bg-purple-50/30 text-purple-800 font-bold transition-all"
                       />
@@ -883,6 +885,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedWeight}
                         onChange={(e) => setFormData({ ...formData, updatedWeight: e.target.value, updatedCarat: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         autoFocus
                         disabled={isSold}
@@ -902,6 +905,7 @@ const WeightDashboard = () => {
                         type="number"
                         value={formData.updatedCarat}
                         onChange={(e) => setFormData({ ...formData, updatedCarat: e.target.value, updatedWeight: '' })}
+                        onWheel={(e) => e.target.blur()}
                         placeholder="0.00"
                         autoFocus
                         disabled={isSold}
