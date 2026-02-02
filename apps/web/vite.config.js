@@ -60,7 +60,8 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'ui-vendor': ['framer-motion', 'lucide-react', 'react-hot-toast'],
-          'data-vendor': ['@tanstack/react-query']
+          'data-vendor': ['@tanstack/react-query'],
+          'pdf-vendor': ['@react-pdf/renderer']
         },
       },
     },

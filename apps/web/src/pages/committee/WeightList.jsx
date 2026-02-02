@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
 import { Search, Filter, Phone, Plus, Scale } from 'lucide-react';
 import AddWeightModal from '../../components/committee/AddWeightModal';
@@ -14,22 +15,25 @@ export default function WeightList() {
     const [filterStatus, setFilterStatus] = useState('all');
 
     // Fetch weight users from API
-    const fetchWeightUsers = async () => {
-        setIsLoading(true);
+    const fetchWeightUsers = useCallback(async (showLoading = true) => {
+        if (showLoading) setIsLoading(true);
         try {
             const response = await api.get('/api/users?role=weight');
             setWeightUsers(response || []);
         } catch (error) {
             console.error('Failed to fetch weight users:', error);
-            toast.error('Failed to load weight users');
+            if (showLoading) toast.error('Failed to load weight users');
         } finally {
-            setIsLoading(false);
+            if (showLoading) setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchWeightUsers();
-    }, []);
+    }, [fetchWeightUsers]);
+
+    // ✅ Auto-refresh weight users every 30 seconds
+    useAutoRefresh(() => fetchWeightUsers(false), { interval: 30000 });
 
     const filteredUsers = weightUsers.filter(user => {
         const matchesSearch =

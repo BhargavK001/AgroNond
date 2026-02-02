@@ -15,11 +15,18 @@ router.get('/stats', requireAuth, async (req, res) => {
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         const [completed, pending, todayRecs] = await Promise.all([
-            Record.countDocuments({ status: { $in: ['Weighed', 'Completed', 'Sold'] } }),
-            Record.countDocuments({ status: 'Pending' }),
+            Record.countDocuments({
+                status: { $in: ['Weighed', 'Completed', 'Sold'] },
+                is_parent: { $ne: true }
+            }),
+            Record.countDocuments({
+                status: 'Pending',
+                is_parent: { $ne: true }
+            }),
             Record.countDocuments({
                 updatedAt: { $gte: today, $lt: tomorrow },
-                status: { $in: ['Weighed', 'Completed', 'Sold'] }
+                status: { $in: ['Weighed', 'Completed', 'Sold'] },
+                is_parent: { $ne: true }
             })
         ]);
 
@@ -33,7 +40,10 @@ router.get('/stats', requireAuth, async (req, res) => {
 // GET /api/weight/records (The main list)
 router.get('/records', requireAuth, async (req, res) => {
     try {
-        const records = await Record.find({ status: { $in: ['Weighed', 'Completed', 'Sold'] } })
+        const records = await Record.find({
+            status: { $in: ['Weighed', 'Completed', 'Sold'] },
+            is_parent: { $ne: true } // Exclude parent records
+        })
             .populate('farmer_id', 'farmerId full_name phone')
             .sort({ updatedAt: -1 });
         res.json(records);

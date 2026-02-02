@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { RefreshCw, Search, CheckCircle, Clock, IndianRupee, ArrowUpRight, ArrowDownLeft, X, Filter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -23,13 +24,9 @@ const PaymentManagement = () => {
     const [selectedPendingIds, setSelectedPendingIds] = useState([]);
     const [bulkStep, setBulkStep] = useState(1); // 1: Select Trader, 2: Select Invoices, 3: Confirm
 
-    useEffect(() => {
-        fetchRecords();
-    }, []);
-
-    const fetchRecords = async () => {
+    const fetchRecords = useCallback(async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             const data = await api.finance.billingRecords.list({ limit: 100 }); // increased limit for demo
             if (data && data.records) {
                 setRecords(data.records);
@@ -41,11 +38,18 @@ const PaymentManagement = () => {
             }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load records");
+            if (showLoading) toast.error("Failed to load records");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchRecords();
+    }, [fetchRecords]);
+
+    // ✅ Auto-refresh records every 30 seconds
+    useAutoRefresh(() => fetchRecords(false), { interval: 30000 });
 
     const handleOpenPaymentModal = (record, type) => {
         if (type === 'bulk-receive') {

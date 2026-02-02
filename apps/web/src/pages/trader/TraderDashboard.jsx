@@ -1,5 +1,6 @@
 import { ShoppingBasket, Wallet, ReceiptText, Clock, TrendingUp } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AnimatedCounter from '../../components/ui/AnimatedCounter';
@@ -19,25 +20,28 @@ export default function TraderDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, transactionsData] = await Promise.all([
-          api.trader.stats(),
-          api.trader.transactions({ limit: 5 })
-        ]);
+  const fetchData = useCallback(async (showLoading = true) => {
+    try {
+      const [statsData, transactionsData] = await Promise.all([
+        api.trader.stats(),
+        api.trader.transactions({ limit: 5 })
+      ]);
 
-        setStats(statsData);
-        setTransactionHistory(transactionsData);
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+      setStats(statsData);
+      setTransactionHistory(transactionsData);
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // ✅ Auto-refresh data every 30 seconds
+  useAutoRefresh(() => fetchData(false), { interval: 30000 });
 
   // Calculate Average Rate
   const avgRate = stats.totalQuantity > 0 ? (stats.totalSpend / stats.totalQuantity) : 0;

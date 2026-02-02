@@ -7,8 +7,8 @@ import {
     XAxis,
     YAxis,
     Tooltip,
-    Cell,
-    CartesianGrid
+    CartesianGrid,
+    Cell
 } from 'recharts';
 import { TrendingUp, TrendingDown, BarChart3, Calendar, RefreshCw } from 'lucide-react';
 
@@ -21,7 +21,6 @@ const PERIODS = [
     { key: 'year', label: 'This Year' }
 ];
 
-// Color palette for bars
 const COLORS = [
     '#10b981', // emerald-500
     '#22c55e', // green-500
@@ -34,6 +33,27 @@ const COLORS = [
     '#6366f1', // indigo-500
     '#3b82f6', // blue-500
 ];
+
+const CustomYAxisTick = ({ x, y, payload }) => {
+    const text = payload.value;
+    const parts = text.split('(');
+    const english = parts[0].trim();
+    // Re-add parenthesis if it exists in split
+    const marathi = parts.length > 1 ? `(${parts[1]}` : '';
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={-5} textAnchor="end" fill="var(--text-primary)" fontSize={12} fontWeight={500}>
+                {english}
+            </text>
+            {marathi && (
+                <text x={0} y={0} dy={10} textAnchor="end" fill="var(--text-secondary)" fontSize={11}>
+                    {marathi}
+                </text>
+            )}
+        </g>
+    );
+};
 
 export default function VegetableSalesAnalytics() {
     const [data, setData] = useState(null);
@@ -240,14 +260,14 @@ export default function VegetableSalesAnalytics() {
                                         Total: ₹{data.totalMarketSales?.toLocaleString()} • {data.vegetableCount} vegetables
                                     </span>
                                 </div>
-                                <div className="h-64">
+                                <div style={{ height: Math.max(350, data.data.length * 60) }} className="w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart
                                             data={data.data}
                                             layout="vertical"
-                                            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                                            margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                                         >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" opacity={0.5} />
                                             <XAxis
                                                 type="number"
                                                 axisLine={false}
@@ -260,11 +280,12 @@ export default function VegetableSalesAnalytics() {
                                                 dataKey="vegetable"
                                                 axisLine={false}
                                                 tickLine={false}
-                                                tick={{ fill: 'var(--text-primary)', fontSize: 13, fontWeight: 500 }}
-                                                width={75}
+                                                tick={<CustomYAxisTick />}
+                                                width={110}
+                                                interval={0}
                                             />
-                                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
-                                            <Bar dataKey="totalSalesAmount" radius={[0, 6, 6, 0]} barSize={24}>
+                                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)', radius: 6 }} />
+                                            <Bar dataKey="totalSalesAmount" radius={[0, 4, 4, 0]} barSize={32}>
                                                 {data.data.map((entry, index) => (
                                                     <Cell
                                                         key={`cell-${index}`}
@@ -278,12 +299,12 @@ export default function VegetableSalesAnalytics() {
                             </div>
 
                             {/* Summary Footer */}
-                            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-[var(--text-muted)] pt-2">
-                                <span>📊 {data.vegetableCount} vegetables traded</span>
-                                <span>•</span>
-                                <span>💰 ₹{data.totalMarketSales?.toLocaleString()} total sales</span>
-                                <span>•</span>
-                                <span>📅 {PERIODS.find(p => p.key === period)?.label}</span>
+                            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-[var(--text-muted)] pt-2 font-medium">
+                                <span>{data.vegetableCount} vegetables traded</span>
+                                <span className="text-[var(--border)]">|</span>
+                                <span>₹{data.totalMarketSales?.toLocaleString()} total sales</span>
+                                <span className="text-[var(--border)]">|</span>
+                                <span>{PERIODS.find(p => p.key === period)?.label}</span>
                             </div>
                         </motion.div>
                     )}

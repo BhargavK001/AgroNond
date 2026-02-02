@@ -515,7 +515,7 @@ export default function TraderTransactions() {
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                 <div>
-                  <p className="text-[9px] text-violet-500 uppercase">Commission (9%)</p>
+                  <p className="text-[9px] text-violet-500 uppercase">Commission ({txn.grossAmount ? Math.round((txn.commission / txn.grossAmount) * 100) : 0}%)</p>
                   <p className="font-medium text-xs text-violet-600">₹{txn.commission.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="text-right">

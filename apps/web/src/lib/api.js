@@ -168,6 +168,9 @@ export const api = {
         return apiRequest(`/api/finance/billing-records${query ? '?' + query : ''}`, { method: 'GET' });
       },
     },
+    commissionRates: {
+      list: () => apiRequest('/api/finance/commission-rates', { method: 'GET' }),
+    },
     payments: {
       create: (data) => apiRequest('/api/finance/payments', { method: 'POST', body: JSON.stringify(data) }),
       payFarmer: (id, data) => apiRequest(`/api/finance/pay-farmer/${id}`, { method: 'POST', body: JSON.stringify(data) }),
