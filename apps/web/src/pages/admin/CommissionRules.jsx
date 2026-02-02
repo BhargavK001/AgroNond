@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Save, AlertCircle, CheckCircle, RefreshCw, Info, Loader } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
 
 export default function CommissionRules() {
@@ -9,7 +10,7 @@ export default function CommissionRules() {
     farmerRate: 4,
     traderRate: 9
   });
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  // const [saveSuccess, setSaveSuccess] = useState(false); // REMOVED
   const queryClient = useQueryClient();
 
   // Fetch Rules
@@ -50,7 +51,7 @@ export default function CommissionRules() {
     // Allow typing decimals (e.g. "4.")
     if (/^\d*\.?\d*$/.test(value)) {
       setConfig(prev => ({ ...prev, [field]: value }));
-      setSaveSuccess(false);
+      // setSaveSuccess(false); // REMOVED
     }
   };
 
@@ -70,10 +71,10 @@ export default function CommissionRules() {
         })
       ]);
 
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      toast.success('Commission rules saved successfully!');
     } catch (error) {
       console.error('Failed to save rules:', error);
+      toast.error('Failed to save commission rules');
     }
   };
 
@@ -82,7 +83,7 @@ export default function CommissionRules() {
       farmerRate: 4,
       traderRate: 9
     });
-    setSaveSuccess(false);
+    // setSaveSuccess(false); // REMOVED
   };
 
   if (isLoading) {
@@ -216,17 +217,7 @@ export default function CommissionRules() {
               </button>
             </div>
 
-            {/* Success Message */}
-            {saveSuccess && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-700 rounded-xl"
-              >
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-medium">Settings saved successfully!</span>
-              </motion.div>
-            )}
+
 
             {/* Last Updated */}
             <p className="text-sm text-gray-400 text-center">

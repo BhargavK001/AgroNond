@@ -17,6 +17,7 @@ import {
   Trash2,
   ShieldAlert
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
 
 const roleFilters = [
@@ -40,7 +41,7 @@ export default function UserManagement() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Form states
-  const [newUser, setNewUser] = useState({ phone: '', role: 'farmer', full_name: '' });
+  const [newUser, setNewUser] = useState({ phone: '', role: 'farmer', full_name: '', business_name: '', address: '', location: '' });
   const [editingUser, setEditingUser] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
 
@@ -75,7 +76,7 @@ export default function UserManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-users']);
       setAddUserModalOpen(false);
-      setNewUser({ phone: '', role: 'farmer', full_name: '' });
+      setNewUser({ phone: '', role: 'farmer', full_name: '', business_name: '', address: '', location: '' });
       alert('User created successfully. They can now login with their phone number.');
     },
     onError: (err) => {
@@ -84,7 +85,7 @@ export default function UserManagement() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: (data) => api.admin.users.update(data.id, { full_name: data.full_name, phone: data.phone }),
+    mutationFn: (data) => api.admin.users.update(data.id || data._id, { full_name: data.full_name, phone: data.phone }),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-users']);
       setEditUserModalOpen(false);
@@ -121,7 +122,7 @@ export default function UserManagement() {
 
   const handleDeleteUser = () => {
     if (userToDelete) {
-      deleteUserMutation.mutate(userToDelete.id);
+      deleteUserMutation.mutate(userToDelete.id || userToDelete._id);
     }
   };
 
@@ -384,14 +385,20 @@ export default function UserManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  required
-                  value={newUser.phone}
-                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
-                  placeholder="e.g. 9876543210"
-                />
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">+91</span>
+                  <input
+                    type="tel"
+                    required
+                    value={newUser.phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= 10) setNewUser({ ...newUser, phone: val });
+                    }}
+                    className="w-full pl-12 pr-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                    placeholder="9876543210"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
@@ -403,8 +410,48 @@ export default function UserManagement() {
                   {roleFilters.filter(r => r.key !== 'all').map(r => (
                     <option key={r.key} value={r.key}>{r.label}</option>
                   ))}
+
                 </select>
               </div>
+
+              {/* Dynamic Fields based on Role */}
+              {newUser.role === 'trader' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Business Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                    <input
+                      type="text"
+                      value={newUser.business_name}
+                      onChange={(e) => setNewUser({ ...newUser, business_name: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                      placeholder="e.g. Laxmi Traders"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address <span className="text-gray-400 font-normal">(Optional)</span></label>
+                    <input
+                      type="text"
+                      value={newUser.address}
+                      onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                      placeholder="e.g. Market Yard, Gate 2"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {newUser.role === 'farmer' && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Village / Location <span className="text-gray-400 font-normal">(Optional)</span></label>
+                  <input
+                    type="text"
+                    value={newUser.location}
+                    onChange={(e) => setNewUser({ ...newUser, location: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                    placeholder="e.g. Rampur"
+                  />
+                </div>
+              )}
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
@@ -424,100 +471,105 @@ export default function UserManagement() {
             </form>
           </motion.div>
         </div>
-      )}
+      )
+      }
 
       {/* Edit User Modal */}
-      {editUserModalOpen && editingUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Edit User</h2>
-              <button onClick={() => setEditUserModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleUpdateUser} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={editingUser.full_name}
-                  onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  required
-                  value={editingUser.phone}
-                  onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
-                />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setEditUserModalOpen(false)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateUserMutation.isLoading}
-                  className="flex-1 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                >
-                  {updateUserMutation.isLoading ? 'Saving...' : 'Save Changes'}
+      {
+        editUserModalOpen && editingUser && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-800">Edit User</h2>
+                <button onClick={() => setEditUserModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <XCircle className="w-6 h-6" />
                 </button>
               </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+              <form onSubmit={handleUpdateUser} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingUser.full_name}
+                    onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editingUser.phone}
+                    onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setEditUserModalOpen(false)}
+                    className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updateUserMutation.isLoading}
+                    className="flex-1 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  >
+                    {updateUserMutation.isLoading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )
+      }
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirmOpen && userToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
-          >
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <ShieldAlert className="w-8 h-8 text-red-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Delete User?</h2>
-              <p className="text-gray-500 mb-6">
-                Are you sure you want to delete <strong>{userToDelete.full_name}</strong>? This action cannot be undone.
-              </p>
+      {
+        deleteConfirmOpen && userToDelete && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <ShieldAlert className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Delete User?</h2>
+                <p className="text-gray-500 mb-6">
+                  Are you sure you want to delete <strong>{userToDelete.full_name}</strong>? This action cannot be undone.
+                </p>
 
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => setDeleteConfirmOpen(false)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteUser}
-                  disabled={deleteUserMutation.isLoading}
-                  className="flex-1 px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  {deleteUserMutation.isLoading ? 'Deleting...' : 'Delete User'}
-                </button>
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setDeleteConfirmOpen(false)}
+                    className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteUser}
+                    disabled={deleteUserMutation.isLoading}
+                    className="flex-1 px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {deleteUserMutation.isLoading ? 'Deleting...' : 'Delete User'}
+                  </button>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </div>
+            </motion.div>
+          </div>
+        )
+      }
+    </div >
   );
 }

@@ -248,8 +248,33 @@ export default function TraderManagement() {
     const [licenseInput, setLicenseInput] = useState('');
 
     const handleApproveLicense = () => {
-        if (!confirm('Generate/Approve license for this trader?')) return;
+        toast((t) => (
+            <div className="flex flex-col gap-2">
+                <p className="font-medium text-slate-800">
+                    Generate/Approve license for this trader?
+                </p>
+                <div className="flex justify-end gap-2 mt-2">
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => {
+                            toast.dismiss(t.id);
+                            confirmLicenseApproval();
+                        }}
+                        className="px-3 py-1 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                        Approve
+                    </button>
+                </div>
+            </div>
+        ), { duration: 5000 });
+    };
 
+    const confirmLicenseApproval = () => {
         let license_number = licenseInput.trim();
 
         if (!license_number) {

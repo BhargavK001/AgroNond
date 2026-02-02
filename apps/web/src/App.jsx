@@ -23,6 +23,7 @@ const Services = lazy(() => import('./pages/public/Services'));
 const Contact = lazy(() => import('./pages/public/Contact'));
 const Login = lazy(() => import('./pages/auth/Login'));
 const AdminLogin = lazy(() => import('./pages/auth/AdminLogin'));
+const MarketLogin = lazy(() => import('./pages/auth/MarketLogin'));
 const Privacy = lazy(() => import('./pages/public/Privacy'));
 
 const StatusPage = lazy(() => import('./pages/public/StatusPage'));
@@ -138,6 +139,14 @@ function App() {
                   <Route path="/admin/login" element={
                     <Layout hideNav hideFooter>
                       <AdminLogin />
+                    </Layout>
+                  }
+                  />
+
+                  {/* Market Staff Login - Committee & Lilav */}
+                  <Route path="/market/login" element={
+                    <Layout hideNav hideFooter>
+                      <MarketLogin />
                     </Layout>
                   }
                   />
