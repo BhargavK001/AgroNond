@@ -3,6 +3,7 @@ import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import FarmerNavbar from '../../components/navigation/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
+import { MARKET_CONFIG } from '../../config/market';
 import SoldRecordCard from '../../components/farmer/SoldRecordCard';
 import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
@@ -168,27 +169,11 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
   const [addedItems, setAddedItems] = useState([]);
 
-  // Fetch Market Info (Committee)
+  // Use Centralized Market Configuration
+  // All users (farmers, traders, lilav, weight, committee) belong to this single market
   useEffect(() => {
-    const fetchMarket = async () => {
-      try {
-        setIsLoadingMarket(true);
-        const users = await api.users.list({ role: 'committee' });
-        if (users && users.length > 0) {
-          // Use the first committee found
-          const marketName = users[0].business_name || users[0].full_name || 'AgroNond Market';
-          setSelectedMarket(marketName);
-        } else {
-          toast.error("No Market Committee found");
-        }
-      } catch (error) {
-        console.error("Failed to fetch market info", error);
-        // toast.error("Failed to load market info");
-      } finally {
-        setIsLoadingMarket(false);
-      }
-    };
-    fetchMarket();
+    setSelectedMarket(MARKET_CONFIG.MARKET_NAME);
+    setIsLoadingMarket(false);
   }, []);
 
 

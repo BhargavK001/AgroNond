@@ -1,6 +1,7 @@
 import express from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import Record from '../models/Record.js';
+import { createAuditLog, getClientIp, AuditDescriptions } from '../utils/auditLogger.js';
 
 const router = express.Router();
 // Middleware to require auth
@@ -33,6 +34,17 @@ router.post('/pay-farmer/:id', async (req, res) => {
         );
 
         if (!record) return res.status(404).json({ error: 'Record not found' });
+
+        // AUDIT LOG: Track payment status change
+        await createAuditLog({
+            user: req.user,
+            action: 'update',
+            entityType: 'payment',
+            entityId: record._id,
+            description: AuditDescriptions.paymentStatus('farmer', 'Paid', record.farmer_id?.full_name || 'Farmer'),
+            changes: { farmer_payment_status: { old: 'Pending', new: 'Paid' }, mode },
+            ipAddress: getClientIp(req)
+        });
 
         // TRIGGER NOTIFICATION: Payment Sent
         if (record.farmer_id) {
@@ -75,6 +87,18 @@ router.post('/receive-trader/:id', async (req, res) => {
         );
 
         if (!record) return res.status(404).json({ error: 'Record not found' });
+
+        // AUDIT LOG: Track trader payment received
+        await createAuditLog({
+            user: req.user,
+            action: 'update',
+            entityType: 'payment',
+            entityId: record._id,
+            description: AuditDescriptions.paymentStatus('trader', 'Received', record.trader_id?.business_name || 'Trader'),
+            changes: { trader_payment_status: { old: 'Pending', new: 'Paid' }, mode },
+            ipAddress: getClientIp(req)
+        });
+
         res.json(record);
     } catch (error) {
         console.error('Receive trader error:', error);

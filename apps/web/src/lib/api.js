@@ -155,6 +155,16 @@ export const api = {
       update: (id, data) => apiRequest(`/api/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
       delete: (id) => apiRequest(`/api/admin/users/${id}`, { method: 'DELETE' }),
     },
+    auditLogs: {
+      list: (params = {}) => {
+        const cleanParams = Object.fromEntries(
+          Object.entries(params).filter(([_, v]) => v != null)
+        );
+        const query = new URLSearchParams(cleanParams).toString();
+        return apiRequest(`/api/admin/audit-logs${query ? '?' + query : ''}`, { method: 'GET' });
+      },
+      summary: () => apiRequest('/api/admin/audit-logs/summary', { method: 'GET' }),
+    },
   },
 
   // Finance

@@ -16,7 +16,8 @@ import {
     IndianRupee,
     Gavel,
     Scale,
-    Building2
+    Building2,
+    Activity
 } from 'lucide-react';
 
 const NAV_ITEMS = {
@@ -44,6 +45,7 @@ const NAV_ITEMS = {
         { label: 'Commission', path: '/dashboard/admin/commission', icon: ShieldCheck },
         { label: 'Transactions', path: '/dashboard/admin/transactions', icon: Receipt },
         { label: 'Users', path: '/dashboard/admin/users', icon: Users },
+        { label: 'Activity Log', path: '/dashboard/admin/activity-log', icon: Activity },
     ],
     lilav: [
         { label: 'Auction Entry', path: '/dashboard/lilav', icon: Gavel },
