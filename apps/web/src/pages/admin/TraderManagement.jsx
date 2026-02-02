@@ -245,14 +245,20 @@ export default function TraderManagement() {
         }
     });
 
+    const [licenseInput, setLicenseInput] = useState('');
+
     const handleApproveLicense = () => {
-        if (!confirm('Generate license for this trader?')) return;
+        if (!confirm('Generate/Approve license for this trader?')) return;
 
-        const year = new Date().getFullYear();
-        const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
-        const license_number = `TRD-${year}-${rand}`;
+        let license_number = licenseInput.trim();
 
-        // Pass the new license number to the mutation
+        if (!license_number) {
+            const year = new Date().getFullYear();
+            const rand = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+            license_number = `TRD-${year}-${rand}`;
+        }
+
+        // Pass the new or manual license number to the mutation
         approveMutation.mutate({ license_number });
     };
 
@@ -423,6 +429,16 @@ export default function TraderManagement() {
                                                             <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                                                             License verification is pending.
                                                         </div>
+                                                        <div className="mt-2">
+                                                            <label className="text-xs font-semibold text-slate-500 mb-1 block">Enter License Number (Optional)</label>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="e.g. TRD-2026-001"
+                                                                value={licenseInput}
+                                                                onChange={(e) => setLicenseInput(e.target.value)}
+                                                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-2"
+                                                            />
+                                                        </div>
                                                         <button
                                                             onClick={handleApproveLicense}
                                                             disabled={approveMutation.isPending}
@@ -467,6 +483,6 @@ export default function TraderManagement() {
                 )}
             </AnimatePresence>
 
-        </div>
+        </div >
     );
 }

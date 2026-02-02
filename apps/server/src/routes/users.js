@@ -62,7 +62,9 @@ router.get('/profile', requireAuth, async (req, res) => {
       farmerId: user.farmerId,
       location: user.location,
       photo: user.profile_picture, // Frontend expects 'photo', DB has 'profile_picture'
-      initials: user.initials
+      initials: user.initials,
+      license_number: user.license_number,
+      business_name: user.business_name
     });
   } catch (error) {
     console.error('Get profile error:', error);
