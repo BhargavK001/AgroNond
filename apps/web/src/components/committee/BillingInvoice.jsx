@@ -417,15 +417,17 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
     const commission = data.commission || 0;
     const finalAmount = data.finalAmount || data.netAmount || baseAmount;
 
-    // Calculate rate
-    let rate = 0;
-    let rateUnit = 'kg';
-    if (hasQuantity && quantity > 0) {
-        rate = baseAmount / quantity;
-        rateUnit = 'kg';
-    } else if (hasCarat && carat > 0) {
-        rate = baseAmount / carat;
-        rateUnit = 'Crt';
+    // Calculate rate - use provided rate or calculate as fallback
+    let rate = data.rate || 0;
+    let rateUnit = hasQuantity ? 'kg' : 'Crt';
+
+    // Fallback calculation if rate not provided
+    if (rate === 0 && baseAmount > 0) {
+        if (hasQuantity && quantity > 0) {
+            rate = baseAmount / quantity;
+        } else if (hasCarat && carat > 0) {
+            rate = baseAmount / carat;
+        }
     }
 
     // Format quantity display
@@ -518,21 +520,54 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                         <Text style={[styles.th, styles.thCenter]}>Rate</Text>
                         <Text style={[styles.th, styles.thRight]}>Amount</Text>
                     </View>
-                    <View style={styles.tableRow}>
-                        <Text style={[styles.td, styles.tdCrop]}>
-                            {data.crop || 'Unknown Crop'}
-                        </Text>
-                        <Text style={[styles.td, styles.tdCenter]}>
-                            {getQuantityDisplay()}
-                        </Text>
-                        <Text style={[styles.td, styles.tdCenter]}>
-                            {formatCurrency(rate.toFixed(2))}/{rateUnit}
-                        </Text>
-                        <Text style={[styles.td, styles.tdRight]}>
-                            {formatCurrency(baseAmount)}
-                        </Text>
-                    </View>
+
+                    {/* Check if we have splits data for multiple rows */}
+                    {data.splits && data.splits.length > 1 ? (
+                        // Render individual rows for each split
+                        data.splits.map((split, index) => {
+                            const splitQty = split.qty || split.quantity || 0;
+                            const splitCarat = split.carat || 0;
+                            const splitRate = split.rate || 0;
+                            const splitAmount = split.amount || (splitQty * splitRate);
+                            const splitUnit = splitQty > 0 ? 'kg' : 'Crt';
+                            const displayQty = splitQty > 0 ? splitQty : splitCarat;
+
+                            return (
+                                <View style={styles.tableRow} key={index}>
+                                    <Text style={[styles.td, styles.tdCrop]}>
+                                        {index === 0 ? (data.crop || 'Unknown Crop') : ''}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdCenter]}>
+                                        {formatNumber(displayQty)} {splitUnit}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdCenter]}>
+                                        {formatCurrency(splitRate.toFixed(2))}/{splitUnit}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdRight]}>
+                                        {formatCurrency(splitAmount)}
+                                    </Text>
+                                </View>
+                            );
+                        })
+                    ) : (
+                        // Single row for non-split records
+                        <View style={styles.tableRow}>
+                            <Text style={[styles.td, styles.tdCrop]}>
+                                {data.crop || 'Unknown Crop'}
+                            </Text>
+                            <Text style={[styles.td, styles.tdCenter]}>
+                                {getQuantityDisplay()}
+                            </Text>
+                            <Text style={[styles.td, styles.tdCenter]}>
+                                {formatCurrency(rate.toFixed(2))}/{rateUnit}
+                            </Text>
+                            <Text style={[styles.td, styles.tdRight]}>
+                                {formatCurrency(baseAmount)}
+                            </Text>
+                        </View>
+                    )}
                 </View>
+
 
                 {/* Totals Section */}
                 <View style={styles.totalsSection}>

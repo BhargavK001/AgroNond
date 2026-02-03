@@ -119,25 +119,32 @@ const SoldRecordCard = ({ record, farmerName }) => {
   const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
   const isPaid = computedStatus === 'Sold'; // Strictly used for UI color toggling if needed
 
+  // Get farmer name from record or prop
+  const actualFarmerName = record.farmer_id?.full_name || farmerName || 'Farmer';
+
   // Invoice Data
   const invoiceData = {
     id: record._id || record.id || 'N/A',
     date: date.toISOString(),
-    name: farmerName || 'Farmer',
+    name: actualFarmerName,
     crop: record.vegetable,
     // Use actual sold quantities
     qty: hasQuantity ? soldQty : 0,
     carat: !hasQuantity ? soldQty : 0,
+    rate: parseFloat(avgRate) || 0,
+    splits: splits || [], // Pass splits for multi-row PDF display
     baseAmount: totalSaleAmount,
     commission: estimatedCommission,
     finalAmount: netPayable,
     // Invoice status logic:
-    // If Sold -> Paid (usually)
-    // If Partial -> Partial
+    // If Sold -> Full (entire lot sold)
+    // If Partial -> Partial (some remaining)
     // If Pending -> Pending
-    status: computedStatus === 'Sold' ? 'Paid' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
+    status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
     type: 'pay'
   };
+
+
 
   return (
     <>

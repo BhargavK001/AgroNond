@@ -42,7 +42,8 @@ export default function ReportsView() {
             };
 
             // Use purchases.list (records/completed) as source of truth
-            const data = await api.purchases.list(params);
+            const response = await api.purchases.list(params);
+            const data = Array.isArray(response) ? response : (response.data || []);
 
             if (!data || data.length === 0) {
                 toast.error('No records found for this period', { id: 'export-toast' });

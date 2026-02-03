@@ -6,16 +6,7 @@ import { createAuditLog, getClientIp, AuditDescriptions } from '../utils/auditLo
 
 const router = express.Router();
 
-// ==========================================
 //  1. SPECIFIC GET ROUTES (Must come first)
-// ==========================================
-
-/**
- * GET /api/records/my-records
- * Fetch all records for the logged-in farmer
- * PRIVACY: Exclude trader details
- * NOTE: For split lots, shows parent record with aggregated sold/awaiting from children
- */
 router.get('/my-records', requireAuth, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -30,21 +21,145 @@ router.get('/my-records', requireAuth, async (req, res) => {
             parent_record_id: { $exists: false } // Exclude child records
         };
 
-        if (status && status !== 'All') {
+        // "Partial" is a computed display_status, not stored in DB
+        // We need special handling for it
+        const isPartialFilter = status === 'Partial';
+
+        if (status && status !== 'All' && !isPartialFilter) {
             query.status = status;
         }
 
+        // For Partial filter, we first need to get all parent records
+        // and compute their display_status, then filter
+        if (isPartialFilter) {
+            // Get all parent records for this farmer (no pagination yet)
+            const allParentRecords = await Record.find({
+                farmer_id: req.user._id,
+                parent_record_id: { $exists: false },
+                is_parent: true // Only parent records can have Partial status
+            })
+                .populate('farmer_id', 'full_name phone farmerId')
+                .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
+                .sort({ createdAt: -1 })
+                .lean();
+
+            // Get child records for all these parents
+            const parentIds = allParentRecords.map(r => r._id);
+
+            const childRecords = await Record.find({
+                parent_record_id: { $in: parentIds },
+                status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
+            }).sort({ createdAt: 1 });
+
+            // Group children by parent
+            const parentMap = {};
+            childRecords.forEach(child => {
+                const pId = child.parent_record_id.toString();
+                if (!parentMap[pId]) {
+                    parentMap[pId] = {
+                        splits: [],
+                        soldQty: 0,
+                        soldCarat: 0,
+                        totalSaleAmount: 0,
+                        childCount: 0,
+                        soldCount: 0
+                    };
+                }
+
+                const childQty = child.official_qty || child.quantity || 0;
+                const childCarat = child.official_carat || child.carat || 0;
+                const amount = child.sale_amount || child.total_amount || 0;
+
+                parentMap[pId].soldQty += childQty;
+                parentMap[pId].soldCarat += childCarat;
+                parentMap[pId].totalSaleAmount += amount;
+                parentMap[pId].childCount += 1;
+
+                if (['Sold', 'Completed'].includes(child.status)) {
+                    parentMap[pId].soldCount += 1;
+                }
+
+                parentMap[pId].splits.push({
+                    _id: child._id,
+                    qty: childQty,
+                    carat: childCarat,
+                    rate: child.sale_rate || 0,
+                    amount: amount,
+                    date: child.sold_at || child.createdAt,
+                    status: child.status
+                });
+            });
+
+            // Compute display_status and filter for Partial
+            const partialRecords = [];
+            allParentRecords.forEach(record => {
+                const data = parentMap[record._id.toString()];
+                if (data) {
+                    record.aggregated_sold_qty = data.soldQty;
+                    record.aggregated_sold_carat = data.soldCarat;
+                    record.aggregated_sale_amount = data.totalSaleAmount;
+                    record.child_count = data.childCount;
+                    record.sold_count = data.soldCount;
+                    record.splits = data.splits;
+
+                    const totalSold = record.sale_unit === 'carat' ? data.soldCarat : data.soldQty;
+                    record.aggregated_avg_rate = totalSold > 0 ? (data.totalSaleAmount / totalSold) : 0;
+
+                    record.awaiting_qty = (record.quantity || 0) - data.soldQty;
+                    record.awaiting_carat = (record.carat || 0) - data.soldCarat;
+
+                    // Determine display_status based on sold quantity vs total quantity
+                    // NOT based on child count, because a parent can have remaining qty even if all current children are sold
+                    const totalQty = record.quantity || 0;
+                    const totalCarat = record.carat || 0;
+                    const hasRemaining = (totalQty > 0 && data.soldQty < totalQty - 0.01) ||
+                        (totalCarat > 0 && data.soldCarat < totalCarat - 0.01);
+                    const hasSoldSomething = data.soldQty > 0.01 || data.soldCarat > 0.01;
+
+                    if (hasSoldSomething && hasRemaining) {
+                        // Some sold, some remaining = Partial
+                        record.display_status = 'Partial';
+                        partialRecords.push(record);
+                    } else if (hasSoldSomething && !hasRemaining) {
+                        // All sold = Sold
+                        record.display_status = 'Sold';
+                    } else {
+                        // Nothing sold yet = Pending
+                        record.display_status = 'Pending';
+                    }
+                }
+            });
+
+            // Apply pagination to filtered results
+            const totalRecords = partialRecords.length;
+            const totalPages = Math.ceil(totalRecords / limit);
+            const paginatedRecords = partialRecords.slice(skip, skip + limit);
+
+            return res.json({
+                records: paginatedRecords,
+                pagination: {
+                    totalRecords,
+                    totalPages,
+                    currentPage: page,
+                    limit
+                }
+            });
+        }
+
+        // Normal flow for non-Partial filters
         // Get total count for pagination metadata
         const totalRecords = await Record.countDocuments(query);
         const totalPages = Math.ceil(totalRecords / limit);
 
         // Get all records for this farmer (paginated)
         const records = await Record.find(query)
+            .populate('farmer_id', 'full_name phone farmerId')
             .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .lean(); // Use lean for better performance
+
 
         // For parent records (is_parent: true), aggregate data from child records
         const parentIds = records.filter(r => r.is_parent).map(r => r._id);
@@ -117,11 +232,17 @@ router.get('/my-records', requireAuth, async (req, res) => {
                         record.awaiting_qty = (record.quantity || 0) - data.soldQty;
                         record.awaiting_carat = (record.carat || 0) - data.soldCarat;
 
-                        // Determine overall status
-                        if (data.soldCount === data.childCount && data.childCount > 0) {
-                            record.display_status = 'Sold';
-                        } else if (data.soldCount > 0) {
+                        // Determine display_status based on sold quantity vs total quantity
+                        const totalQty = record.quantity || 0;
+                        const totalCarat = record.carat || 0;
+                        const hasRemaining = (totalQty > 0 && data.soldQty < totalQty - 0.01) ||
+                            (totalCarat > 0 && data.soldCarat < totalCarat - 0.01);
+                        const hasSoldSomething = data.soldQty > 0.01 || data.soldCarat > 0.01;
+
+                        if (hasSoldSomething && hasRemaining) {
                             record.display_status = 'Partial';
+                        } else if (hasSoldSomething && !hasRemaining) {
+                            record.display_status = 'Sold';
                         } else {
                             record.display_status = 'Pending';
                         }
