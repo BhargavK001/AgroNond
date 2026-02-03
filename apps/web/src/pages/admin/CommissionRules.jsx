@@ -10,7 +10,7 @@ export default function CommissionRules() {
     farmerRate: 4,
     traderRate: 9
   });
-  // const [saveSuccess, setSaveSuccess] = useState(false); // REMOVED
+
   const queryClient = useQueryClient();
 
   // Fetch Rules
