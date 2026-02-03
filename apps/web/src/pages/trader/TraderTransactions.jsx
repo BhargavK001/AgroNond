@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -7,6 +7,7 @@ import {
   Filter,
   Package,
   ChevronLeft,
+  ChevronRight,
   ArrowUpDown,
   X,
   ShoppingBasket,
@@ -18,7 +19,7 @@ import { pdf } from '@react-pdf/renderer';
 import { api } from '../../lib/api';
 import { exportToCSV } from '../../lib/csvExport';
 import TransactionDetailsModal from '../../components/trader/TransactionDetailsModal';
-import TransactionInvoice from '../../components/trader/TransactionInvoice';
+import BillingInvoice from '../../components/committee/BillingInvoice';
 import toast from 'react-hot-toast';
 
 const cropsList = ['All Crops', 'Tomatoes', 'Onions', 'Potatoes', 'Cabbage', 'Brinjal', 'Cauliflower', 'Green Chillies', 'Carrots'];
@@ -36,39 +37,52 @@ export default function TraderTransactions() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 25;
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.trader.transactions({
+        page: currentPage,
+        limit: pageSize
+      });
+
+      // Handle paginated response
+      const data = response.data || response;
+      const formattedData = data.map(t => ({
+        id: t._id,
+        date: t.sold_at || t.createdAt,
+        crop: t.vegetable,
+        quantity: t.official_qty,
+        carat: t.official_carat,
+        rate: t.sale_rate,
+        grossAmount: t.sale_amount,
+        commission: t.trader_commission || Math.round((t.sale_amount || 0) * 0.09),
+        totalCost: t.net_receivable_from_trader || t.total_amount || (t.sale_amount + (t.trader_commission || Math.round((t.sale_amount || 0) * 0.09))),
+        status: t.status,
+        paymentStatus: (t.trader_payment_status || t.payment_status || 'pending').toLowerCase()
+      }));
+
+      setTransactions(formattedData);
+      setTotalPages(response.totalPages || 1);
+      setTotalCount(response.total || formattedData.length);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+      toast.error('Failed to load transactions');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage]);
+
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setLoading(true);
-        const data = await api.trader.transactions({ limit: 100 });
-
-        // Transform data to match component expectation
-        const formattedData = data.map(t => ({
-          id: t._id,
-          // lotId removed here
-          date: t.sold_at || t.createdAt,
-          crop: t.vegetable,
-          quantity: t.official_qty,
-          rate: t.sale_rate,
-          grossAmount: t.sale_amount,
-          commission: t.trader_commission || Math.round((t.sale_amount || 0) * 0.09),
-          totalCost: t.net_receivable_from_trader || t.total_amount || (t.sale_amount + (t.trader_commission || Math.round((t.sale_amount || 0) * 0.09))),
-          status: t.status,
-          paymentStatus: t.trader_payment_status || t.payment_status || 'pending'
-        }));
-
-        setTransactions(formattedData);
-      } catch (error) {
-        console.error('Failed to fetch transactions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTransactions();
-  }, []);
+  }, [fetchTransactions]);
 
-  // Filter and sort transactions
+  // Filter and sort transactions (locally for current page)
   const filteredTransactions = useMemo(() => {
     let result = [...transactions];
 
@@ -76,7 +90,6 @@ export default function TraderTransactions() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(t =>
-        // Lot ID search logic removed, now searching only by crop
         (t.crop && t.crop.toLowerCase().includes(query))
       );
     }
@@ -126,11 +139,37 @@ export default function TraderTransactions() {
 
   const handleDownloadPDF = async (txn) => {
     try {
-      const blob = await pdf(<TransactionInvoice transaction={txn} />).toBlob();
+      // Get trader profile from local storage if available for "Bill To" name
+      let traderName = 'Trader';
+      try {
+        const storedProfile = localStorage.getItem('trader-profile');
+        if (storedProfile) {
+          const profile = JSON.parse(storedProfile);
+          traderName = profile.business_name || profile.full_name || 'Trader';
+        }
+      } catch (e) {
+        console.warn('Could not load trader profile for PDF');
+      }
+
+      // Prepare data for BillingInvoice
+      const invoiceData = {
+        id: txn.id,
+        date: txn.date,
+        name: traderName,
+        crop: txn.crop,
+        qty: txn.quantity || 0,
+        carat: txn.carat || 0,
+        baseAmount: txn.grossAmount || 0,
+        commission: txn.commission || 0,
+        finalAmount: txn.totalCost || 0,
+        status: txn.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+        type: 'receive'
+      };
+
+      const blob = await pdf(<BillingInvoice data={invoiceData} type="trader" />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      // Removed Lot ID from filename, using date as unique identifier
       link.download = `Invoice_${new Date(txn.date).toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
@@ -151,7 +190,6 @@ export default function TraderTransactions() {
   };
 
   const handleExport = () => {
-    // Removed 'Lot ID' from headers
     const headers = ['Date', 'Crop', 'Qty (kg)', 'Rate/kg', 'Gross Amount', 'Total Cost', 'Payment Status'];
     const data = filteredTransactions.map(t => [
       new Date(t.date).toLocaleDateString('en-IN'),
@@ -166,14 +204,20 @@ export default function TraderTransactions() {
     exportToCSV(data, headers, `trader-transactions-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
   // Calculate totals
   const totals = useMemo(() => ({
-    count: filteredTransactions.length,
+    count: totalCount,
     quantity: filteredTransactions.reduce((sum, t) => sum + (t.quantity || 0), 0),
     grossAmount: filteredTransactions.reduce((sum, t) => sum + (t.grossAmount || 0), 0),
     commission: filteredTransactions.reduce((sum, t) => sum + (t.commission || 0), 0),
     totalCost: filteredTransactions.reduce((sum, t) => sum + (t.totalCost || 0), 0)
-  }), [filteredTransactions]);
+  }), [filteredTransactions, totalCount]);
 
   const hasActiveFilters = searchQuery || selectedCrop !== 'All Crops' || selectedPaymentStatus !== 'All Status' || dateRange.start || dateRange.end;
 
@@ -224,28 +268,28 @@ export default function TraderTransactions() {
           <div className="absolute right-2 top-2 p-2 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition-colors">
             <ReceiptText className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
           </div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Transactions</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Transactions</p>
           <p className="text-2xl font-bold text-slate-800">{totals.count}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm relative overflow-hidden group hover:border-emerald-500 transition-all">
           <div className="absolute right-2 top-2 p-2 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition-colors">
             <ShoppingBasket className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
           </div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Quantity</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Page Quantity</p>
           <p className="text-2xl font-bold text-slate-800">{totals.quantity.toLocaleString('en-IN')} <span className="text-sm font-normal text-slate-400">kg</span></p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm relative overflow-hidden group hover:border-emerald-500 transition-all">
           <div className="absolute right-2 top-2 p-2 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition-colors">
             <Wallet className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
           </div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Gross Amount</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Page Gross Amount</p>
           <p className="text-2xl font-bold text-slate-800">₹{totals.grossAmount.toLocaleString('en-IN')}</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm relative overflow-hidden group hover:border-emerald-500 transition-all">
           <div className="absolute right-2 top-2 p-2 bg-slate-50 rounded-lg group-hover:bg-emerald-50 transition-colors">
             <Wallet className="w-5 h-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
           </div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Cost</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Page Total Cost</p>
           <p className="text-2xl font-bold text-emerald-600">₹{totals.totalCost.toLocaleString('en-IN')}</p>
         </div>
       </motion.div>
@@ -264,7 +308,6 @@ export default function TraderTransactions() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                // Updated placeholder text
                 placeholder="Search by crop..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -413,10 +456,10 @@ export default function TraderTransactions() {
                       {txn.crop}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">{txn.quantity.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">{txn.quantity?.toLocaleString('en-IN') || 0}</td>
                   <td className="px-4 py-3 text-right text-sm text-slate-600">₹{txn.rate}</td>
-                  <td className="px-4 py-3 text-right text-sm text-slate-600">₹{txn.grossAmount.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3 text-right text-sm font-bold text-emerald-600">₹{txn.totalCost.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-600">₹{txn.grossAmount?.toLocaleString('en-IN') || 0}</td>
+                  <td className="px-4 py-3 text-right text-sm font-bold text-emerald-600">₹{txn.totalCost?.toLocaleString('en-IN') || 0}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${txn.paymentStatus === 'paid'
                       ? 'bg-emerald-100 text-emerald-700'
@@ -509,18 +552,18 @@ export default function TraderTransactions() {
                 </div>
                 <div className="bg-white p-2 rounded-lg border border-slate-100">
                   <p className="text-[9px] text-slate-400 uppercase">Gross</p>
-                  <p className="font-bold text-xs">₹{txn.grossAmount.toLocaleString('en-IN')}</p>
+                  <p className="font-bold text-xs">₹{txn.grossAmount?.toLocaleString('en-IN') || 0}</p>
                 </div>
               </div>
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                 <div>
                   <p className="text-[9px] text-violet-500 uppercase">Commission ({txn.grossAmount ? Math.round((txn.commission / txn.grossAmount) * 100) : 0}%)</p>
-                  <p className="font-medium text-xs text-violet-600">₹{txn.commission.toLocaleString('en-IN')}</p>
+                  <p className="font-medium text-xs text-violet-600">₹{txn.commission?.toLocaleString('en-IN') || 0}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[9px] text-slate-400 uppercase">Total Cost</p>
-                  <p className="font-bold text-sm text-emerald-600">₹{txn.totalCost.toLocaleString('en-IN')}</p>
+                  <p className="font-bold text-sm text-emerald-600">₹{txn.totalCost?.toLocaleString('en-IN') || 0}</p>
                 </div>
               </div>
 
@@ -553,9 +596,54 @@ export default function TraderTransactions() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 text-center text-sm text-slate-500">
-          Showing {filteredTransactions.length} of {transactions.length} transactions
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+          <p className="text-sm text-slate-500">
+            Page {currentPage} of {totalPages} ({totalCount} total)
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="hidden sm:flex items-center gap-1">
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
+                      ? 'bg-emerald-600 text-white'
+                      : 'hover:bg-slate-100 text-slate-600'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </motion.div>
 

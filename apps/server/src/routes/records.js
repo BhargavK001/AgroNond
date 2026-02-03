@@ -6,112 +6,326 @@ import { createAuditLog, getClientIp, AuditDescriptions } from '../utils/auditLo
 
 const router = express.Router();
 
-// ==========================================
 //  1. SPECIFIC GET ROUTES (Must come first)
-// ==========================================
-
-/**
- * GET /api/records/my-records
- * Fetch all records for the logged-in farmer
- * PRIVACY: Exclude trader details
- * NOTE: For split lots, shows parent record with aggregated sold/awaiting from children
- */
 router.get('/my-records', requireAuth, async (req, res) => {
     try {
-        // Get all records for this farmer (excluding child records of split lots)
-        const records = await Record.find({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const status = req.query.status;
+
+        const skip = (page - 1) * limit;
+
+        // Build query
+        const query = {
             farmer_id: req.user._id,
-            parent_record_id: { $exists: false } // Exclude child records (they belong to parent)
-        })
+            parent_record_id: { $exists: false } // Exclude child records
+        };
+
+        // "Partial" is a computed display_status, not stored in DB
+        // We need special handling for it
+        const isPartialFilter = status === 'Partial';
+
+        if (status && status !== 'All' && !isPartialFilter) {
+            query.status = status;
+        }
+
+        // For Partial filter, we first need to get all parent records
+        // and compute their display_status, then filter
+        if (isPartialFilter) {
+            // Get all parent records for this farmer (no pagination yet)
+            const allParentRecords = await Record.find({
+                farmer_id: req.user._id,
+                parent_record_id: { $exists: false },
+                is_parent: true // Only parent records can have Partial status
+            })
+                .populate('farmer_id', 'full_name phone farmerId')
+                .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
+                .sort({ createdAt: -1 })
+                .lean();
+
+            // Get child records for all these parents
+            const parentIds = allParentRecords.map(r => r._id);
+
+            const childRecords = await Record.find({
+                parent_record_id: { $in: parentIds },
+                status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
+            }).sort({ createdAt: 1 });
+
+            // Group children by parent
+            const parentMap = {};
+            childRecords.forEach(child => {
+                const pId = child.parent_record_id.toString();
+                if (!parentMap[pId]) {
+                    parentMap[pId] = {
+                        splits: [],
+                        soldQty: 0,
+                        soldCarat: 0,
+                        totalSaleAmount: 0,
+                        childCount: 0,
+                        soldCount: 0
+                    };
+                }
+
+                const childQty = child.official_qty || child.quantity || 0;
+                const childCarat = child.official_carat || child.carat || 0;
+                const amount = child.sale_amount || child.total_amount || 0;
+
+                parentMap[pId].soldQty += childQty;
+                parentMap[pId].soldCarat += childCarat;
+                parentMap[pId].totalSaleAmount += amount;
+                parentMap[pId].childCount += 1;
+
+                if (['Sold', 'Completed'].includes(child.status)) {
+                    parentMap[pId].soldCount += 1;
+                }
+
+                parentMap[pId].splits.push({
+                    _id: child._id,
+                    qty: childQty,
+                    carat: childCarat,
+                    rate: child.sale_rate || 0,
+                    amount: amount,
+                    date: child.sold_at || child.createdAt,
+                    status: child.status
+                });
+            });
+
+            // Compute display_status and filter for Partial
+            const partialRecords = [];
+            allParentRecords.forEach(record => {
+                const data = parentMap[record._id.toString()];
+                if (data) {
+                    record.aggregated_sold_qty = data.soldQty;
+                    record.aggregated_sold_carat = data.soldCarat;
+                    record.aggregated_sale_amount = data.totalSaleAmount;
+                    record.child_count = data.childCount;
+                    record.sold_count = data.soldCount;
+                    record.splits = data.splits;
+
+                    const totalSold = record.sale_unit === 'carat' ? data.soldCarat : data.soldQty;
+                    record.aggregated_avg_rate = totalSold > 0 ? (data.totalSaleAmount / totalSold) : 0;
+
+                    record.awaiting_qty = (record.quantity || 0) - data.soldQty;
+                    record.awaiting_carat = (record.carat || 0) - data.soldCarat;
+
+                    // Determine display_status based on sold quantity vs total quantity
+                    // NOT based on child count, because a parent can have remaining qty even if all current children are sold
+                    const totalQty = record.quantity || 0;
+                    const totalCarat = record.carat || 0;
+                    const hasRemaining = (totalQty > 0 && data.soldQty < totalQty - 0.01) ||
+                        (totalCarat > 0 && data.soldCarat < totalCarat - 0.01);
+                    const hasSoldSomething = data.soldQty > 0.01 || data.soldCarat > 0.01;
+
+                    if (hasSoldSomething && hasRemaining) {
+                        // Some sold, some remaining = Partial
+                        record.display_status = 'Partial';
+                        partialRecords.push(record);
+                    } else if (hasSoldSomething && !hasRemaining) {
+                        // All sold = Sold
+                        record.display_status = 'Sold';
+                    } else {
+                        // Nothing sold yet = Pending
+                        record.display_status = 'Pending';
+                    }
+                }
+            });
+
+            // Apply pagination to filtered results
+            const totalRecords = partialRecords.length;
+            const totalPages = Math.ceil(totalRecords / limit);
+            const paginatedRecords = partialRecords.slice(skip, skip + limit);
+
+            return res.json({
+                records: paginatedRecords,
+                pagination: {
+                    totalRecords,
+                    totalPages,
+                    currentPage: page,
+                    limit
+                }
+            });
+        }
+
+        // Normal flow for non-Partial filters
+        // Get total count for pagination metadata
+        const totalRecords = await Record.countDocuments(query);
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Get all records for this farmer (paginated)
+        const records = await Record.find(query)
+            .populate('farmer_id', 'full_name phone farmerId')
             .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
             .lean(); // Use lean for better performance
+
 
         // For parent records (is_parent: true), aggregate data from child records
         const parentIds = records.filter(r => r.is_parent).map(r => r._id);
 
         if (parentIds.length > 0) {
-            // Get aggregated data from child records
-            const childAggregates = await Record.aggregate([
-                { $match: { parent_record_id: { $in: parentIds } } },
-                {
-                    $group: {
-                        _id: '$parent_record_id',
-                        soldQty: {
-                            $sum: {
-                                $cond: [
-                                    { $in: ['$status', ['Sold', 'Completed']] },
-                                    { $ifNull: ['$official_qty', '$quantity'] },
-                                    0
-                                ]
-                            }
-                        },
-                        soldCarat: {
-                            $sum: {
-                                $cond: [
-                                    { $in: ['$status', ['Sold', 'Completed']] },
-                                    { $ifNull: ['$official_carat', '$carat'] },
-                                    0
-                                ]
-                            }
-                        },
-                        totalSaleAmount: {
-                            $sum: {
-                                $cond: [
-                                    { $in: ['$status', ['Sold', 'Completed']] },
-                                    '$sale_amount',
-                                    0
-                                ]
-                            }
-                        },
-                        avgRate: { $avg: '$sale_rate' },
-                        childCount: { $sum: 1 },
-                        soldCount: {
-                            $sum: { $cond: [{ $in: ['$status', ['Sold', 'Completed']] }, 1, 0] }
-                        }
-                    }
-                }
-            ]);
+            // Fetch ALL child records for these parents
+            const childRecords = await Record.find({
+                parent_record_id: { $in: parentIds },
+                status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
+            }).sort({ createdAt: 1 }); // Sort by time
 
-            // Create a map for quick lookup
-            const aggregateMap = {};
-            childAggregates.forEach(agg => {
-                aggregateMap[agg._id.toString()] = agg;
+            // Group children by parent and calculate aggregates
+            const parentMap = {};
+
+            childRecords.forEach(child => {
+                const pId = child.parent_record_id.toString();
+                if (!parentMap[pId]) {
+                    parentMap[pId] = {
+                        splits: [],
+                        soldQty: 0,
+                        soldCarat: 0,
+                        totalSaleAmount: 0,
+                        childCount: 0,
+                        soldCount: 0
+                    };
+                }
+
+                const childQty = child.official_qty || child.quantity || 0;
+                const childCarat = child.official_carat || child.carat || 0;
+                const amount = child.sale_amount || child.total_amount || 0;
+
+                parentMap[pId].soldQty += childQty;
+                parentMap[pId].soldCarat += childCarat;
+                parentMap[pId].totalSaleAmount += amount;
+                parentMap[pId].childCount += 1;
+
+                if (['Sold', 'Completed'].includes(child.status)) {
+                    parentMap[pId].soldCount += 1;
+                }
+
+                // Add to splits details
+                parentMap[pId].splits.push({
+                    _id: child._id,
+                    qty: childQty,
+                    carat: childCarat,
+                    rate: child.sale_rate || 0,
+                    amount: amount,
+                    date: child.sold_at || child.createdAt,
+                    status: child.status
+                });
             });
 
-            // Enhance parent records with aggregated data
+            // Enhance parent records
             records.forEach(record => {
                 if (record.is_parent) {
-                    const agg = aggregateMap[record._id.toString()];
-                    if (agg) {
-                        record.aggregated_sold_qty = agg.soldQty || 0;
-                        record.aggregated_sold_carat = agg.soldCarat || 0;
-                        record.aggregated_sale_amount = agg.totalSaleAmount || 0;
-                        record.aggregated_avg_rate = agg.avgRate || 0;
-                        record.child_count = agg.childCount || 0;
-                        record.sold_count = agg.soldCount || 0;
+                    const data = parentMap[record._id.toString()];
+                    if (data) {
+                        record.aggregated_sold_qty = data.soldQty;
+                        record.aggregated_sold_carat = data.soldCarat;
+                        record.aggregated_sale_amount = data.totalSaleAmount;
+                        record.child_count = data.childCount;
+                        record.sold_count = data.soldCount;
+                        record.splits = data.splits; // New field
+
+                        // Calculate average rate if needed (total amount / total sold)
+                        const totalSold = record.sale_unit === 'carat' ? data.soldCarat : data.soldQty;
+                        record.aggregated_avg_rate = totalSold > 0 ? (data.totalSaleAmount / totalSold) : 0;
 
                         // Calculate awaiting
-                        record.awaiting_qty = (record.quantity || 0) - (agg.soldQty || 0);
-                        record.awaiting_carat = (record.carat || 0) - (agg.soldCarat || 0);
+                        record.awaiting_qty = (record.quantity || 0) - data.soldQty;
+                        record.awaiting_carat = (record.carat || 0) - data.soldCarat;
 
-                        // Determine overall status
-                        if (agg.soldCount === agg.childCount && agg.childCount > 0) {
-                            record.display_status = 'Sold';
-                        } else if (agg.soldCount > 0) {
+                        // Determine display_status based on sold quantity vs total quantity
+                        const totalQty = record.quantity || 0;
+                        const totalCarat = record.carat || 0;
+                        const hasRemaining = (totalQty > 0 && data.soldQty < totalQty - 0.01) ||
+                            (totalCarat > 0 && data.soldCarat < totalCarat - 0.01);
+                        const hasSoldSomething = data.soldQty > 0.01 || data.soldCarat > 0.01;
+
+                        if (hasSoldSomething && hasRemaining) {
                             record.display_status = 'Partial';
+                        } else if (hasSoldSomething && !hasRemaining) {
+                            record.display_status = 'Sold';
                         } else {
                             record.display_status = 'Pending';
                         }
+                    } else {
+                        // Parent with no children sold yet
+                        record.splits = [];
+                        record.awaiting_qty = record.quantity;
+                        record.awaiting_carat = record.carat;
+                        record.display_status = 'Pending';
                     }
                 }
             });
         }
 
-        res.json(records);
+        res.json({
+            records,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
     } catch (error) {
         console.error('Fetch my records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });
+    }
+});
+/**
+ * GET /api/records/my-stats
+ * Fetch global statistics for the logged-in farmer
+ * Aggregates data across ALL records (not just paginated ones)
+ */
+router.get('/my-stats', requireAuth, async (req, res) => {
+    try {
+        const farmerId = req.user._id;
+
+        const stats = await Record.aggregate([
+            { $match: { farmer_id: farmerId } }, // Match all records for this farmer
+            {
+                $group: {
+                    _id: null,
+                    totalEarnings: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$status', ['Sold', 'Completed']] },
+                                '$sale_amount',
+                                0
+                            ]
+                        }
+                    },
+                    totalVolume: { $sum: '$quantity' },
+                    totalSalesCount: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$status', ['Sold', 'Completed']] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    pendingLotsCount: {
+                        $sum: {
+                            // Count pending if status is Pending OR (Split Lot Parent and display_status is Pending)
+                            // Since display_status is computed, we rely on core status 'Pending'
+                            // For accuracy with split lots, we simply count 'Pending' records
+                            $cond: [
+                                { $eq: ['$status', 'Pending'] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        const result = stats.length > 0 ? stats[0] : { totalEarnings: 0, totalVolume: 0, totalSalesCount: 0, pendingLotsCount: 0 };
+
+        res.json(result);
+    } catch (error) {
+        console.error('Fetch stats error:', error);
+        res.status(500).json({ error: 'Failed to fetch statistics' });
     }
 });
 
@@ -119,13 +333,33 @@ router.get('/my-records', requireAuth, async (req, res) => {
  * GET /api/records/my-purchases
  * Fetch all purchases for the logged-in trader
  * PRIVACY: Exclude farmer details
+ * Supports pagination
  */
 router.get('/my-purchases', requireAuth, async (req, res) => {
     try {
-        const records = await Record.find({ trader_id: req.user._id, status: { $in: ['Sold', 'Completed'] } })
-            .select('-farmer_id -farmer_payment_ref -farmer_payment_mode -farmer_payment_status -net_payable_to_farmer -farmer_commission') // Exclude farmer info
-            .sort({ sold_at: -1 });
-        res.json(records);
+        const { page = 1, limit = 50 } = req.query;
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 50;
+        const skip = (pageNum - 1) * limitNum;
+
+        const query = { trader_id: req.user._id, status: { $in: ['Sold', 'Completed'] } };
+
+        const [records, total] = await Promise.all([
+            Record.find(query)
+                .select('-farmer_id -farmer_payment_ref -farmer_payment_mode -farmer_payment_status -net_payable_to_farmer -farmer_commission')
+                .sort({ sold_at: -1 })
+                .skip(skip)
+                .limit(limitNum),
+            Record.countDocuments(query)
+        ]);
+
+        res.json({
+            data: records,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum),
+            hasMore: pageNum * limitNum < total
+        });
     } catch (error) {
         console.error('Fetch my purchases error:', error);
         res.status(500).json({ error: 'Failed to fetch purchases' });
@@ -244,19 +478,40 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
             const children = await Record.find({ parent_record_id: parent._id });
 
             // Calculate sold quantity and find previous rate
+            // Calculate sold quantity and find previous rate
             let soldQty = 0;
             let soldCarat = 0;
             let prevRate = 0;
+            const splits = []; // New: Collect split details
+            let totalAmountSum = 0; // New: Sum of all amounts
 
             for (const child of children) {
                 // Include RateAssigned and Weighed as 'sold'/allocated so they don't show up as pending
                 if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
-                    soldQty += child.official_qty || child.quantity || 0;
-                    soldCarat += child.official_carat || child.carat || 0;
-                    // Capture rate from first sold child to lock it for subsequent splits
+                    const childQty = child.official_qty || child.quantity || 0;
+                    const childCarat = child.official_carat || child.carat || 0;
+
+                    soldQty += childQty;
+                    soldCarat += childCarat;
+
+                    // Capture rate from first sold child to lock it for subsequent splits (legacy behavior, kept for reference)
                     if (!prevRate && child.sale_rate) {
                         prevRate = child.sale_rate;
                     }
+
+                    // Add to splits array
+                    splits.push({
+                        _id: child._id,
+                        qty: childQty,
+                        carat: childCarat,
+                        rate: child.sale_rate || 0,
+                        amount: child.sale_amount || child.total_amount || 0, // Fallback
+                        date: child.sold_at || child.createdAt,
+                        trader: child.trader_id, // Will be populated if available
+                        status: child.status
+                    });
+
+                    totalAmountSum += (child.sale_amount || child.total_amount || 0);
                 }
             }
 
@@ -273,7 +528,9 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
                     sold_qty: parseFloat(soldQty.toFixed(2)),
                     sold_carat: parseFloat(soldCarat.toFixed(2)),
                     has_remaining: true,
-                    prev_rate: prevRate // Send previous rate to frontend
+                    prev_rate: prevRate, // Send previous rate to frontend
+                    splits: splits, // New: Send split details
+                    total_amount_sum: totalAmountSum // New: Total amount
                 });
             }
         }
@@ -751,10 +1008,11 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
  * GET /api/records/completed
  * Get completed sales (transaction history)
  * Excludes parent records (only shows actual trader assignments)
+ * Supports pagination and search
  */
 router.get('/completed', requireAuth, async (req, res) => {
     try {
-        const { date } = req.query;
+        const { date, page = 1, limit = 50, search, paymentStatus } = req.query;
 
         let query = {
             status: { $in: ['Sold', 'Completed'] },
@@ -769,13 +1027,107 @@ router.get('/completed', requireAuth, async (req, res) => {
             query.sold_at = { $gte: startDate, $lte: endDate };
         }
 
-        const records = await Record.find(query)
-            .populate('farmer_id', 'full_name phone')
-            .populate('trader_id', 'full_name phone business_name')
-            .populate('sold_by', 'full_name')
-            .sort({ sold_at: -1 });
+        // Payment status filter
+        if (paymentStatus && paymentStatus !== 'all') {
+            query.payment_status = paymentStatus;
+        }
 
-        res.json(records);
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 50;
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build aggregation pipeline for search across populated fields
+        let pipeline = [
+            { $match: query },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'farmer_id',
+                    foreignField: '_id',
+                    as: 'farmer_id'
+                }
+            },
+            { $unwind: { path: '$farmer_id', preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'trader_id',
+                    foreignField: '_id',
+                    as: 'trader_id'
+                }
+            },
+            { $unwind: { path: '$trader_id', preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'sold_by',
+                    foreignField: '_id',
+                    as: 'sold_by'
+                }
+            },
+            { $unwind: { path: '$sold_by', preserveNullAndEmptyArrays: true } },
+        ];
+
+        // Add search filter if provided
+        if (search) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { 'farmer_id.full_name': { $regex: search, $options: 'i' } },
+                        { 'trader_id.full_name': { $regex: search, $options: 'i' } },
+                        { 'trader_id.business_name': { $regex: search, $options: 'i' } },
+                        { vegetable: { $regex: search, $options: 'i' } }
+                    ]
+                }
+            });
+        }
+
+        // Get total count
+        const countPipeline = [...pipeline, { $count: 'total' }];
+        const countResult = await Record.aggregate(countPipeline);
+        const total = countResult[0]?.total || 0;
+
+        // Add sorting, skip, limit
+        pipeline.push(
+            { $sort: { sold_at: -1 } },
+            { $skip: skip },
+            { $limit: limitNum },
+            {
+                $project: {
+                    _id: 1,
+                    farmer_id: { _id: 1, full_name: 1, phone: 1 },
+                    trader_id: { _id: 1, full_name: 1, phone: 1, business_name: 1 },
+                    sold_by: { _id: 1, full_name: 1 },
+                    vegetable: 1,
+                    quantity: 1,
+                    carat: 1,
+                    official_qty: 1,
+                    official_carat: 1,
+                    sale_rate: 1,
+                    sale_amount: 1,
+                    farmer_commission: 1,
+                    trader_commission: 1,
+                    net_payable_to_farmer: 1,
+                    net_receivable_from_trader: 1,
+                    status: 1,
+                    payment_status: 1,
+                    farmer_payment_status: 1,
+                    trader_payment_status: 1,
+                    sold_at: 1,
+                    createdAt: 1
+                }
+            }
+        );
+
+        const records = await Record.aggregate(pipeline);
+
+        res.json({
+            data: records,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum),
+            hasMore: pageNum * limitNum < total
+        });
     } catch (error) {
         console.error('Fetch completed records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });

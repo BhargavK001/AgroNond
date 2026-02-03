@@ -24,7 +24,7 @@ const roleFilters = [
   { key: 'all', label: 'All Users' },
   { key: 'farmer', label: 'Farmers' },
   { key: 'trader', label: 'Traders' },
-  { key: 'weight_staff', label: 'Weight Staff' },
+  { key: 'weight', label: 'Weight Staff' },
   { key: 'lilav', label: 'Lilav Staff' },
   { key: 'committee', label: 'Market Committee' }
 ];
@@ -68,6 +68,10 @@ export default function UserManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-users']);
       setActionMenuOpen(null);
+      toast.success('User role updated successfully');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error || 'Failed to update user role');
     }
   });
 
@@ -77,10 +81,10 @@ export default function UserManagement() {
       queryClient.invalidateQueries(['admin-users']);
       setAddUserModalOpen(false);
       setNewUser({ phone: '', role: 'farmer', full_name: '', business_name: '', address: '', location: '' });
-      alert('User created successfully. They can now login with their phone number.');
+      toast.success('User created successfully. They can now login with their phone number.');
     },
     onError: (err) => {
-      alert(err.response?.data?.error || 'Failed to create user');
+      toast.error(err.response?.data?.error || 'Failed to create user');
     }
   });
 
@@ -90,9 +94,10 @@ export default function UserManagement() {
       queryClient.invalidateQueries(['admin-users']);
       setEditUserModalOpen(false);
       setEditingUser(null);
+      toast.success('User updated successfully');
     },
     onError: (err) => {
-      alert(err.response?.data?.error || 'Failed to update user');
+      toast.error(err.response?.data?.error || 'Failed to update user');
     }
   });
 
@@ -102,9 +107,10 @@ export default function UserManagement() {
       queryClient.invalidateQueries(['admin-users']);
       setDeleteConfirmOpen(false);
       setUserToDelete(null);
+      toast.success('User deleted successfully');
     },
     onError: (err) => {
-      alert(err.response?.data?.error || 'Failed to delete user');
+      toast.error(err.response?.data?.error || 'Failed to delete user');
     }
   });
 

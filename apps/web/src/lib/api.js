@@ -107,7 +107,11 @@ export const api = {
     }),
 
     // --- NEW Farmer Dashboard Methods ---
-    myRecords: () => apiRequest('/api/records/my-records', { method: 'GET' }),
+    myRecords: (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return apiRequest(`/api/records/my-records${query ? '?' + query : ''}`, { method: 'GET' });
+    },
+    myStats: () => apiRequest('/api/records/my-stats', { method: 'GET' }),
     add: (data) => apiRequest('/api/records/add', { method: 'POST', body: JSON.stringify(data) }),
     update: (id, data) => apiRequest(`/api/records/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id) => apiRequest(`/api/records/${id}`, { method: 'DELETE' }),

@@ -19,7 +19,12 @@ export default function WeightList() {
         if (showLoading) setIsLoading(true);
         try {
             const response = await api.get('/api/users?role=weight');
-            setWeightUsers(response || []);
+            // Handle paginated response
+            if (response.data) {
+                setWeightUsers(response.data || []);
+            } else {
+                setWeightUsers(response || []);
+            }
         } catch (error) {
             console.error('Failed to fetch weight users:', error);
             if (showLoading) toast.error('Failed to load weight users');

@@ -1,7 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-// Register Noto Sans Devanagari with LOCAL font files for Marathi text support
-// These files are in public/fonts/ directory
 Font.register({
     family: 'NotoSansDevanagari',
     fonts: [
@@ -34,6 +32,10 @@ const colors = {
     pendingText: '#92400e',
     red: '#dc2626',
     redBg: '#fee2e2',
+    // Blue colors for Partial status (matching Sales Records UI)
+    partialBg: '#dbeafe',
+    partialText: '#1d4ed8',
+    partialBorder: '#bfdbfe',
 };
 
 const styles = StyleSheet.create({
@@ -175,10 +177,10 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: 'bold',
         color: colors.textDark,
-        fontFamily: 'NotoSansDevanagari', // Use Devanagari font for names
+        fontFamily: 'NotoSansDevanagari',
     },
 
-    // Table Styles
+    // Table Styles — 5 columns now: Crop | Qty | Rate Details | Total Amount | Status
     table: {
         marginTop: 5,
         width: '100%',
@@ -192,48 +194,78 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: colors.primary,
         paddingVertical: 10,
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
     },
     th: {
         color: colors.white,
-        fontSize: 8.5,
+        fontSize: 7.5,
         textTransform: 'uppercase',
         fontWeight: 'bold',
-        letterSpacing: 0.8,
+        letterSpacing: 0.6,
     },
-    thLeft: { textAlign: 'left', flex: 3 },
-    thCenter: { textAlign: 'center', flex: 1.2 },
-    thRight: { textAlign: 'right', flex: 1.3 },
+    // Column flex weights tuned for 5-col layout
+    thCrop: { textAlign: 'left', flex: 2.4 },
+    thQty: { textAlign: 'center', flex: 1.0 },
+    thRateDetails: { textAlign: 'left', flex: 2.2 },
+    thTotalAmount: { textAlign: 'right', flex: 1.2 },
+    thStatus: { textAlign: 'center', flex: 1.0 },
+
     tableRow: {
         flexDirection: 'row',
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
-        paddingVertical: 14,
-        paddingHorizontal: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 10,
         backgroundColor: colors.white,
+        alignItems: 'center',
     },
     td: {
-        fontSize: 10,
+        fontSize: 9.5,
         color: colors.textDark,
     },
     tdCrop: {
         textAlign: 'left',
-        flex: 3,
+        flex: 2.4,
         fontWeight: 'bold',
-        fontFamily: 'NotoSansDevanagari', // CRITICAL: Use Devanagari font for Marathi crop names
-        fontSize: 11,
-    },
-    tdCenter: {
-        textAlign: 'center',
-        flex: 1.2,
-        color: colors.textMedium,
-        fontSize: 9.5,
-    },
-    tdRight: {
-        textAlign: 'right',
-        flex: 1.3,
-        fontWeight: 'bold',
+        fontFamily: 'NotoSansDevanagari',
         fontSize: 10.5,
+    },
+    tdQty: {
+        textAlign: 'center',
+        flex: 1.0,
+        color: colors.textMedium,
+        fontSize: 9,
+    },
+    tdRateDetails: {
+        textAlign: 'left',
+        flex: 2.2,
+        fontSize: 8.5,
+        color: colors.textMedium,
+        lineHeight: 1.6,
+    },
+    tdTotalAmount: {
+        textAlign: 'right',
+        flex: 1.2,
+        fontWeight: 'bold',
+        fontSize: 10,
+    },
+    tdStatus: {
+        textAlign: 'center',
+        flex: 1.0,
+    },
+
+    // Inline status badge inside the table row
+    statusBadgeInline: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        alignSelf: 'center',
+    },
+    statusTextInline: {
+        fontSize: 7.5,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
     },
 
     // Totals Section
@@ -288,7 +320,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 
-    // Status Badge
+    // Bottom Status Badge (below totals)
     statusBadge: {
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -358,19 +390,18 @@ const styles = StyleSheet.create({
     },
 });
 
-// Helper function to safely format numbers
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 const formatNumber = (num) => {
     if (num === undefined || num === null || isNaN(num)) return '0';
     return Number(num).toLocaleString('en-IN');
 };
 
-// Helper to format currency
 const formatCurrency = (num) => {
     if (num === undefined || num === null || isNaN(num)) return 'Rs. 0';
     return `Rs. ${Number(num).toLocaleString('en-IN')}`;
 };
 
-// Helper to format date
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
@@ -381,7 +412,6 @@ const formatDate = (dateStr) => {
     });
 };
 
-// Helper to format time
 const formatTime = (dateStr) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
@@ -392,15 +422,35 @@ const formatTime = (dateStr) => {
     });
 };
 
+/**
+ * Returns { bg, text, border } colour set for a given status string.
+ * "Partial" → blue  |  "Sold" / "Paid" → green  |  anything else → amber
+ */
+const getStatusColors = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'partial') {
+        return { bg: colors.partialBg, text: colors.partialText, border: colors.partialBorder };
+    }
+    if (s === 'sold' || s === 'paid') {
+        return { bg: colors.paidBg, text: colors.paidText, border: colors.primaryLight };
+    }
+    // Pending / default → amber
+    return { bg: colors.pendingBg, text: colors.pendingText, border: '#fcd34d' };
+};
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
 const BillingInvoice = ({ data, type = 'farmer' }) => {
     if (!data) return null;
 
     const isFarmer = type === 'farmer';
     const title = isFarmer ? 'PAYMENT ADVICE' : 'RECEIPT';
-    const status = data.status || 'Pending';
-    const isPaid = status.toLowerCase() === 'paid';
 
-    // Committee info
+    // ── status: use the status already computed & passed from SoldRecordCard ──
+    const status = data.status || 'Pending';   // "Paid" | "Partial" | "Pending"
+    const statusColors = getStatusColors(status);
+
+    // ── Committee info ──
     const committee = {
         name: 'APMC Market Committee',
         location: 'Tasgaon, Sangli, Maharashtra - 416312',
@@ -408,50 +458,67 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
         email: 'committee@agronond.com',
     };
 
-    // Extract and validate data
+    // ── Quantities ──
     const quantity = data.qty || data.quantity || 0;
     const carat = data.carat || data.crt || 0;
     const hasQuantity = quantity > 0;
     const hasCarat = carat > 0;
+    const unit = hasQuantity ? 'kg' : 'Crt';
+    const displayQty = hasQuantity ? quantity : carat;
 
-    // Calculate amounts
+    // ── Amounts — driven by what has ACTUALLY been received/sold ──
+    //    SoldRecordCard already computes soldQty-based baseAmount & commission
+    //    and passes them in invoiceData.  We honour those directly.
     const baseAmount = data.baseAmount || data.amount || data.grossAmount || 0;
     const commission = data.commission || 0;
     const finalAmount = data.finalAmount || data.netAmount || baseAmount;
 
-    // Calculate rate
-    let rate = 0;
-    let rateUnit = 'kg';
-    if (hasQuantity && quantity > 0) {
-        rate = baseAmount / quantity;
-        rateUnit = 'kg';
-    } else if (hasCarat && carat > 0) {
-        rate = baseAmount / carat;
-        rateUnit = 'Crt';
+    // Calculate rate - use provided rate or calculate as fallback
+    let rate = data.rate || 0;
+    let rateUnit = hasQuantity ? 'kg' : 'Crt';
+
+    // Fallback calculation if rate not provided
+    if (rate === 0 && baseAmount > 0) {
+        if (hasQuantity && quantity > 0) {
+            rate = baseAmount / quantity;
+        } else if (hasCarat && carat > 0) {
+            rate = baseAmount / carat;
+        }
     }
 
-    // Format quantity display
-    const getQuantityDisplay = () => {
-        if (hasQuantity && hasCarat) {
-            return `${formatNumber(quantity)} kg / ${formatNumber(carat)} Crt`;
-        } else if (hasQuantity) {
-            return `${formatNumber(quantity)} kg`;
-        } else if (hasCarat) {
-            return `${formatNumber(carat)} Crt`;
+    const rateDetailsLines = (() => {
+        if (splits.length > 0) {
+            return splits.map((s, i) => {
+                const sUnit = hasQuantity ? 'kg' : 'Crt';
+                return `₹${formatNumber(s.rate)} for ${formatNumber(s.qty)} ${sUnit}`;
+            });
         }
+        // Single-rate fallback
+        if (displayQty > 0) {
+            const rate = (baseAmount / displayQty).toFixed(2);
+            return [`₹${rate} for ${formatNumber(displayQty)} ${unit}`];
+        }
+        return ['-'];
+    })();
+
+    // ── Commission percentage ──
+    const commissionPercent = baseAmount > 0 ? ((commission / baseAmount) * 100).toFixed(1) : '4.0';
+
+    // ── Quantity display string ──
+    const getQuantityDisplay = () => {
+        if (hasQuantity && hasCarat) return `${formatNumber(quantity)} kg / ${formatNumber(carat)} Crt`;
+        if (hasQuantity) return `${formatNumber(quantity)} kg`;
+        if (hasCarat) return `${formatNumber(carat)} Crt`;
         return '-';
     };
-
-    // Calculate commission percentage
-    const commissionPercent = baseAmount > 0 ? ((commission / baseAmount) * 100).toFixed(1) : '4.0';
 
     return (
         <Document>
             <Page size="A4" style={styles.page}>
-                {/* Professional Watermark */}
+                {/* Watermark */}
                 <Text style={styles.watermark}>AgroNond</Text>
 
-                {/* Header */}
+                {/* ─── Header ─── */}
                 <View style={styles.header}>
                     <View style={styles.brand}>
                         <View style={styles.logoBox}>
@@ -465,9 +532,9 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                     <Text style={styles.receiptTitle}>{title}</Text>
                 </View>
 
-                {/* Info Grid */}
+                {/* ─── Info Grid ─── */}
                 <View style={styles.infoGrid}>
-                    {/* Issuer Info */}
+                    {/* Issuer */}
                     <View style={styles.infoSection}>
                         <Text style={styles.sectionLabel}>Issued By</Text>
                         <Text style={styles.companyName}>{committee.name}</Text>
@@ -504,37 +571,73 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                     </View>
                 </View>
 
-                {/* Recipient Section */}
+                {/* ─── PAY TO / BILL TO  ─── farmer name from backend via data.name ─── */}
                 <View style={styles.recipientSection}>
                     <Text style={styles.recipientLabel}>
                         {isFarmer ? 'PAY TO' : 'BILL TO'}
                     </Text>
-                    <Text style={styles.recipientName}>{data.name || 'Unknown'}</Text>
+                    {/* data.name is populated from farmerName prop fetched from backend */}
+                    <Text style={styles.recipientName}>{data.name || 'Unknown Farmer'}</Text>
                 </View>
 
-                {/* Items Table */}
+                {/* ─── Items Table  ── 5 columns: Crop | Qty | Rate Details | Total Amount | Status ─── */}
                 <View style={styles.table}>
+                    {/* Header row */}
                     <View style={styles.tableHeader}>
-                        <Text style={[styles.th, styles.thLeft]}>Description / Crop</Text>
-                        <Text style={[styles.th, styles.thCenter]}>Quantity</Text>
-                        <Text style={[styles.th, styles.thCenter]}>Rate</Text>
-                        <Text style={[styles.th, styles.thRight]}>Amount</Text>
+                        <Text style={[styles.th, styles.thCrop]}>Description / Crop</Text>
+                        <Text style={[styles.th, styles.thQty]}>Quantity</Text>
+                        <Text style={[styles.th, styles.thRateDetails]}>Rate Details</Text>
+                        <Text style={[styles.th, styles.thTotalAmount]}>Total Amount</Text>
+                        <Text style={[styles.th, styles.thStatus]}>Status</Text>
                     </View>
-                    <View style={styles.tableRow}>
-                        <Text style={[styles.td, styles.tdCrop]}>
-                            {data.crop || 'Unknown Crop'}
-                        </Text>
-                        <Text style={[styles.td, styles.tdCenter]}>
-                            {getQuantityDisplay()}
-                        </Text>
-                        <Text style={[styles.td, styles.tdCenter]}>
-                            {formatCurrency(rate.toFixed(2))}/{rateUnit}
-                        </Text>
-                        <Text style={[styles.td, styles.tdRight]}>
-                            {formatCurrency(baseAmount)}
-                        </Text>
-                    </View>
+
+                    {/* Check if we have splits data for multiple rows */}
+                    {data.splits && data.splits.length > 1 ? (
+                        // Render individual rows for each split
+                        data.splits.map((split, index) => {
+                            const splitQty = split.qty || split.quantity || 0;
+                            const splitCarat = split.carat || 0;
+                            const splitRate = split.rate || 0;
+                            const splitAmount = split.amount || (splitQty * splitRate);
+                            const splitUnit = splitQty > 0 ? 'kg' : 'Crt';
+                            const displayQty = splitQty > 0 ? splitQty : splitCarat;
+
+                            return (
+                                <View style={styles.tableRow} key={index}>
+                                    <Text style={[styles.td, styles.tdCrop]}>
+                                        {index === 0 ? (data.crop || 'Unknown Crop') : ''}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdCenter]}>
+                                        {formatNumber(displayQty)} {splitUnit}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdCenter]}>
+                                        {formatCurrency(splitRate.toFixed(2))}/{splitUnit}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdRight]}>
+                                        {formatCurrency(splitAmount)}
+                                    </Text>
+                                </View>
+                            );
+                        })
+                    ) : (
+                        // Single row for non-split records
+                        <View style={styles.tableRow}>
+                            <Text style={[styles.td, styles.tdCrop]}>
+                                {data.crop || 'Unknown Crop'}
+                            </Text>
+                            <Text style={[styles.td, styles.tdCenter]}>
+                                {getQuantityDisplay()}
+                            </Text>
+                            <Text style={[styles.td, styles.tdCenter]}>
+                                {formatCurrency(rate.toFixed(2))}/{rateUnit}
+                            </Text>
+                            <Text style={[styles.td, styles.tdRight]}>
+                                {formatCurrency(baseAmount)}
+                            </Text>
+                        </View>
+                    )}
                 </View>
+
 
                 {/* Totals Section */}
                 <View style={styles.totalsSection}>
@@ -552,33 +655,30 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                             styles.totalValue,
                             { color: isFarmer ? colors.red : colors.textDark }
                         ]}>
-                            {isFarmer ? '-' : '+'} {formatCurrency(commission)}
+                            {isFarmer ? '- ' : '+ '}{formatCurrency(commission)}
                         </Text>
                     </View>
+
+                    {/* NET PAYABLE → renamed to TOTAL AMOUNT */}
                     <View style={styles.grandTotalRow}>
-                        <Text style={styles.grandTotalLabel}>
-                            {isFarmer ? 'Net Payable' : 'Total Receivable'}
-                        </Text>
+                        <Text style={styles.grandTotalLabel}>Total Amount</Text>
                         <Text style={styles.grandTotalValue}>
                             {formatCurrency(finalAmount)}
                         </Text>
                     </View>
 
-                    {/* Status Badge */}
+                    {/* Bottom status badge — colour-matched: blue for Partial */}
                     <View style={[
                         styles.statusBadge,
-                        { backgroundColor: isPaid ? colors.paidBg : colors.pendingBg }
+                        { backgroundColor: statusColors.bg, borderWidth: 1, borderColor: statusColors.border }
                     ]}>
-                        <Text style={[
-                            styles.statusText,
-                            { color: isPaid ? colors.paidText : colors.pendingText }
-                        ]}>
-                            {isPaid ? 'PAID' : 'PENDING'}
+                        <Text style={[styles.statusText, { color: statusColors.text }]}>
+                            {status.toUpperCase()}
                         </Text>
                     </View>
                 </View>
 
-                {/* Footer */}
+                {/* ─── Footer ─── */}
                 <View style={styles.footer}>
                     <View style={styles.termsSection}>
                         <Text style={styles.termsTitle}>Terms & Conditions</Text>
