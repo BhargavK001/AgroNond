@@ -11,9 +11,6 @@ import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
   Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History, Download
 } from 'lucide-react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import BillingInvoice from '../../components/committee/BillingInvoice';
-
 
 // --- MODAL COMPONENT ---
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
