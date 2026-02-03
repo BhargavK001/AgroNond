@@ -18,13 +18,32 @@ const router = express.Router();
  */
 router.get('/my-records', requireAuth, async (req, res) => {
     try {
-        // Get all records for this farmer (excluding child records of split lots)
-        const records = await Record.find({
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const status = req.query.status;
+
+        const skip = (page - 1) * limit;
+
+        // Build query
+        const query = {
             farmer_id: req.user._id,
-            parent_record_id: { $exists: false } // Exclude child records (they belong to parent)
-        })
+            parent_record_id: { $exists: false } // Exclude child records
+        };
+
+        if (status && status !== 'All') {
+            query.status = status;
+        }
+
+        // Get total count for pagination metadata
+        const totalRecords = await Record.countDocuments(query);
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Get all records for this farmer (paginated)
+        const records = await Record.find(query)
             .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
             .lean(); // Use lean for better performance
 
         // For parent records (is_parent: true), aggregate data from child records
@@ -117,12 +136,78 @@ router.get('/my-records', requireAuth, async (req, res) => {
             });
         }
 
-        res.json(records);
+        res.json({
+            records,
+            pagination: {
+                totalRecords,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        });
     } catch (error) {
         console.error('Fetch my records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });
     }
 });
+/**
+ * GET /api/records/my-stats
+ * Fetch global statistics for the logged-in farmer
+ * Aggregates data across ALL records (not just paginated ones)
+ */
+router.get('/my-stats', requireAuth, async (req, res) => {
+    try {
+        const farmerId = req.user._id;
+
+        const stats = await Record.aggregate([
+            { $match: { farmer_id: farmerId } }, // Match all records for this farmer
+            {
+                $group: {
+                    _id: null,
+                    totalEarnings: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$status', ['Sold', 'Completed']] },
+                                '$sale_amount',
+                                0
+                            ]
+                        }
+                    },
+                    totalVolume: { $sum: '$quantity' },
+                    totalSalesCount: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$status', ['Sold', 'Completed']] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    pendingLotsCount: {
+                        $sum: {
+                            // Count pending if status is Pending OR (Split Lot Parent and display_status is Pending)
+                            // Since display_status is computed, we rely on core status 'Pending'
+                            // For accuracy with split lots, we simply count 'Pending' records
+                            $cond: [
+                                { $eq: ['$status', 'Pending'] },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        const result = stats.length > 0 ? stats[0] : { totalEarnings: 0, totalVolume: 0, totalSalesCount: 0, pendingLotsCount: 0 };
+
+        res.json(result);
+    } catch (error) {
+        console.error('Fetch stats error:', error);
+        res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+});
+
 /**
  * GET /api/records/my-purchases
  * Fetch all purchases for the logged-in trader

@@ -7,11 +7,7 @@ const PDFDownloadLink = lazy(() =>
 );
 const BillingInvoice = lazy(() => import('./BillingInvoice'));
 
-/**
- * Lightweight Invoice Download Modal
- * PDF components are lazy-loaded ONLY when this modal is opened
- * This prevents heavy PDF library from blocking initial page render
- */
+
 export default function InvoiceDownloadModal({ isOpen, onClose, data, type }) {
     const [isReady, setIsReady] = useState(false);
 
@@ -51,8 +47,8 @@ export default function InvoiceDownloadModal({ isOpen, onClose, data, type }) {
                             <p className="font-bold text-slate-800">{data.name}</p>
                         </div>
                         <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${data.status === 'Paid'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-amber-100 text-amber-700'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-amber-100 text-amber-700'
                             }`}>
                             {data.status}
                         </span>
@@ -99,8 +95,8 @@ export default function InvoiceDownloadModal({ isOpen, onClose, data, type }) {
                             <button
                                 disabled={loading}
                                 className={`w-full py-3.5 font-bold rounded-xl flex items-center justify-center gap-2 transition-all ${loading
-                                        ? 'bg-slate-200 text-slate-500'
-                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-emerald-200'
+                                    ? 'bg-slate-200 text-slate-500'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-emerald-200'
                                     }`}
                             >
                                 {loading ? (
