@@ -292,6 +292,8 @@ router.patch('/users/:id', requireAuth, requireAdmin, async (req, res) => {
     const updates = {};
     if (full_name !== undefined) updates.full_name = full_name;
     if (phone !== undefined) updates.phone = phone;
+    // Allow updating license number from admin panel
+    if (req.body.license_number !== undefined) updates.license_number = req.body.license_number;
 
     const updatedUser = await User.findByIdAndUpdate(
       id,

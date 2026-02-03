@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import FarmerNavbar from '../../components/navigation/FarmerNavbar';
 import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
+import { MARKET_CONFIG } from '../../config/market';
 import SoldRecordCard from '../../components/farmer/SoldRecordCard';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import BillingInvoice from '../../components/committee/BillingInvoice';
 import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
   Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History, Download
 } from 'lucide-react';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import BillingInvoice from '../../components/committee/BillingInvoice';
+
 
 // --- MODAL COMPONENT ---
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
@@ -168,27 +170,11 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 
   const [addedItems, setAddedItems] = useState([]);
 
-  // Fetch Market Info (Committee)
+  // Use Centralized Market Configuration
+  // All users (farmers, traders, lilav, weight, committee) belong to this single market
   useEffect(() => {
-    const fetchMarket = async () => {
-      try {
-        setIsLoadingMarket(true);
-        const users = await api.users.list({ role: 'committee' });
-        if (users && users.length > 0) {
-          // Use the first committee found
-          const marketName = users[0].business_name || users[0].full_name || 'AgroNond Market';
-          setSelectedMarket(marketName);
-        } else {
-          toast.error("No Market Committee found");
-        }
-      } catch (error) {
-        console.error("Failed to fetch market info", error);
-        // toast.error("Failed to load market info");
-      } finally {
-        setIsLoadingMarket(false);
-      }
-    };
-    fetchMarket();
+    setSelectedMarket(MARKET_CONFIG.MARKET_NAME);
+    setIsLoadingMarket(false);
   }, []);
 
 
@@ -599,6 +585,18 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
 const FarmerDashboard = () => {
   const [view, setView] = useState('dashboard');
   const [records, setRecords] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+    totalRecords: 0
+  });
+  const [stats, setStats] = useState({
+    totalEarnings: 0,
+    totalVolume: 0,
+    totalSalesCount: 0,
+    pendingLotsCount: 0
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState({
     name: '',
@@ -618,7 +616,6 @@ const FarmerDashboard = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
-  const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
 
   // EDIT FORM STATE
@@ -633,16 +630,30 @@ const FarmerDashboard = () => {
   // --- FETCH DATA FROM BACKEND ---
   const [markets, setMarkets] = useState([]); // ✅ State for markets list
 
-  const fetchRecords = useCallback(async (showLoading = true) => {
+  const fetchRecords = useCallback(async (showLoading = true, page = 1, status = 'All') => {
     try {
       if (showLoading) setIsLoading(true);
-      const data = await api.records.myRecords();
+      const params = {
+        page,
+        limit: 10
+      };
+      // Only add status if it's not 'All'
+      if (status && status !== 'All') {
+        params.status = status;
+      }
 
-      let allRecords = data;
-      // If the API returns an object { records: [...] } handle it
-      if (data.records) allRecords = data.records;
+      const data = await api.records.myRecords(params);
 
-      setRecords(allRecords);
+      if (data.records) {
+        setRecords(data.records);
+        setPagination(prev => ({
+          ...prev,
+          ...data.pagination
+        }));
+      } else {
+        // Fallback if backend response structure varies/fails
+        setRecords([]);
+      }
     } catch (error) {
       console.error(error);
       // Only show error on initial load, not on background refresh
@@ -652,8 +663,21 @@ const FarmerDashboard = () => {
     }
   }, []);
 
-  // ✅ Auto-refresh records every 30 seconds
-  useAutoRefresh(() => fetchRecords(false), { interval: 30000 });
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await api.records.myStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  }, []);
+
+  // ✅ Auto-refresh records and stats every 30 seconds
+  // Pass current page and filter to keep view consistent
+  useAutoRefresh(() => {
+    fetchRecords(false, pagination.page, filterStatus);
+    fetchStats();
+  }, { interval: 30000 });
 
   const loadProfile = () => {
     const prof = localStorage.getItem('farmer-profile');
@@ -666,7 +690,8 @@ const FarmerDashboard = () => {
 
   // ✅ NEW: Fetch records on mount
   useEffect(() => {
-    fetchRecords();
+    fetchRecords(true, 1, 'All');
+    fetchStats();
     loadProfile();
   }, []);
 
@@ -679,21 +704,24 @@ const FarmerDashboard = () => {
   }, []);
 
   // --- COMPUTED VALUES ---
-  const soldRecords = records.filter(r => ['Sold', 'Completed'].includes(r.status));
-  const pendingRecords = records.filter(r => r.status === 'Pending');
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchRecords(true, newPage, filterStatus);
+      // Scroll to top of table
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
-  const totalGross = soldRecords.reduce((sum, r) => sum + (r.sale_amount || 0), 0);
-  const totalQuantity = records.reduce((sum, r) => sum + r.quantity, 0);
+  const handleFilterChange = (status) => {
+    setFilterStatus(status);
+    fetchRecords(true, 1, status); // Reset to page 1 on filter
+  };
 
-  const filteredRecords = filterStatus === 'All'
-    ? records
-    : records.filter(r => r.status === filterStatus);
+  const soldRecords = records.filter(r => ['Sold', 'Completed'].includes(r.display_status || r.status));
+  const pendingRecords = records.filter(r => (r.display_status || r.status) === 'Pending');
 
-  const sortedRecords = [...filteredRecords].sort((a, b) => {
-    if (sortBy === 'recent') return new Date(b.createdAt) - new Date(a.createdAt);
-    if (sortBy === 'amount') return (b.totalAmount || 0) - (a.totalAmount || 0);
-    return 0;
-  });
+  // We no longer client-side sort or filter the main list, as the backend does it.
+  const displayRecords = records;
 
   // ✅ HELPER: Format Time from Date
   const formatTime = (dateString) => {
@@ -711,7 +739,8 @@ const FarmerDashboard = () => {
       await api.post('/api/records/add', data);
       toast.success('Records saved to database!');
       setView('dashboard');
-      fetchRecords();
+      fetchRecords(true, 1, filterStatus); // Refresh and go to page 1
+      fetchStats();
     } catch (error) {
       console.error(error);
       toast.error(error.response?.data?.error || 'Failed to save record');
@@ -728,7 +757,7 @@ const FarmerDashboard = () => {
     try {
       await api.delete(`/api/records/${recordToDelete}`);
       toast.success('Record deleted successfully');
-      fetchRecords();
+      fetchRecords(true, pagination.page, filterStatus); // Refresh current page
     } catch (error) {
       toast.error('Failed to delete record');
     } finally {
@@ -945,6 +974,35 @@ const FarmerDashboard = () => {
               ))}
             </div>
           )}
+
+          {/* PAGINATION CONTROLS FOR HISTORY */}
+          {pagination.totalPages > 1 && (
+            <div className="mt-8 flex justify-center gap-2">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className={`px-6 py-2 rounded-xl font-medium transition ${pagination.page === 1
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                Previous
+              </button>
+              <div className="flex items-center px-4 bg-white rounded-xl border border-gray-200 text-gray-600 font-medium">
+                Page {pagination.page} of {pagination.totalPages}
+              </div>
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className={`px-6 py-2 rounded-xl font-medium transition ${pagination.page >= pagination.totalPages
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </main>
       </div>
     );
@@ -987,57 +1045,72 @@ const FarmerDashboard = () => {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-green-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-4 sm:mb-6">
-              <div className="p-3 sm:p-4 bg-green-100 rounded-2xl text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                <TrendingUp size={24} className="sm:w-7 sm:h-7" />
+        {/* Stats Cards - Updated to use Server Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 bg-green-50 rounded-2xl group-hover:bg-green-100 transition-colors">
+                <TrendingUp className="text-green-600" size={24} />
               </div>
-              <span className="text-xs font-bold text-green-600 bg-green-50 px-2 sm:px-3 py-1 rounded-full">+12%</span>
+              <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-full border border-green-100">
+                +12%
+              </span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Total Earnings</p>
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalGross.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-gray-500">Gross Income</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Total Earnings</p>
+              <h3 className="text-2xl font-bold text-gray-900">₹{stats.totalEarnings.toLocaleString('en-IN')}</h3>
+              <p className="text-xs text-gray-400 mt-1">Gross Income</p>
+            </div>
           </div>
 
-          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-blue-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-4 sm:mb-6">
-              <div className="p-3 sm:p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <Package size={24} className="sm:w-7 sm:h-7" />
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 bg-blue-50 rounded-2xl group-hover:bg-blue-100 transition-colors">
+                <Package className="text-blue-600" size={24} />
               </div>
-              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">{soldRecords.length} sales</span>
+              <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs font-bold rounded-full border border-gray-100">
+                {stats.totalSalesCount} sales
+              </span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Total Sales</p>
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">₹{totalGross.toLocaleString('en-IN')}</h3>
-            <p className="text-xs text-gray-500">All transactions</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Total Sales</p>
+              <h3 className="text-2xl font-bold text-gray-900">{stats.totalSalesCount}</h3>
+              <p className="text-xs text-gray-400 mt-1">All transactions</p>
+            </div>
           </div>
 
-          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-orange-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-4 sm:mb-6">
-              <div className="p-3 sm:p-4 bg-orange-100 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
-                <Clock size={24} className="sm:w-7 sm:h-7" />
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 bg-amber-50 rounded-2xl group-hover:bg-amber-100 transition-colors">
+                <Clock className="text-amber-600" size={24} />
               </div>
-              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 sm:px-3 py-1 rounded-full">Active</span>
+              <span className="px-2 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-100">
+                Active
+              </span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Pending Lots</p>
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{pendingRecords.length}</h3>
-            <p className="text-xs text-gray-500">Awaiting sale</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Pending Lots</p>
+              <h3 className="text-2xl font-bold text-gray-900">{stats.pendingLotsCount}</h3>
+              <p className="text-xs text-gray-400 mt-1">Awaiting sale</p>
+            </div>
           </div>
 
-          <div className="group bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 hover:border-purple-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex justify-between items-start mb-4 sm:mb-6">
-              <div className="p-3 sm:p-4 bg-purple-100 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                <Package size={24} className="sm:w-7 sm:h-7" />
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 bg-purple-50 rounded-2xl group-hover:bg-purple-100 transition-colors">
+                <Package className="text-purple-600" size={24} />
               </div>
-              <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full">{records.length} items</span>
+              <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs font-bold rounded-full border border-gray-100">
+                &infin; items
+              </span>
             </div>
-            <p className="text-gray-600 text-sm font-medium mb-1 sm:mb-2">Total Volume</p>
-            <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{totalQuantity.toFixed(2)} kg</h3>
-            <p className="text-xs text-gray-500">Lifetime quantity</p>
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-1">Total Volume</p>
+              <h3 className="text-2xl font-bold text-gray-900">{stats.totalVolume.toFixed(2)} kg</h3>
+              <p className="text-xs text-gray-400 mt-1">Lifetime quantity</p>
+            </div>
           </div>
-        </div>
-
+        </div>{/* Records Table */}
         {/* Records Table */}
         <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
           <div className="p-4 sm:px-8 sm:py-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50">
@@ -1057,14 +1130,7 @@ const FarmerDashboard = () => {
                 <option>Sold</option>
                 <option>Partial</option>
               </select>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 text-sm"
-              >
-                <option value="recent">Recent</option>
-                <option value="amount">Highest Amount</option>
-              </select>
+              {/* Sort removed temporary as it requires backend support for 'amount' sort with pagination. Default is 'Recent' */}
             </div>
           </div>
 
@@ -1073,175 +1139,23 @@ const FarmerDashboard = () => {
           ) : (
             <>
               {/* Mobile View */}
+              {/* Mobile View */}
               <div className="block sm:hidden">
-                {sortedRecords.length === 0 ? (
+                {displayRecords.length === 0 ? (
                   <div className="p-8 text-center">
                     <p className="text-gray-500">No records found</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {sortedRecords.map((record) => {
-                      // Logic Scope
-                      const isParent = record.is_parent === true;
-                      const hasQuantity = record.quantity > 0;
-                      const unit = hasQuantity ? 'kg' : 'Crt';
-
-                      const totalQty = hasQuantity ? record.quantity : record.carat;
-                      const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
-
-                      let soldQty = 0;
-                      let awaitingQty = 0;
-                      let totalSaleAmount = 0;
-                      let splits = record.splits || [];
-
-                      if (isParent) {
-                        soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-                        awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
-                        totalSaleAmount = record.aggregated_sale_amount || 0;
-                      } else {
-                        // Legacy or single record logic
-                        const isSold = ['Sold', 'Completed'].includes(record.status);
-                        if (isSold) {
-                          soldQty = officialQty > 0 ? officialQty : totalQty;
-                          totalSaleAmount = record.sale_amount || 0;
-                          if (splits.length === 0) {
-                            splits = [{
-                              qty: soldQty,
-                              rate: record.sale_rate,
-                              amount: record.sale_amount,
-                              date: record.sold_at || record.createdAt
-                            }];
-                          }
-                        }
-                        awaitingQty = Math.max(0, totalQty - soldQty);
-                      }
-
-                      // Correct Status Logic
-                      let computedStatus = 'Pending';
-                      if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-                      else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
-
-                      const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
-
-                      return (
-                        <div key={record._id} className="p-4 hover:bg-gray-50 transition-colors">
-                          {/* Header: Date & Status */}
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <div className="font-bold text-gray-900">{record.vegetable}</div>
-                              <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                <Calendar size={12} />
-                                {new Date(record.createdAt).toLocaleDateString('en-GB')}
-                                <span className="mx-1">•</span>
-                                <Clock size={12} />
-                                {formatTime(record.createdAt)}
-                              </div>
-                            </div>
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${computedStatus === 'Sold'
-                              ? 'bg-green-100 text-green-700 border-green-200'
-                              : computedStatus === 'Partial'
-                                ? 'bg-blue-100 text-blue-700 border-blue-200'
-                                : 'bg-amber-100 text-amber-700 border-amber-200'
-                              }`}>
-                              {computedStatus}
-                            </span>
-                          </div>
-
-                          {/* Progress Bar Section */}
-                          <div className="mb-4">
-                            <div className="flex justify-between text-xs mb-1.5 font-medium">
-                              <span className={soldQty > 0 ? "text-green-700" : "text-gray-500"}>
-                                Sold: {parseFloat(soldQty.toFixed(2))} {unit}
-                              </span>
-                              <span className="text-gray-900">
-                                Total: {parseFloat(totalQty.toFixed(2))} {unit}
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${computedStatus === 'Sold' ? 'bg-green-500' :
-                                  computedStatus === 'Partial' ? 'bg-blue-500' : 'bg-amber-400'
-                                  }`}
-                                style={{ width: `${progressPercent}%` }}
-                              ></div>
-                            </div>
-                            {awaitingQty > 0.01 && (
-                              <p className="text-[10px] text-amber-600 mt-1 font-medium text-right">
-                                {parseFloat(awaitingQty.toFixed(2))} {unit} remaining
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Sale Details (Collapsible-ish feel) */}
-                          <div className="space-y-2 bg-gray-50 rounded-xl p-3 border border-gray-100 mb-3">
-                            <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                              <span className="text-xs font-semibold text-gray-500 uppercase">Revenue</span>
-                              <span className="text-sm font-bold text-gray-900">₹{totalSaleAmount.toLocaleString('en-IN')}</span>
-                            </div>
-
-                            {splits.length > 0 ? (
-                              <div className="space-y-1.5 pt-1">
-                                {splits.map((split, idx) => (
-                                  <div key={idx} className="flex justify-between text-xs text-gray-600">
-                                    <span>
-                                      {parseFloat(split.qty.toFixed(2))} {unit}
-                                      <span className="text-gray-400 mx-1">@</span>
-                                      ₹{split.rate}
-                                    </span>
-                                    <span className="font-medium text-gray-800">
-                                      ₹{(split.amount || (split.qty * split.rate)).toLocaleString('en-IN')}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="pt-1 text-xs text-gray-400 italic text-center">
-                                Not sold yet
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Market Info */}
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-4 px-1">
-                            <MapPin size={12} />
-                            {record.market}
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex gap-2 border-t border-gray-100 pt-3">
-                            <PDFDownloadLink
-                              document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
-                              fileName={`invoice-${record._id.slice(-6)}.pdf`}
-                              className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 flex items-center justify-center gap-2 text-sm font-medium"
-                            >
-                              <Download size={16} /> Invoice
-                            </PDFDownloadLink>
-
-                            <button
-                              onClick={() => handleEditClick(record)}
-                              disabled={soldQty > 0}
-                              className={`p-2 rounded-lg flex items-center justify-center ${soldQty > 0
-                                ? 'bg-gray-100 text-gray-300'
-                                : 'bg-white border border-gray-200 text-gray-600 shadow-sm'
-                                }`}
-                            >
-                              <Edit size={16} />
-                            </button>
-
-                            <button
-                              onClick={() => initiateDelete(record._id)}
-                              disabled={soldQty > 0}
-                              className={`p-2 rounded-lg flex items-center justify-center ${soldQty > 0
-                                ? 'bg-gray-100 text-gray-300'
-                                : 'bg-red-50 text-red-600 border border-red-100'
-                                }`}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {displayRecords.map((record) => (
+                      <MobileRecordCard
+                        key={record._id}
+                        record={record}
+                        handleEditClick={handleEditClick}
+                        initiateDelete={initiateDelete}
+                        getInvoiceData={getInvoiceData}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -1251,17 +1165,17 @@ const FarmerDashboard = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs">Date</th>
-                      <th className="px-4 py-4 text-left font-semibold text-gray-600 uppercase tracking-wider text-xs">Market / Item</th>
-                      <th className="px-4 py-4 text-left font-semibold text-gray-600 uppercase tracking-wider text-xs w-1/4">Sales Progress</th>
-                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs">Rate Details</th>
-                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs">Total Amount</th>
-                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs">Status</th>
-                      <th className="px-6 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs">Actions</th>
+                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs w-24">Date</th>
+                      <th className="px-4 py-4 text-left font-semibold text-gray-600 uppercase tracking-wider text-xs w-40">Item</th>
+                      <th className="px-6 py-4 text-left font-semibold text-gray-600 uppercase tracking-wider text-xs w-48">Sales Progress</th>
+                      <th className="px-6 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs w-36">Rate Details</th>
+                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs w-28">Total Amount</th>
+                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs w-24">Status</th>
+                      <th className="px-4 py-4 text-center font-semibold text-gray-600 uppercase tracking-wider text-xs w-28">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {sortedRecords.length === 0 ? (
+                    {displayRecords.length === 0 ? (
                       <tr>
                         <td colSpan="7" className="px-8 py-16 text-center">
                           <Clock size={48} className="mx-auto text-gray-300 mb-3" />
@@ -1270,177 +1184,49 @@ const FarmerDashboard = () => {
                         </td>
                       </tr>
                     ) : (
-                      sortedRecords.map((record) => {
-                        // Logic Scope
-                        const isParent = record.is_parent === true;
-                        const hasQuantity = record.quantity > 0;
-                        const unit = hasQuantity ? 'kg' : 'Crt';
-
-                        const totalQty = hasQuantity ? record.quantity : record.carat;
-                        const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
-
-                        let soldQty = 0;
-                        let awaitingQty = 0;
-                        let totalSaleAmount = 0;
-                        let splits = record.splits || [];
-
-                        if (isParent) {
-                          soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-                          awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
-                          totalSaleAmount = record.aggregated_sale_amount || 0;
-                        } else {
-                          // Legacy or single record logic
-                          const isSold = ['Sold', 'Completed'].includes(record.status);
-                          if (isSold) {
-                            soldQty = officialQty > 0 ? officialQty : totalQty;
-                            totalSaleAmount = record.sale_amount || 0;
-                            if (splits.length === 0) {
-                              splits = [{
-                                qty: soldQty,
-                                rate: record.sale_rate,
-                                amount: record.sale_amount,
-                                date: record.sold_at || record.createdAt
-                              }];
-                            }
-                          }
-                          awaitingQty = Math.max(0, totalQty - soldQty);
-                        }
-
-                        // Correct Status Logic
-                        let computedStatus = 'Pending';
-                        if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-                        else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
-
-                        const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
-
-                        return (
-                          <tr key={record._id} className="hover:bg-gray-50 transition-colors group">
-                            {/* Date */}
-                            <td className="px-6 py-4 align-top">
-                              <div className="text-gray-900 font-medium">{new Date(record.createdAt).toLocaleDateString('en-GB')}</div>
-                              <div className="text-xs text-gray-400 mt-1">{formatTime(record.createdAt)}</div>
-                            </td>
-
-                            {/* Market / Item */}
-                            <td className="px-4 py-4 align-top">
-                              <div className="text-gray-900 font-bold">{record.vegetable}</div>
-                              <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                <MapPin size={10} /> {record.market}
-                              </div>
-                            </td>
-
-                            {/* Sales Progress */}
-                            <td className="px-4 py-4 align-middle">
-                              <div className="w-full max-w-[200px]">
-                                <div className="flex justify-between text-xs mb-1.5 font-medium">
-                                  <span className={soldQty > 0 ? "text-green-700" : "text-gray-500"}>
-                                    {parseFloat(soldQty.toFixed(2))} {unit} Sold
-                                  </span>
-                                  <span className="text-gray-400">
-                                    / {parseFloat(totalQty.toFixed(2))} {unit}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-500 ${computedStatus === 'Sold' ? 'bg-green-500' :
-                                      computedStatus === 'Partial' ? 'bg-blue-500' : 'bg-gray-300'
-                                      }`}
-                                    style={{ width: `${progressPercent}%` }}
-                                  ></div>
-                                </div>
-                                {awaitingQty > 0.01 && (
-                                  <p className="text-[10px] text-amber-600 mt-1 font-medium italic">
-                                    {parseFloat(awaitingQty.toFixed(2))} {unit} awaiting sale
-                                  </p>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Rate Details */}
-                            <td className="px-4 py-4 align-top">
-                              {splits.length > 0 ? (
-                                <div className="space-y-1">
-                                  {splits.map((split, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-xs">
-                                      <div className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded border border-green-100 font-medium whitespace-nowrap">
-                                        ₹{split.rate}
-                                      </div>
-                                      <span className="text-gray-400 text-[10px]">
-                                        for {parseFloat(split.qty.toFixed(2))} {unit}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400 text-xs italic">-</span>
-                              )}
-                            </td>
-
-                            {/* Total Amount */}
-                            <td className="px-4 py-4 align-middle">
-                              <span className={`font-bold ${totalSaleAmount > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                                {totalSaleAmount > 0 ? `₹${totalSaleAmount.toLocaleString('en-IN')}` : '-'}
-                              </span>
-                            </td>
-
-                            {/* Status */}
-                            <td className="px-4 py-4 align-middle">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${computedStatus === 'Sold'
-                                ? 'bg-green-100 text-green-700 border-green-200'
-                                : computedStatus === 'Partial'
-                                  ? 'bg-blue-100 text-blue-700 border-blue-200'
-                                  : 'bg-amber-100 text-amber-700 border-amber-200'
-                                }`}>
-                                {computedStatus === 'Sold' && <CheckCircle size={12} />}
-                                {computedStatus === 'Partial' && <Clock size={12} />}
-                                {computedStatus === 'Pending' && <Clock size={12} />}
-                                {computedStatus}
-                              </span>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="px-6 py-4 text-right align-middle">
-                              <div className="flex justify-end gap-2 text-right">
-                                <PDFDownloadLink
-                                  document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
-                                  fileName={`invoice-${record._id.slice(-6)}.pdf`}
-                                  className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition"
-                                  title="Download Invoice"
-                                >
-                                  {({ loading }) => <Download size={16} className={loading ? 'animate-pulse' : ''} />}
-                                </PDFDownloadLink>
-
-                                <button
-                                  onClick={() => handleEditClick(record)}
-                                  // Can only edit if NO sales have happened yet
-                                  disabled={soldQty > 0}
-                                  className={`p-2 rounded-lg transition border ${soldQty > 0
-                                    ? 'bg-gray-50 text-gray-300 border-transparent cursor-not-allowed'
-                                    : 'border-gray-200 text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-green-200'}`}
-                                  title={soldQty > 0 ? "Cannot edit sold/partial item" : "Edit"}
-                                >
-                                  <Edit size={16} />
-                                </button>
-
-                                <button
-                                  onClick={() => initiateDelete(record._id)}
-                                  disabled={soldQty > 0}
-                                  className={`p-2 rounded-lg transition border ${soldQty > 0
-                                    ? 'bg-gray-50 text-gray-300 border-transparent cursor-not-allowed'
-                                    : 'border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200'}`}
-                                  title={soldQty > 0 ? "Cannot delete sold/partial item" : "Delete"}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
+                      displayRecords.map((record) => (
+                        <RecordRow
+                          key={record._id}
+                          record={record}
+                          handleEditClick={handleEditClick}
+                          initiateDelete={initiateDelete}
+                          getInvoiceData={getInvoiceData}
+                        />
+                      )))}
                   </tbody>
                 </table>
               </div>
+
+              {/* PAGINATION CONTROLS */}
+              {pagination.totalPages > 1 && (
+                <div className="px-6 py-4 flex items-center justify-between border-t border-gray-100 bg-gray-50">
+                  <span className="text-sm text-gray-600">
+                    Showing <span className="font-semibold">{(pagination.page - 1) * pagination.limit + 1}</span> to <span className="font-semibold">{Math.min(pagination.page * pagination.limit, pagination.totalRecords)}</span> of <span className="font-semibold">{pagination.totalRecords}</span> results
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                      disabled={pagination.page === 1}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${pagination.page === 1
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                      disabled={pagination.page >= pagination.totalPages}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition ${pagination.page >= pagination.totalPages
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1726,5 +1512,327 @@ const FarmerDashboard = () => {
     </div >
   );
 };
+
+// --- HELPER --
+const formatTime = (date) => new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+// --- MEMOIZED COMPONENTS ---
+const DownloadInvoiceButton = memo(({ record, getInvoiceData }) => (
+  <PDFDownloadLink
+    document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
+    fileName={`invoice-${record._id.slice(-6)}.pdf`}
+    className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition"
+    title="Download Invoice"
+  >
+    {({ loading }) => <Download size={16} className={loading ? 'animate-pulse' : ''} />}
+  </PDFDownloadLink>
+));
+
+const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceData }) => {
+  // Logic Scope
+  const isParent = record.is_parent === true;
+  const hasQuantity = record.quantity > 0;
+  const unit = hasQuantity ? 'kg' : 'Crt';
+
+  const totalQty = hasQuantity ? record.quantity : record.carat;
+  const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
+
+  let soldQty = 0;
+  let awaitingQty = 0;
+  let totalSaleAmount = 0;
+  let splits = record.splits || [];
+
+  if (isParent) {
+    soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
+    awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
+    totalSaleAmount = record.aggregated_sale_amount || 0;
+  } else {
+    // Legacy or single record logic
+    const isSold = ['Sold', 'Completed'].includes(record.status);
+    if (isSold) {
+      soldQty = officialQty > 0 ? officialQty : totalQty;
+      totalSaleAmount = record.sale_amount || 0;
+      if (splits.length === 0) {
+        splits = [{
+          qty: soldQty,
+          rate: record.sale_rate,
+          amount: record.sale_amount,
+          date: record.sold_at || record.createdAt
+        }];
+      }
+    }
+    awaitingQty = Math.max(0, totalQty - soldQty);
+  }
+
+  // Correct Status Logic
+  let computedStatus = 'Pending';
+  if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
+  else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+
+  const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
+
+  return (
+    <tr className="hover:bg-gray-50 transition-colors group">
+      {/* Date */}
+      <td className="px-6 py-4 align-top">
+        <div className="text-gray-900 font-medium">{new Date(record.createdAt).toLocaleDateString('en-GB')}</div>
+        <div className="text-xs text-gray-400 mt-1">{formatTime(record.createdAt)}</div>
+      </td>
+
+      {/* Market / Item */}
+      <td className="px-4 py-4 align-top">
+        <div className="text-gray-900 font-bold">{record.vegetable}</div>
+      </td>
+
+      {/* Sales Progress */}
+      <td className="px-6 py-4 align-top">
+        <div className="w-full min-w-[160px]">
+          <div className="flex justify-between text-xs mb-1.5 font-semibold">
+            <span className={soldQty > 0 ? "text-green-600" : "text-gray-400"}>
+              Sold: {parseFloat(soldQty.toFixed(2))} {unit}
+            </span>
+            <span className="text-gray-600">
+              / {parseFloat(totalQty.toFixed(2))} {unit}
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-1.5">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${computedStatus === 'Sold' ? 'bg-green-500' :
+                computedStatus === 'Partial' ? 'bg-blue-500' : 'bg-gray-300'
+                }`}
+              style={{ width: `${progressPercent}%` }}
+            ></div>
+          </div>
+          {awaitingQty > 0.01 && (
+            <p className="text-xs text-amber-600 font-medium">
+              {parseFloat(awaitingQty.toFixed(2))} {unit} remaining
+            </p>
+          )}
+        </div>
+      </td>
+
+      {/* Rate Details */}
+      <td className="px-6 py-4 align-top text-center">
+        {splits.length > 0 ? (
+          <div className="space-y-1.5 inline-flex flex-col items-center">
+            {splits.slice(0, 2).map((s, idx) => (
+              <div key={idx} className="text-xs bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 inline-block">
+                <span className="font-bold text-gray-800">₹{s.rate}</span>
+                <span className="text-gray-400 mx-1">/</span>
+                <span className="text-gray-600">{parseFloat(s.qty.toFixed(1))}{unit}</span>
+              </div>
+            ))}
+            {splits.length > 2 && (
+              <div className="text-xs text-gray-400">+ {splits.length - 2} more</div>
+            )}
+          </div>
+        ) : (
+          <span className="text-gray-300 text-sm">-</span>
+        )}
+      </td>
+
+      {/* Total Amount */}
+      <td className="px-4 py-4 align-middle text-center">
+        <span className={`font-bold ${totalSaleAmount > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+          {totalSaleAmount > 0 ? `₹${totalSaleAmount.toLocaleString('en-IN')}` : '-'}
+        </span>
+      </td>
+
+      {/* Status */}
+      <td className="px-4 py-4 align-middle">
+        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${computedStatus === 'Sold'
+          ? 'bg-green-100 text-green-700 border-green-200'
+          : computedStatus === 'Partial'
+            ? 'bg-blue-100 text-blue-700 border-blue-200'
+            : 'bg-amber-100 text-amber-700 border-amber-200'
+          }`}>
+          {computedStatus === 'Sold' && <CheckCircle size={12} />}
+          {computedStatus === 'Partial' && <Clock size={12} />}
+          {computedStatus === 'Pending' && <Clock size={12} />}
+          {computedStatus}
+        </span>
+      </td>
+
+      {/* Actions */}
+      <td className="px-6 py-4 text-right align-middle">
+        <div className="flex justify-end gap-2 text-right">
+          <DownloadInvoiceButton record={record} getInvoiceData={getInvoiceData} />
+
+          <button
+            onClick={() => handleEditClick(record)}
+            // Can only edit if NO sales have happened yet
+            disabled={soldQty > 0}
+            className={`p-2 rounded-lg transition border ${soldQty > 0
+              ? 'bg-gray-50 text-gray-300 border-transparent cursor-not-allowed'
+              : 'border-gray-200 text-gray-600 hover:bg-green-50 hover:text-green-600 hover:border-green-200'}`}
+            title={soldQty > 0 ? "Cannot edit sold/partial item" : "Edit"}
+          >
+            <Edit size={16} />
+          </button>
+
+          <button
+            onClick={() => initiateDelete(record._id)}
+            disabled={soldQty > 0}
+            className={`p-2 rounded-lg transition border ${soldQty > 0
+              ? 'bg-gray-50 text-gray-300 border-transparent cursor-not-allowed'
+              : 'border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200'}`}
+            title={soldQty > 0 ? "Cannot delete sold/partial item" : "Delete"}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInvoiceData }) => {
+  // Logic Scope
+  const isParent = record.is_parent === true;
+  const hasQuantity = record.quantity > 0;
+  const unit = hasQuantity ? 'kg' : 'Crt';
+
+  const totalQty = hasQuantity ? record.quantity : record.carat;
+  const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
+
+  let soldQty = 0;
+  let awaitingQty = 0;
+  let totalSaleAmount = 0;
+  let splits = record.splits || [];
+
+  if (isParent) {
+    soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
+    awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
+    totalSaleAmount = record.aggregated_sale_amount || 0;
+  } else {
+    // Legacy or single record logic
+    const isSold = ['Sold', 'Completed'].includes(record.status);
+    if (isSold) {
+      soldQty = officialQty > 0 ? officialQty : totalQty;
+      totalSaleAmount = record.sale_amount || 0;
+      if (splits.length === 0) {
+        splits = [{
+          qty: soldQty,
+          rate: record.sale_rate,
+          amount: record.sale_amount,
+          date: record.sold_at || record.createdAt
+        }];
+      }
+    }
+    awaitingQty = Math.max(0, totalQty - soldQty);
+  }
+
+  // Correct Status Logic
+  let computedStatus = 'Pending';
+  if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
+  else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+
+  const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
+
+  return (
+    <div className="p-4 hover:bg-gray-50 transition-colors group">
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <div className="font-bold text-gray-900 text-lg">{record.vegetable}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{new Date(record.createdAt).toLocaleDateString('en-GB')} at {formatTime(record.createdAt)}</div>
+        </div>
+        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${computedStatus === 'Sold'
+          ? 'bg-green-100 text-green-700 border-green-200'
+          : computedStatus === 'Partial'
+            ? 'bg-blue-100 text-blue-700 border-blue-200'
+            : 'bg-amber-100 text-amber-700 border-amber-200'
+          }`}>
+          {computedStatus === 'Sold' && <CheckCircle size={12} />}
+          {computedStatus === 'Partial' && <Clock size={12} />}
+          {computedStatus === 'Pending' && <Clock size={12} />}
+          {computedStatus}
+        </span>
+      </div>
+
+      {/* Progress Bar Section */}
+      <div className="mb-4">
+        <div className="flex justify-between text-xs mb-1.5 font-medium">
+          <span className={soldQty > 0 ? "text-green-700" : "text-gray-500"}>
+            Sold: {parseFloat(soldQty.toFixed(2))} {unit}
+          </span>
+          <span className="text-gray-900">
+            Total: {parseFloat(totalQty.toFixed(2))} {unit}
+          </span>
+        </div>
+        <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${computedStatus === 'Sold' ? 'bg-green-500' :
+              computedStatus === 'Partial' ? 'bg-blue-500' : 'bg-amber-400'
+              }`}
+            style={{ width: `${progressPercent}%` }}
+          ></div>
+        </div>
+        {awaitingQty > 0.01 && (
+          <p className="text-[10px] text-amber-600 mt-1 font-medium text-right">
+            {parseFloat(awaitingQty.toFixed(2))} {unit} remaining
+          </p>
+        )}
+      </div>
+
+      {/* Sale Details (Collapsible-ish feel) */}
+      <div className="space-y-2 bg-gray-50 rounded-xl p-3 border border-gray-100 mb-3">
+        <div className="flex justify-between items-center pb-2 border-b border-gray-200">
+          <span className="text-xs font-semibold text-gray-500 uppercase">Revenue</span>
+          <span className="text-sm font-bold text-gray-900">₹{totalSaleAmount.toLocaleString('en-IN')}</span>
+        </div>
+
+        {splits.length > 0 ? (
+          <div className="space-y-1.5 pt-1">
+            {splits.map((split, idx) => (
+              <div key={idx} className="flex justify-between text-xs text-gray-600">
+                <span>
+                  {parseFloat(split.qty.toFixed(2))} {unit}
+                  <span className="text-gray-400 mx-1">×</span>
+                  ₹{split.rate}
+                </span>
+                <span className="font-medium">₹{split.amount.toLocaleString('en-IN')}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="pt-1 text-center text-xs text-gray-400 italic">
+            No sales yet
+          </div>
+        )}
+      </div>
+
+
+
+      {/* Actions */}
+      <div className="flex gap-2 border-t border-gray-100 pt-3">
+        <div className="flex-1">
+          <DownloadInvoiceButton record={record} getInvoiceData={getInvoiceData} />
+        </div>
+
+        <button
+          onClick={() => handleEditClick(record)}
+          disabled={soldQty > 0}
+          className={`p-2 rounded-lg flex items-center justify-center ${soldQty > 0
+            ? 'bg-gray-100 text-gray-300'
+            : 'bg-white border border-gray-200 text-gray-600 shadow-sm'
+            }`}
+        >
+          <Edit size={16} />
+        </button>
+
+        <button
+          onClick={() => initiateDelete(record._id)}
+          disabled={soldQty > 0}
+          className={`p-2 rounded-lg flex items-center justify-center ${soldQty > 0
+            ? 'bg-gray-100 text-gray-300'
+            : 'bg-red-50 text-red-600 border border-red-100'
+            }`}
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+  );
+});
 
 export default FarmerDashboard;

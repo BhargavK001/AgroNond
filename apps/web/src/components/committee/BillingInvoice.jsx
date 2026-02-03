@@ -1,7 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 
-// Register Noto Sans Devanagari with LOCAL font files for Marathi text support
-// These files are in public/fonts/ directory
 Font.register({
     family: 'NotoSansDevanagari',
     fonts: [
@@ -400,10 +398,10 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
     const status = data.status || 'Pending';
     const isPaid = status.toLowerCase() === 'paid';
 
-    // Committee info
+    // Committee info - Updated Address
     const committee = {
-        name: 'APMC Market Committee',
-        location: 'Tasgaon, Sangli, Maharashtra - 416312',
+        name: 'AgroNond Market Committee',
+        location: 'Kothrud, Maharashtra - 411038',
         phone: '+91 94205 30466',
         email: 'committee@agronond.com',
     };
