@@ -102,10 +102,13 @@ const SoldRecordCard = ({ record, farmerName }) => {
     awaitingQty = Math.max(0, totalQty - soldQty);
   }
 
-  // Correct Status Logic
-  let computedStatus = 'Pending';
-  if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-  else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+  // Correct Status Logic - Use backend's display_status when available
+  let computedStatus = record.display_status || 'Pending';
+  // Fallback computation if display_status not provided
+  if (!record.display_status) {
+    if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
+    else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+  }
 
   const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
 
@@ -140,7 +143,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
     // If Sold -> Full (entire lot sold)
     // If Partial -> Partial (some remaining)
     // If Pending -> Pending
-    status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
+    status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : (computedStatus === 'WeightPending' ? 'WeightPending' : 'Pending')),
     type: 'pay'
   };
 
@@ -159,9 +162,13 @@ const SoldRecordCard = ({ record, farmerName }) => {
             ? 'bg-green-100 text-green-700 border-green-200'
             : computedStatus === 'Partial'
               ? 'bg-blue-100 text-blue-700 border-blue-200'
-              : 'bg-amber-100 text-amber-700 border-amber-200'
+              : computedStatus === 'WeightPending'
+                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
             }`}>
-            {computedStatus === 'Sold' ? 'PAYMENT RECEIVED' : `${computedStatus} PAYMENT`}
+            {computedStatus === 'Sold' ? 'PAYMENT RECEIVED' :
+              computedStatus === 'WeightPending' ? 'WEIGHT PENDING' :
+                `${computedStatus} PAYMENT`}
           </div>
         </div>
 
@@ -205,7 +212,8 @@ const SoldRecordCard = ({ record, farmerName }) => {
             <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
                 className={`h-full rounded-full ${computedStatus === 'Sold' ? 'bg-green-500' :
-                  computedStatus === 'Partial' ? 'bg-blue-500' : 'bg-gray-300'
+                  computedStatus === 'Partial' ? 'bg-blue-500' :
+                    computedStatus === 'WeightPending' ? 'bg-amber-500' : 'bg-gray-300'
                   }`}
                 style={{ width: `${progressPercent}%` }}
               ></div>
