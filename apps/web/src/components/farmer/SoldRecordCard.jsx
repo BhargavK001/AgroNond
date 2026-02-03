@@ -168,7 +168,14 @@ const SoldRecordCard = ({ record, farmerName }) => {
         <div className="p-5 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
+              <h3 className="text-lg font-bold text-gray-900">
+                {record.vegetable.split(' (')[0]}
+                {record.vegetable.includes(' (') && (
+                  <span className="block text-base font-bold text-gray-600 font-hindi">
+                    ({record.vegetable.split(' (')[1]}
+                  </span>
+                )}
+              </h3>
               <div className="text-sm text-gray-500 mt-1">
                 {soldQty > 0 ? (
                   <span>{parseFloat(soldQty.toFixed(2))} {unit} × ₹{parseFloat(avgRate)}/{unit}</span>

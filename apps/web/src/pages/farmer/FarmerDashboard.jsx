@@ -718,7 +718,7 @@ const FarmerDashboard = () => {
     fetchRecords(true, 1, status); // Reset to page 1 on filter
   };
 
-  const soldRecords = records.filter(r => ['Sold', 'Completed'].includes(r.display_status || r.status));
+  const soldRecords = records.filter(r => ['Sold', 'Completed', 'Partial'].includes(r.display_status || r.status));
   const pendingRecords = records.filter(r => (r.display_status || r.status) === 'Pending');
 
   // We no longer client-side sort or filter the main list, as the backend does it.
