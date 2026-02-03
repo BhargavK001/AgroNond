@@ -648,7 +648,8 @@ const FarmerDashboard = () => {
         setRecords(data.records);
         setPagination(prev => ({
           ...prev,
-          ...data.pagination
+          ...data.pagination,
+          page: data.pagination.currentPage || data.pagination.page || prev.page
         }));
       } else {
         // Fallback if backend response structure varies/fails
@@ -717,7 +718,7 @@ const FarmerDashboard = () => {
     fetchRecords(true, 1, status); // Reset to page 1 on filter
   };
 
-  const soldRecords = records.filter(r => ['Sold', 'Completed'].includes(r.display_status || r.status));
+  const soldRecords = records.filter(r => ['Sold', 'Completed', 'Partial'].includes(r.display_status || r.status));
   const pendingRecords = records.filter(r => (r.display_status || r.status) === 'Pending');
 
   // We no longer client-side sort or filter the main list, as the backend does it.
@@ -903,20 +904,38 @@ const FarmerDashboard = () => {
     const commission = record.farmer_commission || (totalSaleAmount * 0.04);
     const netPayable = Math.max(0, totalSaleAmount - commission);
 
+    // Get farmer name from populated data or fallback to profile
+    const farmerName = record.farmer_id?.full_name || profile.name || 'Farmer';
+
+    // Get actual sale rate (use avg rate for parent records with splits)
+    let saleRate = 0;
+    if (isParent && record.aggregated_avg_rate) {
+      saleRate = record.aggregated_avg_rate;
+    } else if (isParent && record.splits?.length > 0 && soldQty > 0) {
+      // Calculate weighted average rate from splits
+      saleRate = totalSaleAmount / soldQty;
+    } else {
+      saleRate = record.sale_rate || 0;
+    }
+
     return {
       id: record._id || record.id || 'N/A',
       date: (record.sold_at || record.createdAt),
-      name: profile.name || 'Farmer',
+      name: farmerName,
       crop: record.vegetable,
       qty: hasQuantity ? soldQty : 0,
       carat: !hasQuantity ? soldQty : 0,
+      rate: saleRate,
+      splits: record.splits || [], // Pass splits for multi-row PDF display
       baseAmount: totalSaleAmount,
       commission: commission,
       finalAmount: netPayable,
-      status: computedStatus === 'Sold' ? 'Paid' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
+      status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
       type: 'pay'
     };
   };
+
+
 
   const saveProfile = () => {
     const initials = profileForm.name.slice(0, 2).toUpperCase() || 'FK';
@@ -1122,7 +1141,7 @@ const FarmerDashboard = () => {
             <div className="flex w-full sm:w-auto gap-3">
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => handleFilterChange(e.target.value)}
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 text-sm"
               >
                 <option>All</option>

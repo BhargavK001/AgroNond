@@ -112,44 +112,39 @@ const SoldRecordCard = ({ record, farmerName }) => {
   // Avg Rate
   const avgRate = soldQty > 0 ? (totalSaleAmount / soldQty).toFixed(1) : 0;
 
-  // ── Commission: based on ACTUAL sold amount (totalSaleAmount already reflects soldQty) ──
-  //    So for Partial sales this is correctly the commission on what was actually sold.
+  // Commission (Est. 4% of total sale amount)
   const estimatedCommission = record.farmer_commission || (totalSaleAmount * 0.04);
   const netPayable = Math.max(0, totalSaleAmount - estimatedCommission);
 
   const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
+  const isPaid = computedStatus === 'Sold'; // Strictly used for UI color toggling if needed
 
-  // ── Invoice Data passed to BillingInvoice ──
+  // Get farmer name from record or prop
+  const actualFarmerName = record.farmer_id?.full_name || farmerName || 'Farmer';
+
+  // Invoice Data
   const invoiceData = {
     id: record._id || record.id || 'N/A',
     date: date.toISOString(),
-
-    // ① Farmer name — fetched from backend and passed as prop; falls back to 'Unknown Farmer'
-    name: farmerName || 'Unknown Farmer',
-
+    name: actualFarmerName,
     crop: record.vegetable,
-
-    // Quantities: only the SOLD portion goes on the invoice
+    // Use actual sold quantities
     qty: hasQuantity ? soldQty : 0,
     carat: !hasQuantity ? soldQty : 0,
-
-    // ② Amounts — already driven by soldQty, so partial payments are reflected correctly
-    baseAmount: totalSaleAmount,          // gross amount of what was actually sold
-    commission: estimatedCommission,      // 4 % of actual sold amount
-    finalAmount: netPayable,               // baseAmount − commission
-
-    // ③ Splits array — passed through so BillingInvoice can render "Rate Details" column
-    //    Each split: { qty, rate, amount }
-    splits: splits,
-
-    // ④ Status: maps computedStatus → invoice status label
-    //    "Sold"    → "Paid"
-    //    "Partial" → "Partial"   (will render in BLUE in the PDF)
-    //    "Pending" → "Pending"
-    status: computedStatus === 'Sold' ? 'Paid' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
-
+    rate: parseFloat(avgRate) || 0,
+    splits: splits || [], // Pass splits for multi-row PDF display
+    baseAmount: totalSaleAmount,
+    commission: estimatedCommission,
+    finalAmount: netPayable,
+    // Invoice status logic:
+    // If Sold -> Full (entire lot sold)
+    // If Partial -> Partial (some remaining)
+    // If Pending -> Pending
+    status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
     type: 'pay'
   };
+
+
 
   return (
     <>
@@ -173,11 +168,11 @@ const SoldRecordCard = ({ record, farmerName }) => {
         <div className="p-5 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 flex flex-col">
-                <span>{record.vegetable?.split('(')[0].trim()}</span>
-                {record.vegetable?.includes('(') && (
-                  <span className="text-lg font-bold text-gray-900">
-                    ({record.vegetable.split('(')[1]}
+              <h3 className="text-lg font-bold text-gray-900">
+                {record.vegetable.split(' (')[0]}
+                {record.vegetable.includes(' (') && (
+                  <span className="block text-base font-bold text-gray-600 font-hindi">
+                    ({record.vegetable.split(' (')[1]}
                   </span>
                 )}
               </h3>
@@ -227,7 +222,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
               <span>Commission ({totalSaleAmount > 0 ? ((estimatedCommission / totalSaleAmount) * 100).toFixed(1) : 0}%)</span>
               <span className="font-medium">- ₹{estimatedCommission.toLocaleString('en-IN')}</span>
             </div>
-            {computedStatus === 'Sold' && record.farmer_payment_mode && (
+            {isPaid && record.farmer_payment_mode && (
               <div className="flex justify-between items-center text-gray-500 pt-2 border-t border-gray-200 mt-2">
                 <span>Paid via:</span>
                 <span className="font-medium text-gray-700 max-w-[150px] truncate">{record.farmer_payment_mode}</span>

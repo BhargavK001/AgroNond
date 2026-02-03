@@ -473,9 +473,18 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
     const commission = data.commission || 0;
     const finalAmount = data.finalAmount || data.netAmount || baseAmount;
 
-    // ── Rate details: splits array lets us show "₹40 for 40 kg" lines ──
-    //    If splits are passed we render each; otherwise fall back to single calc.
-    const splits = data.splits || [];   // [{ qty, rate, amount }]
+    // Calculate rate - use provided rate or calculate as fallback
+    let rate = data.rate || 0;
+    let rateUnit = hasQuantity ? 'kg' : 'Crt';
+
+    // Fallback calculation if rate not provided
+    if (rate === 0 && baseAmount > 0) {
+        if (hasQuantity && quantity > 0) {
+            rate = baseAmount / quantity;
+        } else if (hasCarat && carat > 0) {
+            rate = baseAmount / carat;
+        }
+    }
 
     const rateDetailsLines = (() => {
         if (splits.length > 0) {
@@ -582,52 +591,55 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                         <Text style={[styles.th, styles.thStatus]}>Status</Text>
                     </View>
 
-                    {/* Data row */}
-                    <View style={styles.tableRow}>
-                        {/* Crop name — supports Devanagari */}
-                        <Text style={[styles.td, styles.tdCrop]}>
-                            {data.crop || 'Unknown Crop'}
-                        </Text>
+                    {/* Check if we have splits data for multiple rows */}
+                    {data.splits && data.splits.length > 1 ? (
+                        // Render individual rows for each split
+                        data.splits.map((split, index) => {
+                            const splitQty = split.qty || split.quantity || 0;
+                            const splitCarat = split.carat || 0;
+                            const splitRate = split.rate || 0;
+                            const splitAmount = split.amount || (splitQty * splitRate);
+                            const splitUnit = splitQty > 0 ? 'kg' : 'Crt';
+                            const displayQty = splitQty > 0 ? splitQty : splitCarat;
 
-                        {/* Quantity */}
-                        <Text style={[styles.td, styles.tdQty]}>
-                            {getQuantityDisplay()}
-                        </Text>
-
-                        {/* Rate Details — one line per split, matching Sales Records UI */}
-                        <View style={styles.tdRateDetails}>
-                            {rateDetailsLines.map((line, i) => (
-                                <Text key={i} style={{ fontSize: 8.5, color: colors.textMedium, lineHeight: 1.7 }}>
-                                    {line}
-                                </Text>
-                            ))}
+                            return (
+                                <View style={styles.tableRow} key={index}>
+                                    <Text style={[styles.td, styles.tdCrop]}>
+                                        {index === 0 ? (data.crop || 'Unknown Crop') : ''}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdCenter]}>
+                                        {formatNumber(displayQty)} {splitUnit}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdCenter]}>
+                                        {formatCurrency(splitRate.toFixed(2))}/{splitUnit}
+                                    </Text>
+                                    <Text style={[styles.td, styles.tdRight]}>
+                                        {formatCurrency(splitAmount)}
+                                    </Text>
+                                </View>
+                            );
+                        })
+                    ) : (
+                        // Single row for non-split records
+                        <View style={styles.tableRow}>
+                            <Text style={[styles.td, styles.tdCrop]}>
+                                {data.crop || 'Unknown Crop'}
+                            </Text>
+                            <Text style={[styles.td, styles.tdCenter]}>
+                                {getQuantityDisplay()}
+                            </Text>
+                            <Text style={[styles.td, styles.tdCenter]}>
+                                {formatCurrency(rate.toFixed(2))}/{rateUnit}
+                            </Text>
+                            <Text style={[styles.td, styles.tdRight]}>
+                                {formatCurrency(baseAmount)}
+                            </Text>
                         </View>
-
-                        {/* Total Amount (gross / base amount for this record) */}
-                        <Text style={[styles.td, styles.tdTotalAmount]}>
-                            {formatCurrency(baseAmount)}
-                        </Text>
-
-                        {/* Status badge — blue for Partial, green for Sold/Paid, amber for Pending */}
-                        <View style={styles.tdStatus}>
-                            <View style={[
-                                styles.statusBadgeInline,
-                                {
-                                    backgroundColor: statusColors.bg,
-                                    borderWidth: 1,
-                                    borderColor: statusColors.border,
-                                }
-                            ]}>
-                                <Text style={[styles.statusTextInline, { color: statusColors.text }]}>
-                                    {status.toUpperCase()}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
+                    )}
                 </View>
 
-                {/* ─── Totals Section ─── */}
-                {/* baseAmount & commission already reflect actual sold qty (even partial) */}
+
+                {/* Totals Section */}
                 <View style={styles.totalsSection}>
                     <View style={styles.totalRow}>
                         <Text style={styles.totalLabel}>Subtotal (Base Amount)</Text>

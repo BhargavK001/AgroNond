@@ -67,8 +67,8 @@ export default function LilavEntry() {
                 api.get('/api/daily-rates/today')
             ]);
 
-            setFarmers(farmersRes || []);
-            setTraders(tradersRes || []);
+            setFarmers(farmersRes?.data || farmersRes || []);
+            setTraders(tradersRes?.data || tradersRes || []);
             setDailyRates(ratesRes || []);
         } catch (error) {
             console.error('Error fetching data:', error);
