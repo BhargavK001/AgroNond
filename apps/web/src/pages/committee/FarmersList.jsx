@@ -1,60 +1,96 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
-import { Search, Filter, Phone, Plus, Users } from 'lucide-react';
+import { Search, Filter, Phone, Plus, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import AddFarmerModal from '../../components/committee/AddFarmerModal';
-import FarmerDetailsModal from '../../components/committee/FarmerDetailsModal'; // New Import
+import FarmerDetailsModal from '../../components/committee/FarmerDetailsModal';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function FarmersList() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [farmers, setFarmers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // New State for Details Modal
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 25;
+
+  // Details Modal state
   const [selectedFarmer, setSelectedFarmer] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-  // Fetch farmers from API
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch farmers from API with pagination
   const fetchFarmers = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
-      const response = await api.get('/api/users?role=farmer');
-      setFarmers(response || []);
+      const params = {
+        role: 'farmer',
+        page: currentPage,
+        limit: pageSize,
+      };
+
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+
+      const response = await api.get('/api/users', { params: new URLSearchParams(params).toString() });
+
+      // Handle paginated response
+      if (response.data) {
+        setFarmers(response.data || []);
+        setTotalPages(response.totalPages || 1);
+        setTotalCount(response.total || 0);
+      } else {
+        // Fallback for non-paginated response
+        setFarmers(response || []);
+        setTotalCount(response?.length || 0);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Failed to fetch farmers:', error);
       if (showLoading) toast.error('Failed to load farmers');
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, []);
+  }, [currentPage, debouncedSearch]);
 
   useEffect(() => {
     fetchFarmers();
   }, [fetchFarmers]);
 
-  // ✅ Auto-refresh farmers every 30 seconds
+  // Auto-refresh farmers every 30 seconds
   useAutoRefresh(() => fetchFarmers(false), { interval: 30000 });
-
-  const filteredFarmers = farmers.filter(farmer => {
-    const matchesSearch =
-      (farmer.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (farmer.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (farmer.phone || '').includes(searchTerm);
-    return matchesSearch;
-  });
 
   const handleAddFarmer = (newFarmer) => {
     setFarmers(prev => [newFarmer, ...prev]);
+    setTotalCount(prev => prev + 1);
   };
 
   const handleFarmerClick = (farmer) => {
     setSelectedFarmer(farmer);
     setIsDetailsModalOpen(true);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
   };
 
   return (
@@ -152,7 +188,7 @@ export default function FarmersList() {
           className="bg-emerald-50 rounded-xl p-4 border border-emerald-100"
         >
           <p className="text-xs text-emerald-600 font-medium uppercase">Total Farmers</p>
-          <p className="text-2xl font-bold text-emerald-700">{farmers.length}</p>
+          <p className="text-2xl font-bold text-emerald-700">{totalCount}</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -160,7 +196,7 @@ export default function FarmersList() {
           transition={{ delay: 0.2 }}
           className="bg-blue-50 rounded-xl p-4 border border-blue-100"
         >
-          <p className="text-xs text-blue-600 font-medium uppercase">Registered</p>
+          <p className="text-xs text-blue-600 font-medium uppercase">On This Page</p>
           <p className="text-2xl font-bold text-blue-700">{farmers.length}</p>
         </motion.div>
         <motion.div
@@ -169,8 +205,8 @@ export default function FarmersList() {
           transition={{ delay: 0.25 }}
           className="bg-purple-50 rounded-xl p-4 border border-purple-100"
         >
-          <p className="text-xs text-purple-600 font-medium uppercase">Active</p>
-          <p className="text-2xl font-bold text-purple-700">{farmers.length}</p>
+          <p className="text-xs text-purple-600 font-medium uppercase">Page</p>
+          <p className="text-2xl font-bold text-purple-700">{currentPage} / {totalPages}</p>
         </motion.div>
       </div>
 
@@ -182,7 +218,7 @@ export default function FarmersList() {
       )}
 
       {/* Empty State */}
-      {!isLoading && filteredFarmers.length === 0 && (
+      {!isLoading && farmers.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -205,7 +241,7 @@ export default function FarmersList() {
       )}
 
       {/* Farmers Table - Desktop */}
-      {!isLoading && filteredFarmers.length > 0 && (
+      {!isLoading && farmers.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -223,12 +259,9 @@ export default function FarmersList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredFarmers.map((farmer, index) => (
-                <motion.tr
+              {farmers.map((farmer) => (
+                <tr
                   key={farmer._id || farmer.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + index * 0.03 }}
                   onClick={() => handleFarmerClick(farmer)}
                   className="hover:bg-slate-50/50 transition-colors cursor-pointer"
                 >
@@ -255,22 +288,71 @@ export default function FarmersList() {
                   <td className="px-6 py-4 text-right text-sm text-slate-500">
                     {farmer.createdAt ? new Date(farmer.createdAt).toLocaleDateString() : '-'}
                   </td>
-                </motion.tr>
+                </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Pagination Footer */}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+            <p className="text-sm text-slate-500">
+              Page {currentPage} of {totalPages} ({totalCount} total)
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1">
+                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
+                          ? 'bg-emerald-600 text-white'
+                          : 'hover:bg-slate-100 text-slate-600'
+                        }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </motion.div>
       )}
 
       {/* Farmers Cards - Mobile */}
-      {!isLoading && filteredFarmers.length > 0 && (
+      {!isLoading && farmers.length > 0 && (
         <div className="md:hidden space-y-3">
-          {filteredFarmers.map((farmer, index) => (
+          {farmers.map((farmer) => (
             <motion.div
               key={farmer._id || farmer.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + index * 0.05 }}
               onClick={() => handleFarmerClick(farmer)}
               className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
             >
@@ -297,6 +379,27 @@ export default function FarmersList() {
               </div>
             </motion.div>
           ))}
+
+          {/* Mobile Pagination */}
+          <div className="flex items-center justify-between px-2 py-3">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg bg-slate-100 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-slate-500">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 

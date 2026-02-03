@@ -6,11 +6,11 @@ const router = express.Router();
 
 /**
  * GET /api/users
- * Get all users (with optional filtering)
+ * Get all users (with optional filtering and pagination)
  */
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { role, search } = req.query;
+    const { role, search, page = 1, limit = 50 } = req.query;
 
     // Build query
     const query = {};
@@ -29,11 +29,28 @@ router.get('/', requireAuth, async (req, res) => {
       ];
     }
 
-    const users = await User.find(query)
-      .select('-password') // Exclude password
-      .sort({ createdAt: -1 }); // Newest first
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const skip = (pageNum - 1) * limitNum;
 
-    res.json(users);
+    // Execute query with pagination
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      User.countDocuments(query)
+    ]);
+
+    // Return paginated response
+    res.json({
+      data: users,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      hasMore: pageNum * limitNum < total
+    });
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
