@@ -112,12 +112,12 @@ const SoldRecordCard = ({ record, farmerName }) => {
   // Avg Rate
   const avgRate = soldQty > 0 ? (totalSaleAmount / soldQty).toFixed(1) : 0;
 
-  // Commission (Est. 4% of total sale amount)
+  // ── Commission: based on ACTUAL sold amount (totalSaleAmount already reflects soldQty) ──
+  //    So for Partial sales this is correctly the commission on what was actually sold.
   const estimatedCommission = record.farmer_commission || (totalSaleAmount * 0.04);
   const netPayable = Math.max(0, totalSaleAmount - estimatedCommission);
 
   const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
-  const isPaid = computedStatus === 'Sold'; // Strictly used for UI color toggling if needed
 
   // Get farmer name from record or prop
   const actualFarmerName = record.farmer_id?.full_name || farmerName || 'Farmer';
@@ -128,7 +128,8 @@ const SoldRecordCard = ({ record, farmerName }) => {
     date: date.toISOString(),
     name: actualFarmerName,
     crop: record.vegetable,
-    // Use actual sold quantities
+
+    // Quantities: only the SOLD portion goes on the invoice
     qty: hasQuantity ? soldQty : 0,
     carat: !hasQuantity ? soldQty : 0,
     rate: parseFloat(avgRate) || 0,
@@ -168,7 +169,14 @@ const SoldRecordCard = ({ record, farmerName }) => {
         <div className="p-5 flex-1 flex flex-col">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">{record.vegetable}</h3>
+              <h3 className="text-lg font-bold text-gray-900 flex flex-col">
+                <span>{record.vegetable?.split('(')[0].trim()}</span>
+                {record.vegetable?.includes('(') && (
+                  <span className="text-lg font-bold text-gray-900">
+                    ({record.vegetable.split('(')[1]}
+                  </span>
+                )}
+              </h3>
               <div className="text-sm text-gray-500 mt-1">
                 {soldQty > 0 ? (
                   <span>{parseFloat(soldQty.toFixed(2))} {unit} × ₹{parseFloat(avgRate)}/{unit}</span>
@@ -215,7 +223,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
               <span>Commission ({totalSaleAmount > 0 ? ((estimatedCommission / totalSaleAmount) * 100).toFixed(1) : 0}%)</span>
               <span className="font-medium">- ₹{estimatedCommission.toLocaleString('en-IN')}</span>
             </div>
-            {isPaid && record.farmer_payment_mode && (
+            {computedStatus === 'Sold' && record.farmer_payment_mode && (
               <div className="flex justify-between items-center text-gray-500 pt-2 border-t border-gray-200 mt-2">
                 <span>Paid via:</span>
                 <span className="font-medium text-gray-700 max-w-[150px] truncate">{record.farmer_payment_mode}</span>
