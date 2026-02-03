@@ -842,18 +842,49 @@ const FarmerDashboard = () => {
 
   // Helper to create invoice data for PDFDownloadLink
   const getInvoiceData = (record) => {
-    const date = record.sold_at || record.createdAt;
+    // Logic Scope
+    const isParent = record.is_parent === true;
+    const hasQuantity = record.quantity > 0;
+
+    const totalQty = hasQuantity ? record.quantity : record.carat;
+    const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
+
+    let soldQty = 0;
+    let awaitingQty = 0;
+    let totalSaleAmount = 0;
+
+    if (isParent) {
+      soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
+      awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
+      totalSaleAmount = record.aggregated_sale_amount || 0;
+    } else {
+      const isSold = ['Sold', 'Completed'].includes(record.status);
+      if (isSold) {
+        soldQty = officialQty > 0 ? officialQty : totalQty;
+        totalSaleAmount = record.sale_amount || 0;
+      }
+      awaitingQty = Math.max(0, totalQty - soldQty);
+    }
+
+    // Status Logic
+    let computedStatus = 'Pending';
+    if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
+    else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+
+    const commission = record.farmer_commission || (totalSaleAmount * 0.04);
+    const netPayable = Math.max(0, totalSaleAmount - commission);
+
     return {
       id: record._id || record.id || 'N/A',
-      date: date,
+      date: (record.sold_at || record.createdAt),
       name: profile.name || 'Farmer',
       crop: record.vegetable,
-      qty: record.quantity || record.official_qty || 0,
-      carat: record.carat || record.official_carat || 0,
-      baseAmount: record.sale_amount || (record.rate * record.quantity) || 0,
-      commission: record.farmer_commission || 0,
-      finalAmount: record.net_payable_to_farmer || 0,
-      status: record.farmer_payment_status || 'Pending',
+      qty: hasQuantity ? soldQty : 0,
+      carat: !hasQuantity ? soldQty : 0,
+      baseAmount: totalSaleAmount,
+      commission: commission,
+      finalAmount: netPayable,
+      status: computedStatus === 'Sold' ? 'Paid' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
       type: 'pay'
     };
   };
@@ -910,7 +941,7 @@ const FarmerDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {soldRecords.map(record => (
-                <SoldRecordCard key={record._id} record={record} />
+                <SoldRecordCard key={record._id} record={record} farmerName={profile.name} />
               ))}
             </div>
           )}
