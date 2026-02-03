@@ -394,7 +394,7 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
     if (!data) return null;
 
     const isFarmer = type === 'farmer';
-    const title = isFarmer ? 'PAYMENT ADVICE' : 'RECEIPT';
+    const title = isFarmer ? 'PAYMENT INVOICE' : 'RECEIPT';
     const status = data.status || 'Pending';
     const isPaid = status.toLowerCase() === 'paid';
 
@@ -565,13 +565,23 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                     {/* Status Badge */}
                     <View style={[
                         styles.statusBadge,
-                        { backgroundColor: isPaid ? colors.paidBg : colors.pendingBg }
+                        {
+                            backgroundColor:
+                                isPaid ? colors.paidBg :
+                                    status.toLowerCase() === 'partial' ? colors.primaryLighter :
+                                        colors.pendingBg
+                        }
                     ]}>
                         <Text style={[
                             styles.statusText,
-                            { color: isPaid ? colors.paidText : colors.pendingText }
+                            {
+                                color:
+                                    isPaid ? colors.paidText :
+                                        status.toLowerCase() === 'partial' ? colors.primary :
+                                            colors.pendingText
+                            }
                         ]}>
-                            {isPaid ? 'PAID' : 'PENDING'}
+                            {status.toUpperCase()}
                         </Text>
                     </View>
                 </View>
