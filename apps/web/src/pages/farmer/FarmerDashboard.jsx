@@ -5,7 +5,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import api from '../../lib/api';
 import { MARKET_CONFIG } from '../../config/market';
 import SoldRecordCard from '../../components/farmer/SoldRecordCard';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { pdf, PDFDownloadLink } from '@react-pdf/renderer';
 import BillingInvoice from '../../components/committee/BillingInvoice';
 import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
@@ -1517,16 +1517,43 @@ const FarmerDashboard = () => {
 const formatTime = (date) => new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
 // --- MEMOIZED COMPONENTS ---
-const DownloadInvoiceButton = memo(({ record, getInvoiceData }) => (
-  <PDFDownloadLink
-    document={<BillingInvoice data={getInvoiceData(record)} type="farmer" />}
-    fileName={`invoice-${record._id.slice(-6)}.pdf`}
-    className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition"
-    title="Download Invoice"
-  >
-    {({ loading }) => <Download size={16} className={loading ? 'animate-pulse' : ''} />}
-  </PDFDownloadLink>
-));
+const DownloadInvoiceButton = memo(({ record, getInvoiceData }) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleDownload = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    try {
+      const invoiceData = getInvoiceData(record);
+      const doc = <BillingInvoice data={invoiceData} type="farmer" />;
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice-${record._id.slice(-6)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      toast.error('Failed to generate invoice');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleDownload}
+      disabled={isGenerating}
+      className={`p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 hover:bg-blue-100 transition ${isGenerating ? 'opacity-50 cursor-wait' : ''}`}
+      title="Download Invoice"
+    >
+      <Download size={16} className={isGenerating ? 'animate-pulse' : ''} />
+    </button>
+  );
+});
 
 const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceData }) => {
   // Logic Scope
