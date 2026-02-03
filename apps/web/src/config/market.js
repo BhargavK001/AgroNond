@@ -1,11 +1,3 @@
-/**
- * Market Committee Configuration
- * 
- * This is the centralized market committee that all users (farmers, traders, 
- * lilav, weight staff, committee users) belong to.
- * 
- * Change the MARKET_NAME below to configure your market committee's name.
- */
 
 export const MARKET_CONFIG = {
     // The official name of your market committee
