@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Package, Download, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { pdf } from '@react-pdf/renderer';
-import TransactionInvoice from './TransactionInvoice';
+import BillingInvoice from '../../components/committee/BillingInvoice';
+
 
 export default function TransactionDetailsModal({ transaction, onClose }) {
     const [isDownloading, setIsDownloading] = useState(false);
@@ -13,11 +14,37 @@ export default function TransactionDetailsModal({ transaction, onClose }) {
     const handleDownloadPDF = async () => {
         setIsDownloading(true);
         try {
-            const blob = await pdf(<TransactionInvoice transaction={transaction} />).toBlob();
+            // Get trader profile for name
+            let traderName = 'Trader';
+            try {
+                const storedProfile = localStorage.getItem('trader-profile');
+                if (storedProfile) {
+                    const profile = JSON.parse(storedProfile);
+                    traderName = profile.business_name || profile.full_name || 'Trader';
+                }
+            } catch (e) {
+                console.warn('Could not load trader profile');
+            }
+
+            // Map data for BillingInvoice
+            const invoiceData = {
+                id: transaction.id || transaction._id,
+                date: transaction.date,
+                name: traderName,
+                crop: transaction.crop,
+                qty: transaction.quantity || 0,
+                carat: transaction.carat || transaction.official_carat || 0,
+                baseAmount: transaction.grossAmount || 0,
+                commission: transaction.commission || 0,
+                finalAmount: transaction.totalCost || 0,
+                status: (transaction.paymentStatus || '').toLowerCase() === 'paid' ? 'Paid' : 'Pending',
+                type: 'receive'
+            };
+
+            const blob = await pdf(<BillingInvoice data={invoiceData} type="trader" />).toBlob();
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            // Removed Lot ID from filename
             link.download = `Invoice_${new Date(transaction.date).toISOString().split('T')[0]}.pdf`;
             document.body.appendChild(link);
             link.click();

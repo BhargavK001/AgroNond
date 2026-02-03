@@ -19,7 +19,7 @@ import { pdf } from '@react-pdf/renderer';
 import { api } from '../../lib/api';
 import { exportToCSV } from '../../lib/csvExport';
 import TransactionDetailsModal from '../../components/trader/TransactionDetailsModal';
-import TransactionInvoice from '../../components/trader/TransactionInvoice';
+import BillingInvoice from '../../components/committee/BillingInvoice';
 import toast from 'react-hot-toast';
 
 const cropsList = ['All Crops', 'Tomatoes', 'Onions', 'Potatoes', 'Cabbage', 'Brinjal', 'Cauliflower', 'Green Chillies', 'Carrots'];
@@ -58,6 +58,7 @@ export default function TraderTransactions() {
         date: t.sold_at || t.createdAt,
         crop: t.vegetable,
         quantity: t.official_qty,
+        carat: t.official_carat,
         rate: t.sale_rate,
         grossAmount: t.sale_amount,
         commission: t.trader_commission || Math.round((t.sale_amount || 0) * 0.09),
@@ -138,7 +139,34 @@ export default function TraderTransactions() {
 
   const handleDownloadPDF = async (txn) => {
     try {
-      const blob = await pdf(<TransactionInvoice transaction={txn} />).toBlob();
+      // Get trader profile from local storage if available for "Bill To" name
+      let traderName = 'Trader';
+      try {
+        const storedProfile = localStorage.getItem('trader-profile');
+        if (storedProfile) {
+          const profile = JSON.parse(storedProfile);
+          traderName = profile.business_name || profile.full_name || 'Trader';
+        }
+      } catch (e) {
+        console.warn('Could not load trader profile for PDF');
+      }
+
+      // Prepare data for BillingInvoice
+      const invoiceData = {
+        id: txn.id,
+        date: txn.date,
+        name: traderName,
+        crop: txn.crop,
+        qty: txn.quantity || 0,
+        carat: txn.carat || 0,
+        baseAmount: txn.grossAmount || 0,
+        commission: txn.commission || 0,
+        finalAmount: txn.totalCost || 0,
+        status: txn.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+        type: 'receive'
+      };
+
+      const blob = await pdf(<BillingInvoice data={invoiceData} type="trader" />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
