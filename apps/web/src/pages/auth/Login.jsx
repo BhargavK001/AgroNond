@@ -52,13 +52,10 @@ function CameraIcon({ className }) {
 
 
 
-// Role based routes
+// Role based routes - public portal only for farmer and trader
 const roleRoutes = {
   farmer: '/dashboard/farmer',
   trader: '/dashboard/trader',
-  weight: '/dashboard/weight',
-  committee: '/dashboard/committee',
-  lilav: '/dashboard/lilav',
 };
 
 export default function Login() {
@@ -114,10 +111,11 @@ export default function Login() {
         return;
       }
 
-      // 3. Fully authenticated and complete profile
-      if (profile.role === 'admin') {
+      // 3. Fully authenticated and complete profile - only farmer and trader allowed here
+      const publicRoles = ['farmer', 'trader'];
+      if (!publicRoles.includes(profile.role)) {
         signOut();
-        setError('Access Denied. Admins must login via the Admin Portal.');
+        setError('Login failed. Please check your credentials.');
         navigate('/login');
         return;
       }

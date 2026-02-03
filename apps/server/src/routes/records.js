@@ -2,6 +2,7 @@ import express from 'express';
 import Record from '../models/Record.js';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
+import { createAuditLog, getClientIp, AuditDescriptions } from '../utils/auditLogger.js';
 
 const router = express.Router();
 
@@ -122,18 +123,37 @@ router.get('/my-records', requireAuth, async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch records' });
     }
 });
-
 /**
  * GET /api/records/my-purchases
  * Fetch all purchases for the logged-in trader
  * PRIVACY: Exclude farmer details
+ * Supports pagination
  */
 router.get('/my-purchases', requireAuth, async (req, res) => {
     try {
-        const records = await Record.find({ trader_id: req.user._id, status: { $in: ['Sold', 'Completed'] } })
-            .select('-farmer_id -farmer_payment_ref -farmer_payment_mode -farmer_payment_status -net_payable_to_farmer -farmer_commission') // Exclude farmer info
-            .sort({ sold_at: -1 });
-        res.json(records);
+        const { page = 1, limit = 50 } = req.query;
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 50;
+        const skip = (pageNum - 1) * limitNum;
+
+        const query = { trader_id: req.user._id, status: { $in: ['Sold', 'Completed'] } };
+
+        const [records, total] = await Promise.all([
+            Record.find(query)
+                .select('-farmer_id -farmer_payment_ref -farmer_payment_mode -farmer_payment_status -net_payable_to_farmer -farmer_commission')
+                .sort({ sold_at: -1 })
+                .skip(skip)
+                .limit(limitNum),
+            Record.countDocuments(query)
+        ]);
+
+        res.json({
+            data: records,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum),
+            hasMore: pageNum * limitNum < total
+        });
     } catch (error) {
         console.error('Fetch my purchases error:', error);
         res.status(500).json({ error: 'Failed to fetch purchases' });
@@ -177,6 +197,17 @@ router.patch('/:id/payment-status', requireAuth, async (req, res) => {
         if (!record) {
             return res.status(404).json({ error: 'Record not found' });
         }
+
+        // AUDIT LOG: Track payment status change
+        await createAuditLog({
+            user: req.user,
+            action: 'update',
+            entityType: 'payment',
+            entityId: record._id,
+            description: AuditDescriptions.paymentStatus(type, status, type === 'farmer' ? 'Farmer' : 'Trader'),
+            changes: { [updateField]: { old: 'Pending', new: status }, mode, ref },
+            ipAddress: getClientIp(req)
+        });
 
         res.json(record);
     } catch (error) {
@@ -718,6 +749,22 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             record.status = 'Completed';
             await record.save();
 
+            // AUDIT LOG: Track lilav entry
+            await createAuditLog({
+                user: req.user,
+                action: 'create',
+                entityType: 'lilav',
+                entityId: record._id,
+                description: AuditDescriptions.createLilav(
+                    record.farmer_id?.full_name || 'Farmer',
+                    record.vegetable,
+                    `${allocations.length} traders`,
+                    allocations.reduce((sum, a) => sum + (parseFloat(a.quantity) * parseFloat(a.rate)), 0)
+                ),
+                changes: { allocations: allocations.length, traders: allocations.map(a => a.trader_id) },
+                ipAddress: getClientIp(req)
+            });
+
             res.json({
                 message: `Lot split successfully among ${allocations.length} traders`,
                 parentRecord: record,
@@ -755,10 +802,11 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
  * GET /api/records/completed
  * Get completed sales (transaction history)
  * Excludes parent records (only shows actual trader assignments)
+ * Supports pagination and search
  */
 router.get('/completed', requireAuth, async (req, res) => {
     try {
-        const { date } = req.query;
+        const { date, page = 1, limit = 50, search, paymentStatus } = req.query;
 
         let query = {
             status: { $in: ['Sold', 'Completed'] },
@@ -773,13 +821,107 @@ router.get('/completed', requireAuth, async (req, res) => {
             query.sold_at = { $gte: startDate, $lte: endDate };
         }
 
-        const records = await Record.find(query)
-            .populate('farmer_id', 'full_name phone')
-            .populate('trader_id', 'full_name phone business_name')
-            .populate('sold_by', 'full_name')
-            .sort({ sold_at: -1 });
+        // Payment status filter
+        if (paymentStatus && paymentStatus !== 'all') {
+            query.payment_status = paymentStatus;
+        }
 
-        res.json(records);
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 50;
+        const skip = (pageNum - 1) * limitNum;
+
+        // Build aggregation pipeline for search across populated fields
+        let pipeline = [
+            { $match: query },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'farmer_id',
+                    foreignField: '_id',
+                    as: 'farmer_id'
+                }
+            },
+            { $unwind: { path: '$farmer_id', preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'trader_id',
+                    foreignField: '_id',
+                    as: 'trader_id'
+                }
+            },
+            { $unwind: { path: '$trader_id', preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'sold_by',
+                    foreignField: '_id',
+                    as: 'sold_by'
+                }
+            },
+            { $unwind: { path: '$sold_by', preserveNullAndEmptyArrays: true } },
+        ];
+
+        // Add search filter if provided
+        if (search) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        { 'farmer_id.full_name': { $regex: search, $options: 'i' } },
+                        { 'trader_id.full_name': { $regex: search, $options: 'i' } },
+                        { 'trader_id.business_name': { $regex: search, $options: 'i' } },
+                        { vegetable: { $regex: search, $options: 'i' } }
+                    ]
+                }
+            });
+        }
+
+        // Get total count
+        const countPipeline = [...pipeline, { $count: 'total' }];
+        const countResult = await Record.aggregate(countPipeline);
+        const total = countResult[0]?.total || 0;
+
+        // Add sorting, skip, limit
+        pipeline.push(
+            { $sort: { sold_at: -1 } },
+            { $skip: skip },
+            { $limit: limitNum },
+            {
+                $project: {
+                    _id: 1,
+                    farmer_id: { _id: 1, full_name: 1, phone: 1 },
+                    trader_id: { _id: 1, full_name: 1, phone: 1, business_name: 1 },
+                    sold_by: { _id: 1, full_name: 1 },
+                    vegetable: 1,
+                    quantity: 1,
+                    carat: 1,
+                    official_qty: 1,
+                    official_carat: 1,
+                    sale_rate: 1,
+                    sale_amount: 1,
+                    farmer_commission: 1,
+                    trader_commission: 1,
+                    net_payable_to_farmer: 1,
+                    net_receivable_from_trader: 1,
+                    status: 1,
+                    payment_status: 1,
+                    farmer_payment_status: 1,
+                    trader_payment_status: 1,
+                    sold_at: 1,
+                    createdAt: 1
+                }
+            }
+        );
+
+        const records = await Record.aggregate(pipeline);
+
+        res.json({
+            data: records,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum),
+            hasMore: pageNum * limitNum < total
+        });
     } catch (error) {
         console.error('Fetch completed records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });

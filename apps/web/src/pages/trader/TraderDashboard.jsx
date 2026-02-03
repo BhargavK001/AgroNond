@@ -132,7 +132,8 @@ export default function TraderDashboard() {
             <tbody className="divide-y divide-slate-100">
               {transactionHistory.length > 0 ? (
                 transactionHistory.map((item) => {
-                  const status = item.trader_payment_status || 'Pending';
+                  const rawStatus = item.trader_payment_status || 'pending';
+                  const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
                   const baseAmount = item.sale_amount || 0;
                   const commission = item.trader_commission || 0;
                   const total = item.net_receivable_from_trader || (baseAmount + commission);

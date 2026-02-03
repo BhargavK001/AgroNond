@@ -23,6 +23,7 @@ const Services = lazy(() => import('./pages/public/Services'));
 const Contact = lazy(() => import('./pages/public/Contact'));
 const Login = lazy(() => import('./pages/auth/Login'));
 const AdminLogin = lazy(() => import('./pages/auth/AdminLogin'));
+const MarketLogin = lazy(() => import('./pages/auth/MarketLogin'));
 const Privacy = lazy(() => import('./pages/public/Privacy'));
 
 const StatusPage = lazy(() => import('./pages/public/StatusPage'));
@@ -50,6 +51,7 @@ const TraderManagement = lazy(() => import('./pages/admin/TraderManagement'));
 const WeightManagement = lazy(() => import('./pages/admin/WeightManagement'));
 const LilavManagement = lazy(() => import('./pages/admin/LilavManagement'));
 const CommitteeManagement = lazy(() => import('./pages/admin/CommitteeManagement'));
+const ActivityLog = lazy(() => import('./pages/admin/ActivityLog'));
 
 // Committee Dashboard
 const CommitteeDashboard = lazy(() => import('./pages/committee/CommitteeDashboard'));
@@ -142,6 +144,14 @@ function App() {
                   }
                   />
 
+                  {/* Market Staff Login - Committee & Lilav */}
+                  <Route path="/market/login" element={
+                    <Layout hideNav hideFooter>
+                      <MarketLogin />
+                    </Layout>
+                  }
+                  />
+
                   {/* --- DASHBOARDS --- */}
 
                   {/* Farmer Dashboard */}
@@ -220,6 +230,7 @@ function App() {
                     <Route path="weight" element={<WeightManagement />} />
                     <Route path="lilav" element={<LilavManagement />} />
                     <Route path="committee" element={<CommitteeManagement />} />
+                    <Route path="activity-log" element={<ActivityLog />} />
                   </Route>
 
                   {/* FIXED: Smart redirect based on user role - Prevents infinite loop */}

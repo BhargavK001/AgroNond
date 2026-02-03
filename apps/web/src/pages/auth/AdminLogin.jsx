@@ -47,7 +47,7 @@ export default function AdminLogin() {
         navigate('/dashboard/admin');
       } else {
         // Logged in but not admin - force logout or show error
-        setError('Access Denied. Admins only.');
+        setError('Login failed. Please check your credentials.');
         signOut();
       }
     }
@@ -78,7 +78,7 @@ export default function AdminLogin() {
           navigate('/dashboard/admin');
         } else {
           await signOut();
-          setError('Access Denied. This portal is for Admins only.');
+          setError('Login failed. Please check your credentials.');
           setStep('phone');
           setOtp(['', '', '', '', '', '']);
         }
