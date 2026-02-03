@@ -431,6 +431,10 @@ const getStatusColors = (status) => {
     if (s === 'weightpending') {
         return { bg: colors.pendingBg, text: colors.pendingText, border: '#fcd34d' };
     }
+    // Payment Pending -> Orange/Amber (similar to WeightPending but maybe distinct if needed)
+    if (s === 'payment pending') {
+        return { bg: '#ffedd5', text: '#c2410c', border: '#fdba74' }; // Orange-100 bg, Orange-700 text, Orange-300 border
+    }
     // Pending / default → amber
     return { bg: colors.pendingBg, text: colors.pendingText, border: '#fcd34d' };
 };

@@ -107,7 +107,8 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     amount: amount,
                     date: child.sold_at || child.createdAt,
                     status: child.status,
-                    isWeightPending: isWeightPending
+                    isWeightPending: isWeightPending,
+                    payment_status: child.farmer_payment_status || 'Pending' // ✅ Include payment status
                 });
             });
 
@@ -133,6 +134,12 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     record.weight_pending_qty = data.weightPendingQty;
                     record.weight_pending_carat = data.weightPendingCarat;
                     record.weight_pending_count = data.weightPendingCount;
+
+                    // ✅ Compute Aggregated Payment Status
+                    // If any sold split is 'Pending', the whole lot is considered 'Payment Pending'
+                    const soldSplits = data.splits.filter(s => ['Sold', 'Completed'].includes(s.status));
+                    const hasUnpaid = soldSplits.some(s => s.payment_status === 'Pending');
+                    record.aggregated_payment_status = hasUnpaid ? 'Pending' : 'Paid';
 
                     // Determine display_status based on sold quantity AND weight pending
                     const totalQty = record.quantity || 0;
@@ -262,7 +269,8 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     amount: amount,
                     date: child.sold_at || child.createdAt,
                     status: child.status,
-                    isWeightPending: isWeightPending
+                    isWeightPending: isWeightPending,
+                    payment_status: child.farmer_payment_status || 'Pending' // ✅ Include payment status
                 });
             });
 
@@ -290,6 +298,12 @@ router.get('/my-records', requireAuth, async (req, res) => {
                         record.weight_pending_qty = data.weightPendingQty;
                         record.weight_pending_carat = data.weightPendingCarat;
                         record.weight_pending_count = data.weightPendingCount;
+
+                        // ✅ Compute Aggregated Payment Status
+                        // If any sold split is 'Pending', the whole lot is considered 'Payment Pending'
+                        const soldSplits = data.splits.filter(s => ['Sold', 'Completed'].includes(s.status));
+                        const hasUnpaid = soldSplits.some(s => s.payment_status === 'Pending');
+                        record.aggregated_payment_status = hasUnpaid ? 'Pending' : 'Paid';
 
                         // Determine display_status based on sold quantity AND weight pending
                         const totalQty = record.quantity || 0;

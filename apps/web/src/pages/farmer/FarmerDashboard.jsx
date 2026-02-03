@@ -903,6 +903,18 @@ const FarmerDashboard = () => {
       else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
     }
 
+    // ✅ NEW: Payment Status Logic
+    let isPaymentPending = false;
+    if (computedStatus === 'Sold') {
+      const paymentStatus = isParent
+        ? (record.aggregated_payment_status || 'Pending')
+        : (record.farmer_payment_status || 'Pending');
+
+      if (paymentStatus === 'Pending') {
+        isPaymentPending = true;
+      }
+    }
+
     const commission = record.farmer_commission || (totalSaleAmount * 0.04);
     const netPayable = Math.max(0, totalSaleAmount - commission);
 
@@ -932,7 +944,10 @@ const FarmerDashboard = () => {
       baseAmount: totalSaleAmount,
       commission: commission,
       finalAmount: netPayable,
-      status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : (computedStatus === 'WeightPending' ? 'WeightPending' : 'Pending')),
+      status: isPaymentPending ? 'Payment Pending' :
+        (computedStatus === 'Sold' ? 'Full' :
+          (computedStatus === 'Partial' ? 'Partial' :
+            (computedStatus === 'WeightPending' ? 'WeightPending' : 'Pending'))),
       type: 'pay'
     };
   };
@@ -1620,6 +1635,20 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
     else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
   }
 
+  // ✅ NEW: Payment Status Logic
+  // Check if fully sold but payment is pending
+  let isPaymentPending = false;
+
+  if (computedStatus === 'Sold') {
+    const paymentStatus = isParent
+      ? (record.aggregated_payment_status || 'Pending')
+      : (record.farmer_payment_status || 'Pending');
+
+    if (paymentStatus === 'Pending') {
+      isPaymentPending = true;
+    }
+  }
+
   const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
 
   return (
@@ -1648,9 +1677,10 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-1.5">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${computedStatus === 'Sold' ? 'bg-green-500' :
-                computedStatus === 'Partial' ? 'bg-blue-500' :
-                  computedStatus === 'WeightPending' ? 'bg-amber-500' : 'bg-gray-300'
+              className={`h-full rounded-full transition-all duration-300 ${isPaymentPending ? 'bg-orange-500' :
+                computedStatus === 'Sold' ? 'bg-green-500' :
+                  computedStatus === 'Partial' ? 'bg-blue-500' :
+                    computedStatus === 'WeightPending' ? 'bg-amber-500' : 'bg-gray-300'
                 }`}
               style={{ width: `${progressPercent}%` }}
             ></div>
@@ -1658,6 +1688,11 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
           {computedStatus === 'WeightPending' && (
             <p className="text-xs text-amber-600 font-medium">
               Weight Pending
+            </p>
+          )}
+          {isPaymentPending && (
+            <p className="text-xs text-orange-600 font-bold">
+              Payment Pending
             </p>
           )}
           {awaitingQty > 0.01 && computedStatus !== 'WeightPending' && (
@@ -1697,19 +1732,23 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
 
       {/* Status */}
       <td className="px-4 py-4 align-middle">
-        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${computedStatus === 'Sold'
-          ? 'bg-green-100 text-green-700 border-green-200'
-          : computedStatus === 'Partial'
-            ? 'bg-blue-100 text-blue-700 border-blue-200'
-            : computedStatus === 'WeightPending'
-              ? 'bg-amber-100 text-amber-700 border-amber-200'
-              : 'bg-gray-100 text-gray-700 border-gray-200'
+        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${isPaymentPending
+          ? 'bg-orange-100 text-orange-700 border-orange-200'
+          : computedStatus === 'Sold'
+            ? 'bg-green-100 text-green-700 border-green-200'
+            : computedStatus === 'Partial'
+              ? 'bg-blue-100 text-blue-700 border-blue-200'
+              : computedStatus === 'WeightPending'
+                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
           }`}>
-          {computedStatus === 'Sold' && <CheckCircle size={12} />}
+          {isPaymentPending && <Clock size={12} />}
+          {!isPaymentPending && computedStatus === 'Sold' && <CheckCircle size={12} />}
           {computedStatus === 'Partial' && <Clock size={12} />}
           {computedStatus === 'WeightPending' && <Clock size={12} />}
           {computedStatus === 'Pending' && <Clock size={12} />}
-          {computedStatus === 'WeightPending' ? 'Weight Pending' : computedStatus}
+
+          {isPaymentPending ? 'Payment Pending' : (computedStatus === 'WeightPending' ? 'Weight Pending' : computedStatus)}
         </span>
       </td>
 
@@ -1790,6 +1829,19 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
     else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
   }
 
+  // ✅ NEW: Payment Status Logic (Mobile)
+  let isPaymentPending = false;
+
+  if (computedStatus === 'Sold') {
+    const paymentStatus = isParent
+      ? (record.aggregated_payment_status || 'Pending')
+      : (record.farmer_payment_status || 'Pending');
+
+    if (paymentStatus === 'Pending') {
+      isPaymentPending = true;
+    }
+  }
+
   const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
 
   return (
@@ -1799,19 +1851,23 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
           <div className="font-bold text-gray-900 text-lg">{record.vegetable}</div>
           <div className="text-xs text-gray-500 mt-0.5">{new Date(record.createdAt).toLocaleDateString('en-GB')} at {formatTime(record.createdAt)}</div>
         </div>
-        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${computedStatus === 'Sold'
-          ? 'bg-green-100 text-green-700 border-green-200'
-          : computedStatus === 'Partial'
-            ? 'bg-blue-100 text-blue-700 border-blue-200'
-            : computedStatus === 'WeightPending'
-              ? 'bg-amber-100 text-amber-700 border-amber-200'
-              : 'bg-gray-100 text-gray-700 border-gray-200'
+        <span className={`px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 border ${isPaymentPending
+          ? 'bg-orange-100 text-orange-700 border-orange-200'
+          : computedStatus === 'Sold'
+            ? 'bg-green-100 text-green-700 border-green-200'
+            : computedStatus === 'Partial'
+              ? 'bg-blue-100 text-blue-700 border-blue-200'
+              : computedStatus === 'WeightPending'
+                ? 'bg-amber-100 text-amber-700 border-amber-200'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
           }`}>
-          {computedStatus === 'Sold' && <CheckCircle size={12} />}
+          {isPaymentPending && <Clock size={12} />}
+          {!isPaymentPending && computedStatus === 'Sold' && <CheckCircle size={12} />}
           {computedStatus === 'Partial' && <Clock size={12} />}
           {computedStatus === 'WeightPending' && <Clock size={12} />}
           {computedStatus === 'Pending' && <Clock size={12} />}
-          {computedStatus === 'WeightPending' ? 'Weight Pending' : computedStatus}
+
+          {isPaymentPending ? 'Payment Pending' : (computedStatus === 'WeightPending' ? 'Weight Pending' : computedStatus)}
         </span>
       </div>
 
@@ -1827,13 +1883,19 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${computedStatus === 'Sold' ? 'bg-green-500' :
-              computedStatus === 'Partial' ? 'bg-blue-500' :
-                computedStatus === 'WeightPending' ? 'bg-amber-500' : 'bg-gray-400'
+            className={`h-full rounded-full transition-all duration-500 ${isPaymentPending ? 'bg-orange-500' :
+              computedStatus === 'Sold' ? 'bg-green-500' :
+                computedStatus === 'Partial' ? 'bg-blue-500' :
+                  computedStatus === 'WeightPending' ? 'bg-amber-500' : 'bg-gray-400'
               }`}
             style={{ width: `${progressPercent}%` }}
           ></div>
         </div>
+        {isPaymentPending && (
+          <p className="text-[10px] text-orange-600 mt-1 font-medium text-right font-bold">
+            Payment Pending
+          </p>
+        )}
         {computedStatus === 'WeightPending' && (
           <p className="text-[10px] text-amber-600 mt-1 font-medium text-right">
             Awaiting weighing at market
