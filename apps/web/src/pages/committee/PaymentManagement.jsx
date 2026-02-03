@@ -182,193 +182,190 @@ const PaymentManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-6">
 
-                {/* Header Section */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Payment Management</h1>
+                    <p className="text-slate-500 mt-1">Track market cashflow and settle accounts</p>
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={fetchRecords}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition h-full"
+                    >
+                        <RefreshCw size={18} />
+                        Refresh
+                    </button>
+                    <button
+                        onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
+                        className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all"
+                    >
+                        <IndianRupee size={18} />
+                        Bulk Receive
+                    </button>
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Payment Management</h1>
-                        <p className="text-slate-500 mt-1">Track market cashflow and settle accounts</p>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pending Receivables (Traders)</p>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1">₹{stats.receivables.toLocaleString()}</h3>
                     </div>
-                    <div className="flex gap-3">
-                        <button
-                            onClick={fetchRecords}
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition h-full"
-                        >
-                            <RefreshCw size={18} />
-                            Refresh
-                        </button>
-                        <button
-                            onClick={() => handleOpenPaymentModal(null, 'bulk-receive')}
-                            className="flex items-center justify-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-medium shadow-sm hover:bg-emerald-700 hover:shadow-md transition-all"
-                        >
-                            <IndianRupee size={18} />
-                            Bulk Receive
-                        </button>
+                    <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+                        <ArrowDownLeft size={24} />
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pending Payables (Farmers)</p>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1">₹{stats.payables.toLocaleString()}</h3>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <ArrowUpRight size={24} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Filters & Table */}
+            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                {/* Toolbar */}
+                <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between bg-slate-50/50">
+                    <div className="flex gap-2 p-1 bg-slate-200/50 rounded-xl w-fit">
+                        {['all', 'receivables', 'payables'].map(f => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${filter === f
+                                    ? 'bg-white text-emerald-700 shadow-sm'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            // Removed Lot ID from placeholder
+                            placeholder="Search Farmer, Trader..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
                     </div>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pending Receivables (Traders)</p>
-                            <h3 className="text-2xl font-bold text-slate-900 mt-1">₹{stats.receivables.toLocaleString()}</h3>
-                        </div>
-                        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                            <ArrowDownLeft size={24} />
-                        </div>
-                    </div>
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pending Payables (Farmers)</p>
-                            <h3 className="text-2xl font-bold text-slate-900 mt-1">₹{stats.payables.toLocaleString()}</h3>
-                        </div>
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                            <ArrowUpRight size={24} />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filters & Table */}
-                <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                    {/* Toolbar */}
-                    <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 justify-between bg-slate-50/50">
-                        <div className="flex gap-2 p-1 bg-slate-200/50 rounded-xl w-fit">
-                            {['all', 'receivables', 'payables'].map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${filter === f
-                                        ? 'bg-white text-emerald-700 shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
-                                        }`}
-                                >
-                                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="text"
-                                // Removed Lot ID from placeholder
-                                placeholder="Search Farmer, Trader..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
-                                <tr>
-                                    {/* Updated Header */}
-                                    <th className="px-6 py-4">Date</th>
-                                    <th className="px-6 py-4">Parties</th>
-                                    <th className="px-6 py-4 text-right">Amounts</th>
-                                    <th className="px-6 py-4 text-center">Status (Farmer)</th>
-                                    <th className="px-6 py-4 text-center">Status (Trader)</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {loading ? (
-                                    <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading...</td></tr>
-                                ) : filteredRecords.length === 0 ? (
-                                    <tr><td colSpan="6" className="p-8 text-center text-slate-500">No records found</td></tr>
-                                ) : (
-                                    filteredRecords.map(record => (
-                                        <tr key={record._id} className="hover:bg-slate-50/50 transition">
-                                            <td className="px-6 py-4">
-                                                {/* Removed lot_id display, kept date */}
-                                                <div className="font-bold text-slate-900">
-                                                    {new Date(record.createdAt).toLocaleDateString()}
+                {/* Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
+                            <tr>
+                                {/* Updated Header */}
+                                <th className="px-6 py-4">Date</th>
+                                <th className="px-6 py-4">Parties</th>
+                                <th className="px-6 py-4 text-right">Amounts</th>
+                                <th className="px-6 py-4 text-center">Status (Farmer)</th>
+                                <th className="px-6 py-4 text-center">Status (Trader)</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {loading ? (
+                                <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading...</td></tr>
+                            ) : filteredRecords.length === 0 ? (
+                                <tr><td colSpan="6" className="p-8 text-center text-slate-500">No records found</td></tr>
+                            ) : (
+                                filteredRecords.map(record => (
+                                    <tr key={record._id} className="hover:bg-slate-50/50 transition">
+                                        <td className="px-6 py-4">
+                                            {/* Removed lot_id display, kept date */}
+                                            <div className="font-bold text-slate-900">
+                                                {new Date(record.createdAt).toLocaleDateString()}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded w-fit">
+                                                    F: {record.farmer_id?.full_name || 'Unknown'}
                                                 </div>
-                                                <div className="text-xs text-slate-500">
-                                                    {new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                <div className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded w-fit">
+                                                    T: {record.trader_id?.business_name || 'Unknown'}
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded w-fit">
-                                                        F: {record.farmer_id?.full_name || 'Unknown'}
-                                                    </div>
-                                                    <div className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-0.5 rounded w-fit">
-                                                        T: {record.trader_id?.business_name || 'Unknown'}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="font-bold text-slate-900">₹{record.net_receivable_from_trader} <span className="text-xs text-slate-400 font-normal">(In)</span></div>
-                                                <div className="font-bold text-slate-500">₹{record.net_payable_to_farmer} <span className="text-xs text-slate-400 font-normal">(Out)</span></div>
-                                            </td>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="font-bold text-slate-900">₹{record.net_receivable_from_trader} <span className="text-xs text-slate-400 font-normal">(In)</span></div>
+                                            <div className="font-bold text-slate-500">₹{record.net_payable_to_farmer} <span className="text-xs text-slate-400 font-normal">(Out)</span></div>
+                                        </td>
 
-                                            {/* Farmer Status */}
-                                            <td className="px-6 py-4 text-center">
-                                                {record.farmer_payment_status === 'Paid' ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                                                        <CheckCircle size={12} /> Paid
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
-                                                        <Clock size={12} /> Pending
-                                                    </span>
+                                        {/* Farmer Status */}
+                                        <td className="px-6 py-4 text-center">
+                                            {record.farmer_payment_status === 'Paid' ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
+                                                    <CheckCircle size={12} /> Paid
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                                                    <Clock size={12} /> Pending
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        {/* Trader Status */}
+                                        <td className="px-6 py-4 text-center">
+                                            {record.trader_payment_status === 'Paid' ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
+                                                    <CheckCircle size={12} /> Received
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-bold">
+                                                    <Clock size={12} /> Pending
+                                                </span>
+                                            )}
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-2 text-xs font-bold">
+                                                {record.trader_payment_status !== 'Paid' && (
+                                                    <button
+                                                        onClick={() => handleOpenPaymentModal(record, 'receive-trader')}
+                                                        className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
+                                                    >
+                                                        Receive
+                                                    </button>
                                                 )}
-                                            </td>
-
-                                            {/* Trader Status */}
-                                            <td className="px-6 py-4 text-center">
-                                                {record.trader_payment_status === 'Paid' ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">
-                                                        <CheckCircle size={12} /> Received
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-bold">
-                                                        <Clock size={12} /> Pending
-                                                    </span>
+                                                {record.farmer_payment_status !== 'Paid' && (
+                                                    <button
+                                                        onClick={() => handleOpenPaymentModal(record, 'pay-farmer')}
+                                                        className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                                                    >
+                                                        Pay Farmer
+                                                    </button>
                                                 )}
-                                            </td>
-
-                                            {/* Actions */}
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2 text-xs font-bold">
-                                                    {record.trader_payment_status !== 'Paid' && (
-                                                        <button
-                                                            onClick={() => handleOpenPaymentModal(record, 'receive-trader')}
-                                                            className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
-                                                        >
-                                                            Receive
-                                                        </button>
-                                                    )}
-                                                    {record.farmer_payment_status !== 'Paid' && (
-                                                        <button
-                                                            onClick={() => handleOpenPaymentModal(record, 'pay-farmer')}
-                                                            className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
-                                                        >
-                                                            Pay Farmer
-                                                        </button>
-                                                    )}
-                                                    {record.trader_payment_status === 'Paid' && record.farmer_payment_status === 'Paid' && (
-                                                        <span className="text-gray-400 px-2">Settled</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                {record.trader_payment_status === 'Paid' && record.farmer_payment_status === 'Paid' && (
+                                                    <span className="text-gray-400 px-2">Settled</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            </main>
+            </div>
 
-            {/* Payment Modal */}
             {/* Payment Modal */}
             {(selectedRecord || actionType === 'bulk-receive') && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
