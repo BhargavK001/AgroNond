@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
         fontFamily: 'NotoSansDevanagari',
     },
 
-    // Table Styles — 5 columns now: Crop | Qty | Rate Details | Total Amount | Status
+    // Table Styles — 4 columns: Crop | Qty | Rate | Total Amount
     table: {
         marginTop: 5,
         width: '100%',
@@ -198,17 +198,16 @@ const styles = StyleSheet.create({
     },
     th: {
         color: colors.white,
-        fontSize: 7.5,
+        fontSize: 8,
         textTransform: 'uppercase',
         fontWeight: 'bold',
         letterSpacing: 0.6,
     },
-    // Column flex weights tuned for 5-col layout
-    thCrop: { textAlign: 'left', flex: 2.4 },
-    thQty: { textAlign: 'center', flex: 1.0 },
-    thRateDetails: { textAlign: 'left', flex: 2.2 },
-    thTotalAmount: { textAlign: 'right', flex: 1.2 },
-    thStatus: { textAlign: 'center', flex: 1.0 },
+    // Column flex weights tuned for 4-col layout
+    thCrop: { textAlign: 'left', flex: 2.5 },
+    thQty: { textAlign: 'center', flex: 1.5 },
+    thRateDetails: { textAlign: 'center', flex: 1.5 },
+    thTotalAmount: { textAlign: 'right', flex: 1.5 },
 
     tableRow: {
         flexDirection: 'row',
@@ -225,33 +224,28 @@ const styles = StyleSheet.create({
     },
     tdCrop: {
         textAlign: 'left',
-        flex: 2.4,
+        flex: 2.5,
         fontWeight: 'bold',
         fontFamily: 'NotoSansDevanagari',
         fontSize: 10.5,
     },
     tdQty: {
         textAlign: 'center',
-        flex: 1.0,
+        flex: 1.5,
         color: colors.textMedium,
-        fontSize: 9,
+        fontSize: 9.5,
     },
     tdRateDetails: {
-        textAlign: 'left',
-        flex: 2.2,
-        fontSize: 8.5,
+        textAlign: 'center',
+        flex: 1.5,
+        fontSize: 9.5,
         color: colors.textMedium,
-        lineHeight: 1.6,
     },
     tdTotalAmount: {
         textAlign: 'right',
-        flex: 1.2,
+        flex: 1.5,
         fontWeight: 'bold',
         fontSize: 10,
-    },
-    tdStatus: {
-        textAlign: 'center',
-        flex: 1.0,
     },
 
     // Inline status badge inside the table row
@@ -486,6 +480,9 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
         }
     }
 
+    // Get splits from data (may be undefined or empty array)
+    const splits = data.splits || [];
+
     const rateDetailsLines = (() => {
         if (splits.length > 0) {
             return splits.map((s, i) => {
@@ -580,15 +577,14 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                     <Text style={styles.recipientName}>{data.name || 'Unknown Farmer'}</Text>
                 </View>
 
-                {/* ─── Items Table  ── 5 columns: Crop | Qty | Rate Details | Total Amount | Status ─── */}
+                {/* ─── Items Table  ── 4 columns: Crop | Qty | Rate | Total Amount ─── */}
                 <View style={styles.table}>
                     {/* Header row */}
                     <View style={styles.tableHeader}>
                         <Text style={[styles.th, styles.thCrop]}>Description / Crop</Text>
                         <Text style={[styles.th, styles.thQty]}>Quantity</Text>
-                        <Text style={[styles.th, styles.thRateDetails]}>Rate Details</Text>
+                        <Text style={[styles.th, styles.thRateDetails]}>Rate</Text>
                         <Text style={[styles.th, styles.thTotalAmount]}>Total Amount</Text>
-                        <Text style={[styles.th, styles.thStatus]}>Status</Text>
                     </View>
 
                     {/* Check if we have splits data for multiple rows */}
@@ -600,20 +596,20 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                             const splitRate = split.rate || 0;
                             const splitAmount = split.amount || (splitQty * splitRate);
                             const splitUnit = splitQty > 0 ? 'kg' : 'Crt';
-                            const displayQty = splitQty > 0 ? splitQty : splitCarat;
+                            const displaySplitQty = splitQty > 0 ? splitQty : splitCarat;
 
                             return (
                                 <View style={styles.tableRow} key={index}>
                                     <Text style={[styles.td, styles.tdCrop]}>
                                         {index === 0 ? (data.crop || 'Unknown Crop') : ''}
                                     </Text>
-                                    <Text style={[styles.td, styles.tdCenter]}>
-                                        {formatNumber(displayQty)} {splitUnit}
+                                    <Text style={[styles.td, styles.tdQty]}>
+                                        {formatNumber(displaySplitQty)} {splitUnit}
                                     </Text>
-                                    <Text style={[styles.td, styles.tdCenter]}>
-                                        {formatCurrency(splitRate.toFixed(2))}/{splitUnit}
+                                    <Text style={[styles.td, styles.tdRateDetails]}>
+                                        Rs. {formatNumber(splitRate)}/{splitUnit}
                                     </Text>
-                                    <Text style={[styles.td, styles.tdRight]}>
+                                    <Text style={[styles.td, styles.tdTotalAmount]}>
                                         {formatCurrency(splitAmount)}
                                     </Text>
                                 </View>
@@ -625,13 +621,13 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                             <Text style={[styles.td, styles.tdCrop]}>
                                 {data.crop || 'Unknown Crop'}
                             </Text>
-                            <Text style={[styles.td, styles.tdCenter]}>
+                            <Text style={[styles.td, styles.tdQty]}>
                                 {getQuantityDisplay()}
                             </Text>
-                            <Text style={[styles.td, styles.tdCenter]}>
-                                {formatCurrency(rate.toFixed(2))}/{rateUnit}
+                            <Text style={[styles.td, styles.tdRateDetails]}>
+                                Rs. {formatNumber(rate.toFixed(2))}/{rateUnit}
                             </Text>
-                            <Text style={[styles.td, styles.tdRight]}>
+                            <Text style={[styles.td, styles.tdTotalAmount]}>
                                 {formatCurrency(baseAmount)}
                             </Text>
                         </View>
