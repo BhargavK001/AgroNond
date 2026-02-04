@@ -102,10 +102,26 @@ const SoldRecordCard = ({ record, farmerName }) => {
     awaitingQty = Math.max(0, totalQty - soldQty);
   }
 
-  // Correct Status Logic
-  let computedStatus = 'Pending';
-  if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-  else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+  // Correct Status Logic - Use backend's display_status when available
+  let computedStatus = record.display_status || 'Pending';
+  // Fallback computation if display_status not provided
+  if (!record.display_status) {
+    if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
+    else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+  }
+
+  // ✅ NEW: Payment Status Logic
+  let isPaymentPending = false;
+
+  if (computedStatus === 'Sold') {
+    const paymentStatus = isParent
+      ? (record.aggregated_payment_status || 'Pending')
+      : (record.farmer_payment_status || 'Pending');
+
+    if (paymentStatus === 'Pending') {
+      isPaymentPending = true;
+    }
+  }
 
   const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
 
@@ -117,7 +133,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
   const netPayable = Math.max(0, totalSaleAmount - estimatedCommission);
 
   const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
-  const isPaid = computedStatus === 'Sold'; // Strictly used for UI color toggling if needed
+  const isPaid = computedStatus === 'Sold' && !isPaymentPending; // Strictly used for UI color toggling if needed
 
   // Get farmer name from record or prop
   const actualFarmerName = record.farmer_id?.full_name || farmerName || 'Farmer';
@@ -137,10 +153,14 @@ const SoldRecordCard = ({ record, farmerName }) => {
     commission: estimatedCommission,
     finalAmount: netPayable,
     // Invoice status logic:
+    // If Payment Pending -> Payment Pending
     // If Sold -> Full (entire lot sold)
     // If Partial -> Partial (some remaining)
     // If Pending -> Pending
-    status: computedStatus === 'Sold' ? 'Full' : (computedStatus === 'Partial' ? 'Partial' : 'Pending'),
+    status: isPaymentPending ? 'Payment Pending' :
+      (computedStatus === 'Sold' ? 'Full' :
+        (computedStatus === 'Partial' ? 'Partial' :
+          (computedStatus === 'WeightPending' ? 'WeightPending' : 'Pending'))),
     type: 'pay'
   };
 
@@ -155,13 +175,20 @@ const SoldRecordCard = ({ record, farmerName }) => {
             <Clock size={14} className="text-gray-400" />
             <span className="text-xs font-medium text-gray-500">{date.toLocaleDateString('en-GB')}</span>
           </div>
-          <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${computedStatus === 'Sold'
-            ? 'bg-green-100 text-green-700 border-green-200'
-            : computedStatus === 'Partial'
-              ? 'bg-blue-100 text-blue-700 border-blue-200'
-              : 'bg-amber-100 text-amber-700 border-amber-200'
+          <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${isPaymentPending
+            ? 'bg-orange-100 text-orange-700 border-orange-200'
+            : computedStatus === 'Sold'
+              ? 'bg-green-100 text-green-700 border-green-200'
+              : computedStatus === 'Partial'
+                ? 'bg-blue-100 text-blue-700 border-blue-200'
+                : computedStatus === 'WeightPending'
+                  ? 'bg-amber-100 text-amber-700 border-amber-200'
+                  : 'bg-gray-100 text-gray-700 border-gray-200'
             }`}>
-            {computedStatus === 'Sold' ? 'PAYMENT RECEIVED' : `${computedStatus} PAYMENT`}
+            {isPaymentPending ? 'PAYMENT PENDING' :
+              computedStatus === 'Sold' ? 'PAYMENT RECEIVED' :
+                computedStatus === 'WeightPending' ? 'WEIGHT PENDING' :
+                  `${computedStatus} PAYMENT`}
           </div>
         </div>
 
@@ -204,8 +231,10 @@ const SoldRecordCard = ({ record, farmerName }) => {
             </div>
             <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full rounded-full ${computedStatus === 'Sold' ? 'bg-green-500' :
-                  computedStatus === 'Partial' ? 'bg-blue-500' : 'bg-gray-300'
+                className={`h-full rounded-full ${isPaymentPending ? 'bg-orange-500' :
+                  computedStatus === 'Sold' ? 'bg-green-500' :
+                    computedStatus === 'Partial' ? 'bg-blue-500' :
+                      computedStatus === 'WeightPending' ? 'bg-amber-500' : 'bg-gray-300'
                   }`}
                 style={{ width: `${progressPercent}%` }}
               ></div>

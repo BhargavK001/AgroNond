@@ -88,7 +88,10 @@ router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
  */
 router.get('/transactions', requireAuth, requireCommitteeAccess, async (req, res) => {
     try {
-        const records = await Record.find({ status: { $in: ['Sold', 'Completed'] } })
+        const records = await Record.find({
+            status: { $in: ['Sold', 'Completed'] },
+            is_parent: { $ne: true }
+        })
             .populate('farmer_id', 'full_name')
             .populate('trader_id', 'full_name business_name')
             .sort({ sold_at: -1 })
@@ -128,6 +131,7 @@ router.get('/reports/daily', requireAuth, requireCommitteeAccess, async (req, re
             {
                 $match: {
                     status: { $in: ['Sold', 'Completed'] },
+                    is_parent: { $ne: true },
                     sold_at: { $gte: startDate, $lte: endDate }
                 }
             },
@@ -162,6 +166,7 @@ router.get('/reports/monthly', requireAuth, requireCommitteeAccess, async (req, 
             {
                 $match: {
                     status: { $in: ['Sold', 'Completed'] },
+                    is_parent: { $ne: true },
                     sold_at: { $gte: startDate, $lte: endDate }
                 }
             },

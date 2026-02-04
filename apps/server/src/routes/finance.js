@@ -384,7 +384,10 @@ router.get('/billing-records', async (req, res) => {
     try {
         const { limit = 10, page = 1, period = 'all', role } = req.query;
 
-        const query = { status: { $in: ['Sold', 'Completed'] } }; // Only completed sales
+        const query = {
+            status: { $in: ['Sold', 'Completed'] },
+            is_parent: { $ne: true } // Exclude parent records (split lot containers)
+        };
 
         // Date Filter
         if (period && period !== 'all') {

@@ -28,7 +28,7 @@ export default function TraderDashboard() {
       ]);
 
       setStats(statsData);
-      setTransactionHistory(transactionsData);
+      setTransactionHistory(transactionsData.data || []);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {

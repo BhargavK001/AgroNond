@@ -418,15 +418,22 @@ const formatTime = (dateStr) => {
 
 /**
  * Returns { bg, text, border } colour set for a given status string.
- * "Partial" → blue  |  "Sold" / "Paid" → green  |  anything else → amber
+ * "Partial" → blue  |  "Sold" / "Paid" / "Full" → green  |  "WeightPending" → amber  |  anything else → amber
  */
 const getStatusColors = (status) => {
     const s = (status || '').toLowerCase();
     if (s === 'partial') {
         return { bg: colors.partialBg, text: colors.partialText, border: colors.partialBorder };
     }
-    if (s === 'sold' || s === 'paid') {
+    if (s === 'sold' || s === 'paid' || s === 'full') {
         return { bg: colors.paidBg, text: colors.paidText, border: colors.primaryLight };
+    }
+    if (s === 'weightpending') {
+        return { bg: colors.pendingBg, text: colors.pendingText, border: '#fcd34d' };
+    }
+    // Payment Pending -> Orange/Amber (similar to WeightPending but maybe distinct if needed)
+    if (s === 'payment pending') {
+        return { bg: '#ffedd5', text: '#c2410c', border: '#fdba74' }; // Orange-100 bg, Orange-700 text, Orange-300 border
     }
     // Pending / default → amber
     return { bg: colors.pendingBg, text: colors.pendingText, border: '#fcd34d' };
