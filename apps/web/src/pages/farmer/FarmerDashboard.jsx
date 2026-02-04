@@ -1711,7 +1711,10 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
               <div key={idx} className="text-xs bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 inline-block">
                 <span className="font-bold text-gray-800">₹{s.rate}</span>
                 <span className="text-gray-400 mx-1">/</span>
-                <span className="text-gray-600">{parseFloat(s.qty.toFixed(1))}{unit}</span>
+                <span className="text-gray-600">
+                  {unit === 'Crt' ? (s.carat || s.qty) : parseFloat(s.qty.toFixed(1))}
+                  {unit}
+                </span>
               </div>
             ))}
             {splits.length > 2 && (
@@ -1920,7 +1923,7 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
             {splits.map((split, idx) => (
               <div key={idx} className="flex justify-between text-xs text-gray-600">
                 <span>
-                  {parseFloat(split.qty.toFixed(2))} {unit}
+                  {unit === 'Crt' ? split.carat : parseFloat(split.qty.toFixed(2))} {unit}
                   <span className="text-gray-400 mx-1">×</span>
                   ₹{split.rate}
                 </span>
