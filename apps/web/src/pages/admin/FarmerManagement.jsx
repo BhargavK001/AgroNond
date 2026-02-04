@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, MapPin, Phone, ChevronRight, Filter, X, IndianRupee, Package, Wheat, TrendingUp } from 'lucide-react';
+import { Search, MapPin, Phone, ChevronRight, Filter, X, IndianRupee, Package, Wheat, TrendingUp, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -231,9 +231,29 @@ export default function FarmerManagement() {
         farmer.farmerId?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const handleDownloadUserReport = async () => {
+        if (!selectedFarmer) return;
+        try {
+            const blob = await api.get(`/api/admin/download-user-report/${selectedFarmer._id}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `farmer_report_${selectedFarmer.full_name}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Failed to download report');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                {/* ... existing header content ... */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Farmer Management</h1>
                     <p className="text-gray-500 mt-1">View and manage registered farmers</p>
@@ -344,13 +364,23 @@ export default function FarmerManagement() {
                             {/* Header */}
                             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                                 <h2 className="text-xl font-bold text-slate-800">Farmer Profile</h2>
-                                <button
-                                    onClick={() => setSelectedFarmer(null)}
-                                    className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleDownloadUserReport}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                                    >
+                                        <Download size={16} />
+                                        Download Report
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedFarmer(null)}
+                                        className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
                             </div>
+                            {/* ... rest of the modal ... */}
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                                 <div className="flex flex-col md:flex-row gap-6">

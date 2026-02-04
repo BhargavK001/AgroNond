@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone, Store, FileText, IndianRupee, Package, Wheat, TrendingUp, Edit2, Trash2, Save, AlertTriangle } from 'lucide-react';
+import { X, Phone, Store, FileText, IndianRupee, Package, Wheat, TrendingUp, Edit2, Trash2, Save, AlertTriangle, Download } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
@@ -102,6 +102,24 @@ export default function TraderDetailsModal({ isOpen, onClose, trader }) {
         } catch (error) {
             console.error('Delete failed:', error);
             toast.error('Failed to delete trader');
+        }
+    };
+
+    const handleDownloadReport = async () => {
+        try {
+            const blob = await api.get(`/api/committee/download-user-report/${trader._id}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `trader_report_${trader.full_name || trader.business_name}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Failed to download report');
         }
     };
 
@@ -244,6 +262,17 @@ export default function TraderDetailsModal({ isOpen, onClose, trader }) {
                             </div>
 
                             <div className="flex items-center gap-2">
+                                {!isEditing && (
+                                    <button
+                                        onClick={handleDownloadReport}
+                                        className="p-2 mr-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                                        title="Download Report"
+                                    >
+                                        <Download className="w-5 h-5" />
+                                        <span className="text-sm font-medium hidden sm:inline">Report</span>
+                                    </button>
+                                )}
+
                                 {isEditing ? (
                                     <>
                                         <button

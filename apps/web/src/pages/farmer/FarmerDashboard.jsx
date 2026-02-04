@@ -744,6 +744,8 @@ const FarmerDashboard = () => {
     });
   };
 
+
+
   // --- HANDLERS ---
   const handleAddRecord = async (data) => {
     try {
@@ -990,6 +992,24 @@ const FarmerDashboard = () => {
     );
   }
 
+  const handleDownloadReport = async () => {
+    try {
+      const blob = await api.get('/api/records/download-report', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `farmer_report_${profile.name || 'user'}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report');
+    }
+  };
+
   if (view === 'history') {
     return (
       <div className="min-h-screen bg-white">
@@ -1074,6 +1094,13 @@ const FarmerDashboard = () => {
             </div>
 
             <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                onClick={handleDownloadReport}
+                className="hidden sm:flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition shadow-sm"
+              >
+                <Download size={20} className="text-gray-500" />
+                Download Report
+              </button>
               <button
                 onClick={() => setView('history')}
                 className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-6 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition hover:shadow-md"

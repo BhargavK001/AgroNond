@@ -148,4 +148,76 @@ router.get('/transactions', requireAuth, requireTrader, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/trader/download-report
+ * Download full transaction history as CSV
+ */
+router.get('/download-report', requireAuth, requireTrader, async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        // Fetch ALL Sold/Completed records for this trader
+        const records = await Record.find({
+            trader_id: userId,
+            status: { $in: ['Sold', 'Completed'] }
+        })
+            .sort({ sold_at: -1 })
+            .populate('farmer_id', 'full_name');
+
+        const formattedRecords = records.map(record => {
+            const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
+
+            // Determine payment status
+            let payStatus = 'Pending';
+            if (record.trader_payment_status) {
+                payStatus = record.trader_payment_status;
+            } else if (record.payment_status) {
+                payStatus = record.payment_status.charAt(0).toUpperCase() + record.payment_status.slice(1);
+            }
+
+            return {
+                date: date.toLocaleDateString('en-IN'),
+                time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                crop: record.vegetable,
+                qty: record.official_qty || 0,
+                carat: record.official_carat || 0,
+                rate: record.sale_rate || 0,
+                amount: record.net_receivable_from_trader || ((record.sale_amount || 0) + (record.trader_commission || 0)),
+                commission: record.trader_commission || 0,
+                // farmer: record.farmer_id?.full_name || 'Unknown', // REMOVED PRIVACY
+                status: record.status,
+                payment_status: payStatus
+            };
+        });
+
+        const { Parser } = await import('json2csv');
+
+        const fields = [
+            { label: 'Date', value: 'date' },
+            { label: 'Time', value: 'time' },
+            { label: 'Crop', value: 'crop' },
+            { label: 'Quantity (kg)', value: 'qty' },
+            { label: 'Carat', value: 'carat' },
+            { label: 'Rate/kg', value: 'rate' },
+            { label: 'Total Amount', value: 'amount' },
+            { label: 'Commission', value: 'commission' },
+            // { label: 'Farmer Name', value: 'farmer' }, // REMOVED
+            { label: 'Status', value: 'status' },
+            { label: 'Payment Status', value: 'payment_status' }
+
+        ];
+
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(formattedRecords);
+
+        res.header('Content-Type', 'text/csv');
+        res.header('Content-Disposition', `attachment; filename=trader_report_${new Date().toISOString().split('T')[0]}.csv`);
+        res.status(200).send(csv);
+
+    } catch (error) {
+        console.error('Download report error:', error);
+        res.status(500).json({ error: 'Failed to generate report' });
+    }
+});
+
 export default router;

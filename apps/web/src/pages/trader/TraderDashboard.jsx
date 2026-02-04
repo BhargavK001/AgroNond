@@ -1,4 +1,4 @@
-import { ShoppingBasket, Wallet, ReceiptText, Clock, TrendingUp } from 'lucide-react';
+import { ShoppingBasket, Wallet, ReceiptText, Clock, TrendingUp, Download, Filter } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { Link } from 'react-router-dom';
@@ -45,6 +45,25 @@ export default function TraderDashboard() {
 
   // Calculate Average Rate
   const avgRate = stats.totalQuantity > 0 ? (stats.totalSpend / stats.totalQuantity) : 0;
+
+  const handleDownloadReport = async () => {
+    try {
+      const blob = await api.get('/api/trader/download-report', {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `trader_report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report');
+    }
+  };
 
   // Single Color Theme - Emerald / Slate Icons
   const statCards = [
@@ -108,7 +127,15 @@ export default function TraderDashboard() {
             <p className="text-slate-500 text-sm">Track your orders and invoices</p>
           </div>
           <div className="flex gap-2">
-            <Link to="/dashboard/trader/transactions" className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors">
+            <button
+              onClick={handleDownloadReport}
+              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition text-sm font-medium"
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">Download Report</span>
+            </button>
+            <Link to="/dashboard/trader/transactions" className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl transition-colors flex items-center gap-2">
+              <Filter size={16} />
               Filter
             </Link>
           </div>
