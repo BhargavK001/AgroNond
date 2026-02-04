@@ -28,7 +28,12 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   );
 };
 
+// --- HELPER ---
+const formatTime = (date) => new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
 const WeightDashboard = () => {
+  // ... (rest of the component)
+
   // --- STATE MANAGEMENT ---
   const [records, setRecords] = useState([]); // Weight records
   const [marketData, setMarketData] = useState([]); // Raw market data for auto-fetch
@@ -64,6 +69,7 @@ const WeightDashboard = () => {
 
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
+  const [selectedDate, setSelectedDate] = useState(''); // ✅ NEW: Date State
   const [sortBy, setSortBy] = useState('recent');
   const [profileForm, setProfileForm] = useState({ ...profile });
 
@@ -195,9 +201,20 @@ const WeightDashboard = () => {
   });
 
   // --- FILTER & SORT ---
-  const filteredRecords = filterStatus === 'All'
-    ? records
-    : records.filter(r => r.status === filterStatus);
+  const filteredRecords = records.filter(r => {
+    // 1. Status Filter
+    const statusMatch = filterStatus === 'All' ? true : r.status === filterStatus;
+
+    // 2. Date Filter
+    let dateMatch = true;
+    if (selectedDate) {
+      // Convert record date to YYYY-MM-DD for comparison
+      const rDate = new Date(r.date).toLocaleDateString('en-CA');
+      dateMatch = rDate === selectedDate;
+    }
+
+    return statusMatch && dateMatch;
+  });
 
   const sortedRecords = [...filteredRecords].sort((a, b) => {
     if (sortBy === 'recent') return new Date(b.date) - new Date(a.date);
@@ -418,14 +435,31 @@ const WeightDashboard = () => {
             </div>
 
             <div className="flex w-full sm:w-auto gap-3">
+              {/* ✅ NEW: Date Filter */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-sm transition-all cursor-pointer"
+                />
+                {selectedDate && (
+                  <button
+                    onClick={() => setSelectedDate('')}
+                    className="absolute -right-2 -top-2 bg-gray-200 hover:bg-gray-300 rounded-full p-0.5"
+                    title="Clear Date"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="flex-1 sm:flex-none px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 text-sm transition-all cursor-pointer"
               >
                 <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Done">Completed</option>
                 <option value="Sold">Sold</option>
                 <option value="RateAssigned">Ready to Weight</option>
               </select>
@@ -466,6 +500,9 @@ const WeightDashboard = () => {
                           <div>
                             <span className="block text-xs text-gray-500 font-medium">
                               {new Date(record.date).toLocaleDateString('en-GB')}
+                            </span>
+                            <span className="block text-[10px] text-gray-400">
+                              {formatTime(record.date)}
                             </span>
                             <span className="text-sm font-bold text-gray-900">{record.farmer_id}</span>
                           </div>
@@ -541,7 +578,7 @@ const WeightDashboard = () => {
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-semibold text-xs">
                 <tr>
-                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4">Date / Time</th>
                   <th className="px-6 py-4">Farmer ID</th>
                   <th className="px-6 py-4">Item</th>
                   <th className="px-6 py-4">Est. Weight</th>
@@ -568,8 +605,9 @@ const WeightDashboard = () => {
 
                     return (
                       <tr key={record.id} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="px-6 py-4 text-gray-600 font-medium">
-                          {new Date(record.date).toLocaleDateString('en-GB')}
+                        <td className="px-6 py-4 align-top">
+                          <div className="text-gray-900 font-medium">{new Date(record.date).toLocaleDateString('en-GB')}</div>
+                          <div className="text-xs text-gray-400 mt-1">{formatTime(record.date)}</div>
                         </td>
                         <td className="px-6 py-4 text-gray-900 font-bold">{record.farmer_id}</td>
                         <td className="px-6 py-4">

@@ -12,111 +12,84 @@ router.get('/my-records', requireAuth, async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const status = req.query.status;
+        const date = req.query.date; // Expect YYYY-MM-DD
 
         const skip = (page - 1) * limit;
 
-        // Build query
-        const query = {
+        // Base query
+        const baseQuery = {
             farmer_id: req.user._id,
             parent_record_id: { $exists: false } // Exclude child records
         };
 
-        // "Partial" is a computed display_status, not stored in DB
-        // We need special handling for it
-        const isPartialFilter = status === 'Partial';
+        // Date Filter
+        if (date) {
+            const startOfDay = new Date(date);
+            startOfDay.setHours(0, 0, 0, 0);
 
-        if (status && status !== 'All' && !isPartialFilter) {
-            query.status = status;
+            const endOfDay = new Date(date);
+            endOfDay.setHours(23, 59, 59, 999);
+
+            baseQuery.createdAt = {
+                $gte: startOfDay,
+                $lte: endOfDay
+            };
         }
 
-        // For Partial filter, we first need to get all parent records
-        // and compute their display_status, then filter
-        if (isPartialFilter) {
-            // Get all parent records for this farmer (no pagination yet)
-            const allParentRecords = await Record.find({
-                farmer_id: req.user._id,
-                parent_record_id: { $exists: false },
-                is_parent: true // Only parent records can have Partial status
-            })
-                .populate('farmer_id', 'full_name phone farmerId')
-                .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
-                .sort({ createdAt: -1 })
-                .lean();
+        // --- HELPER TO ENRICH RECORDS ---
+        const enrichMethod = async (records) => {
+            const parentIds = records.filter(r => r.is_parent).map(r => r._id);
+            let parentMap = {};
 
-            // Get child records for all these parents
-            const parentIds = allParentRecords.map(r => r._id);
+            if (parentIds.length > 0) {
+                const childRecords = await Record.find({
+                    parent_record_id: { $in: parentIds },
+                    status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
+                }).sort({ createdAt: 1 });
 
-            const childRecords = await Record.find({
-                parent_record_id: { $in: parentIds },
-                status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
-            }).sort({ createdAt: 1 });
+                childRecords.forEach(child => {
+                    const pId = child.parent_record_id.toString();
+                    if (!parentMap[pId]) {
+                        parentMap[pId] = {
+                            splits: [], soldQty: 0, soldCarat: 0, totalSaleAmount: 0,
+                            childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingCarat: 0, weightPendingCount: 0
+                        };
+                    }
+                    // Weight Pending Logic
+                    const isWeightPending = child.status === 'RateAssigned' &&
+                        (child.official_qty || 0) === 0 && (child.official_carat || 0) === 0;
 
-            // Group children by parent
-            const parentMap = {};
-            childRecords.forEach(child => {
-                const pId = child.parent_record_id.toString();
-                if (!parentMap[pId]) {
-                    parentMap[pId] = {
-                        splits: [],
-                        soldQty: 0,
-                        soldCarat: 0,
-                        totalSaleAmount: 0,
-                        childCount: 0,
-                        soldCount: 0,
-                        weightPendingQty: 0,
-                        weightPendingCarat: 0,
-                        weightPendingCount: 0
-                    };
-                }
+                    const childQty = isWeightPending ? (child.allocated_qty || child.quantity || 0) : (child.official_qty || child.quantity || 0);
+                    const childCarat = isWeightPending ? (child.allocated_carat || child.carat || 0) : (child.official_carat || child.carat || 0);
+                    const amount = child.sale_amount || child.total_amount || 0;
 
-                // Check if this is a weight pending item (RateAssigned with no official weight)
-                const isWeightPending = child.status === 'RateAssigned' &&
-                    (child.official_qty || 0) === 0 && (child.official_carat || 0) === 0;
+                    if (isWeightPending) {
+                        parentMap[pId].weightPendingQty += childQty;
+                        parentMap[pId].weightPendingCarat += childCarat;
+                        parentMap[pId].weightPendingCount += 1;
+                    } else {
+                        parentMap[pId].soldQty += childQty;
+                        parentMap[pId].soldCarat += childCarat;
+                        parentMap[pId].totalSaleAmount += amount;
+                    }
+                    parentMap[pId].childCount += 1;
+                    if (['Sold', 'Completed'].includes(child.status)) parentMap[pId].soldCount += 1;
 
-                // For weight pending items, use allocated qty; for sold items, use official qty
-                const childQty = isWeightPending
-                    ? (child.allocated_qty || child.quantity || 0)  // Allocated for weight pending
-                    : (child.official_qty || child.quantity || 0);  // Official for sold
-                const childCarat = isWeightPending
-                    ? (child.allocated_carat || child.carat || 0)
-                    : (child.official_carat || child.carat || 0);
-                const amount = child.sale_amount || child.total_amount || 0;
-
-                if (isWeightPending) {
-                    // Track weight pending separately
-                    parentMap[pId].weightPendingQty += childQty;
-                    parentMap[pId].weightPendingCarat += childCarat;
-                    parentMap[pId].weightPendingCount += 1;
-                } else {
-                    // Only count as sold if actually weighed
-                    parentMap[pId].soldQty += childQty;
-                    parentMap[pId].soldCarat += childCarat;
-                    parentMap[pId].totalSaleAmount += amount;
-                }
-                parentMap[pId].childCount += 1;
-
-                if (['Sold', 'Completed'].includes(child.status)) {
-                    parentMap[pId].soldCount += 1;
-                }
-
-                parentMap[pId].splits.push({
-                    _id: child._id,
-                    qty: childQty,
-                    carat: childCarat,
-                    rate: child.sale_rate || 0,
-                    amount: amount,
-                    date: child.sold_at || child.createdAt,
-                    status: child.status,
-                    isWeightPending: isWeightPending,
-                    payment_status: child.farmer_payment_status || 'Pending' // ✅ Include payment status
+                    parentMap[pId].splits.push({
+                        _id: child._id, qty: childQty, carat: childCarat, rate: child.sale_rate || 0,
+                        amount: amount, date: child.sold_at || child.createdAt, status: child.status,
+                        isWeightPending: isWeightPending, payment_status: child.farmer_payment_status || 'Pending'
+                    });
                 });
-            });
+            }
 
-            // Compute display_status and filter for Partial
-            const partialRecords = [];
-            allParentRecords.forEach(record => {
-                const data = parentMap[record._id.toString()];
-                if (data) {
+            return records.map(record => {
+                if (record.is_parent) {
+                    const data = parentMap[record._id.toString()] || {
+                        splits: [], soldQty: 0, soldCarat: 0, totalSaleAmount: 0,
+                        childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingCarat: 0, weightPendingCount: 0
+                    };
+
                     record.aggregated_sold_qty = data.soldQty;
                     record.aggregated_sold_carat = data.soldCarat;
                     record.aggregated_sale_amount = data.totalSaleAmount;
@@ -130,18 +103,14 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     record.awaiting_qty = (record.quantity || 0) - data.soldQty;
                     record.awaiting_carat = (record.carat || 0) - data.soldCarat;
 
-                    // Add weight pending data to record
                     record.weight_pending_qty = data.weightPendingQty;
                     record.weight_pending_carat = data.weightPendingCarat;
-                    record.weight_pending_count = data.weightPendingCount;
 
-                    // ✅ Compute Aggregated Payment Status
-                    // If any sold split is 'Pending', the whole lot is considered 'Payment Pending'
                     const soldSplits = data.splits.filter(s => ['Sold', 'Completed'].includes(s.status));
                     const hasUnpaid = soldSplits.some(s => s.payment_status === 'Pending');
                     record.aggregated_payment_status = hasUnpaid ? 'Pending' : 'Paid';
 
-                    // Determine display_status based on sold quantity AND weight pending
+                    // Compute Status
                     const totalQty = record.quantity || 0;
                     const totalCarat = record.carat || 0;
                     const hasWeightPending = data.weightPendingQty > 0.01 || data.weightPendingCarat > 0.01;
@@ -149,209 +118,102 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     const hasRemaining = (totalQty > 0 && (data.soldQty + data.weightPendingQty) < totalQty - 0.01) ||
                         (totalCarat > 0 && (data.soldCarat + data.weightPendingCarat) < totalCarat - 0.01);
 
-                    // Priority: WeightPending > Partial > Sold > Pending
-                    if (hasWeightPending && !hasSoldSomething) {
-                        // Only weight pending items, nothing actually sold yet
-                        record.display_status = 'WeightPending';
-                    } else if (hasWeightPending && hasSoldSomething) {
-                        // Mix of weight pending and sold = still show WeightPending (more urgent)
-                        record.display_status = 'WeightPending';
-                    } else if (hasSoldSomething && hasRemaining) {
-                        // Some sold, some remaining = Partial
-                        record.display_status = 'Partial';
-                        partialRecords.push(record);
-                    } else if (hasSoldSomething && !hasRemaining) {
-                        // All sold = Sold
-                        record.display_status = 'Sold';
-                    } else {
-                        // Nothing sold yet = Pending
-                        record.display_status = 'Pending';
-                    }
+                    if (hasWeightPending && !hasSoldSomething) record.display_status = 'WeightPending';
+                    else if (hasWeightPending && hasSoldSomething) record.display_status = 'WeightPending';
+                    else if (hasSoldSomething && hasRemaining) record.display_status = 'Partial';
+                    else if (hasSoldSomething && !hasRemaining) record.display_status = 'Sold';
+                    else record.display_status = 'Pending';
+                } else {
+                    // Normal record
+                    record.display_status = record.status;
                 }
+                return record;
             });
+        };
 
-            // Apply pagination to filtered results
-            const totalRecords = partialRecords.length;
-            const totalPages = Math.ceil(totalRecords / limit);
-            const paginatedRecords = partialRecords.slice(skip, skip + limit);
+        // --- FILTERING LOGIC ---
+        // If 'All' simply use DB pagination (fastest)
+        // If Filtering by status, we must fetch candidates, enrich, filter in memory, THEN paginate
+        // to avoid "Partial" records showing up in "Pending" results etc.
+
+        if (!status || status === 'All') {
+            const totalRecords = await Record.countDocuments(baseQuery);
+            const rawRecords = await Record.find(baseQuery)
+                .populate('farmer_id', 'full_name phone farmerId')
+                .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean();
+
+            const records = await enrichMethod(rawRecords);
 
             return res.json({
-                records: paginatedRecords,
-                pagination: {
-                    totalRecords,
-                    totalPages,
-                    currentPage: page,
-                    limit
-                }
+                records,
+                pagination: { totalRecords, totalPages: Math.ceil(totalRecords / limit), currentPage: page, limit }
             });
         }
 
-        // Normal flow for non-Partial filters
-        // Get total count for pagination metadata
-        const totalRecords = await Record.countDocuments(query);
-        const totalPages = Math.ceil(totalRecords / limit);
+        // STRICT FILTERING
+        // Fetch ALL candidates that *might* match.
 
-        // Get all records for this farmer (paginated)
-        const records = await Record.find(query)
+        let dbStatusQuery = {};
+
+        if (status === 'Pending') {
+            // Pending records are strictly 'Pending' in DB
+            dbStatusQuery.status = 'Pending';
+        } else if (status === 'Sold' || status === 'Payment Pending') {
+            // Both Sold and Payment Pending depend on records being 'Sold' or 'Completed' in DB
+            dbStatusQuery.status = { $in: ['Sold', 'Completed'] };
+        } else if (status === 'Partial' || status === 'WeightPending') {
+            // Partial and WeightPending records are ALWAYS Parent records (split lots)
+            dbStatusQuery.is_parent = true;
+        }
+
+        // We fetch ALL matching candidates (without pagination limit) to filter correctly in memory
+        const candidateRecords = await Record.find({ ...baseQuery, ...dbStatusQuery })
             .populate('farmer_id', 'full_name phone farmerId')
             .select('-trader_id -trader_payment_ref -trader_payment_mode -trader_payment_status -net_receivable_from_trader -trader_commission')
             .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .lean(); // Use lean for better performance
+            .lean();
 
+        const enrichedCandidates = await enrichMethod(candidateRecords);
 
-        // For parent records (is_parent: true), aggregate data from child records
-        const parentIds = records.filter(r => r.is_parent).map(r => r._id);
+        // Filter based on COMPUTED display_status and Payment Status
+        const filteredRecords = enrichedCandidates.filter(r => {
+            if (status === 'Payment Pending') {
+                // strict logic: Must be visually 'Sold' sales-wise, but 'Pending' payment-wise
+                const isSold = r.display_status === 'Sold';
+                // Check payment status (aggregated for parents, direct for others)
+                const paymentStatus = r.is_parent ? r.aggregated_payment_status : r.farmer_payment_status;
+                return isSold && paymentStatus === 'Pending';
+            }
+            if (status === 'Sold') {
+                // strict logic: Must be visually 'Sold' sales-wise AND 'Paid' (not Pending)
+                const isSold = r.display_status === 'Sold';
+                const paymentStatus = r.is_parent ? r.aggregated_payment_status : r.farmer_payment_status;
+                return isSold && paymentStatus !== 'Pending';
+            }
+            // Fallback for Pending, Partial, etc.
+            return r.display_status === status;
+        });
 
-        if (parentIds.length > 0) {
-            // Fetch ALL child records for these parents
-            const childRecords = await Record.find({
-                parent_record_id: { $in: parentIds },
-                status: { $in: ['Sold', 'Completed', 'RateAssigned', 'Weighed'] }
-            }).sort({ createdAt: 1 }); // Sort by time
-
-            // Group children by parent and calculate aggregates
-            const parentMap = {};
-
-            childRecords.forEach(child => {
-                const pId = child.parent_record_id.toString();
-                if (!parentMap[pId]) {
-                    parentMap[pId] = {
-                        splits: [],
-                        soldQty: 0,
-                        soldCarat: 0,
-                        totalSaleAmount: 0,
-                        childCount: 0,
-                        soldCount: 0,
-                        weightPendingQty: 0,
-                        weightPendingCarat: 0,
-                        weightPendingCount: 0
-                    };
-                }
-
-                // Check if this is a weight pending item (RateAssigned with no official weight)
-                const isWeightPending = child.status === 'RateAssigned' &&
-                    (child.official_qty || 0) === 0 && (child.official_carat || 0) === 0;
-
-                // For weight pending items, use allocated qty; for sold items, use official qty
-                const childQty = isWeightPending
-                    ? (child.allocated_qty || child.quantity || 0)  // Allocated for weight pending
-                    : (child.official_qty || child.quantity || 0);  // Official for sold
-                const childCarat = isWeightPending
-                    ? (child.allocated_carat || child.carat || 0)
-                    : (child.official_carat || child.carat || 0);
-                const amount = child.sale_amount || child.total_amount || 0;
-
-                if (isWeightPending) {
-                    // Track weight pending separately
-                    parentMap[pId].weightPendingQty += childQty;
-                    parentMap[pId].weightPendingCarat += childCarat;
-                    parentMap[pId].weightPendingCount += 1;
-                } else {
-                    // Only count as sold if actually weighed
-                    parentMap[pId].soldQty += childQty;
-                    parentMap[pId].soldCarat += childCarat;
-                    parentMap[pId].totalSaleAmount += amount;
-                }
-                parentMap[pId].childCount += 1;
-
-                if (['Sold', 'Completed'].includes(child.status)) {
-                    parentMap[pId].soldCount += 1;
-                }
-
-                // Add to splits details
-                parentMap[pId].splits.push({
-                    _id: child._id,
-                    qty: childQty,
-                    carat: childCarat,
-                    rate: child.sale_rate || 0,
-                    amount: amount,
-                    date: child.sold_at || child.createdAt,
-                    status: child.status,
-                    isWeightPending: isWeightPending,
-                    payment_status: child.farmer_payment_status || 'Pending' // ✅ Include payment status
-                });
-            });
-
-            // Enhance parent records
-            records.forEach(record => {
-                if (record.is_parent) {
-                    const data = parentMap[record._id.toString()];
-                    if (data) {
-                        record.aggregated_sold_qty = data.soldQty;
-                        record.aggregated_sold_carat = data.soldCarat;
-                        record.aggregated_sale_amount = data.totalSaleAmount;
-                        record.child_count = data.childCount;
-                        record.sold_count = data.soldCount;
-                        record.splits = data.splits; // New field
-
-                        // Calculate average rate if needed (total amount / total sold)
-                        const totalSold = record.sale_unit === 'carat' ? data.soldCarat : data.soldQty;
-                        record.aggregated_avg_rate = totalSold > 0 ? (data.totalSaleAmount / totalSold) : 0;
-
-                        // Calculate awaiting
-                        record.awaiting_qty = (record.quantity || 0) - data.soldQty;
-                        record.awaiting_carat = (record.carat || 0) - data.soldCarat;
-
-                        // Add weight pending data to record
-                        record.weight_pending_qty = data.weightPendingQty;
-                        record.weight_pending_carat = data.weightPendingCarat;
-                        record.weight_pending_count = data.weightPendingCount;
-
-                        // ✅ Compute Aggregated Payment Status
-                        // If any sold split is 'Pending', the whole lot is considered 'Payment Pending'
-                        const soldSplits = data.splits.filter(s => ['Sold', 'Completed'].includes(s.status));
-                        const hasUnpaid = soldSplits.some(s => s.payment_status === 'Pending');
-                        record.aggregated_payment_status = hasUnpaid ? 'Pending' : 'Paid';
-
-                        // Determine display_status based on sold quantity AND weight pending
-                        const totalQty = record.quantity || 0;
-                        const totalCarat = record.carat || 0;
-                        const hasWeightPending = data.weightPendingQty > 0.01 || data.weightPendingCarat > 0.01;
-                        const hasSoldSomething = data.soldQty > 0.01 || data.soldCarat > 0.01;
-                        const hasRemaining = (totalQty > 0 && (data.soldQty + data.weightPendingQty) < totalQty - 0.01) ||
-                            (totalCarat > 0 && (data.soldCarat + data.weightPendingCarat) < totalCarat - 0.01);
-
-                        // Priority: WeightPending > Partial > Sold > Pending
-                        if (hasWeightPending && !hasSoldSomething) {
-                            // Only weight pending items, nothing actually sold yet
-                            record.display_status = 'WeightPending';
-                        } else if (hasWeightPending && hasSoldSomething) {
-                            // Mix of weight pending and sold = still show WeightPending (more urgent)
-                            record.display_status = 'WeightPending';
-                        } else if (hasSoldSomething && hasRemaining) {
-                            record.display_status = 'Partial';
-                        } else if (hasSoldSomething && !hasRemaining) {
-                            record.display_status = 'Sold';
-                        } else {
-                            record.display_status = 'Pending';
-                        }
-                    } else {
-                        // Parent with no children sold yet
-                        record.splits = [];
-                        record.awaiting_qty = record.quantity;
-                        record.awaiting_carat = record.carat;
-                        record.display_status = 'Pending';
-                    }
-                }
-            });
-        }
+        // Paginate manually
+        const totalRecords = filteredRecords.length;
+        const totalPages = Math.ceil(totalRecords / limit);
+        const paginatedRecords = filteredRecords.slice(skip, skip + limit);
 
         res.json({
-            records,
-            pagination: {
-                totalRecords,
-                totalPages,
-                currentPage: page,
-                limit
-            }
+            records: paginatedRecords,
+            pagination: { totalRecords, totalPages, currentPage: page, limit }
         });
+
     } catch (error) {
         console.error('Fetch my records error:', error);
         res.status(500).json({ error: 'Failed to fetch records' });
     }
 });
+
 /**
  * GET /api/records/my-stats
  * Fetch global statistics for the logged-in farmer
