@@ -1957,7 +1957,7 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
             {splits.map((split, idx) => (
               <div key={idx} className="flex justify-between text-xs text-gray-600">
                 <span>
-                  {unit === 'Crt' ? split.carat : parseFloat(split.qty.toFixed(2))} {unit}
+                  {unit === 'Crt' ? (split.carat || split.qty) : parseFloat(split.qty.toFixed(2))} {unit}
                   <span className="text-gray-400 mx-1">×</span>
                   ₹{split.rate}
                 </span>
