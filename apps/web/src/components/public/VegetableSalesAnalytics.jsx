@@ -261,7 +261,7 @@ export default function VegetableSalesAnalytics() {
                                     </span>
                                 </div>
                                 <div style={{ height: Math.max(350, data.data.length * 60) }} className="w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                                         <BarChart
                                             data={data.data}
                                             layout="vertical"

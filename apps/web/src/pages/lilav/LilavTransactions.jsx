@@ -45,11 +45,13 @@ export default function LilavTransactions() {
             // Pass date range to API if supported, otherwise fetch all and filter client side.
             // Assuming generic list endpoint supports basic filtering or we filter manually.
             // Using a limit to avoid fetching too much history if backend doesn't filter.
-            const data = await api.purchases.list({
+            const response = await api.purchases.list({
                 startDate: dateRange.start,
                 endDate: dateRange.end,
                 limit: 500
             });
+
+            const data = Array.isArray(response) ? response : (response.data || []);
 
             // Transform data - UPDATED: Include carat values
             const formattedData = data.map(t => {

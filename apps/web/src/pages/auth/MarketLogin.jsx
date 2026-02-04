@@ -41,10 +41,11 @@ export default function MarketLogin() {
     const navigate = useNavigate();
 
     // Allowed roles for this portal
-    const allowedRoles = ['committee', 'lilav'];
+    const allowedRoles = ['committee', 'lilav', 'weight'];
     const roleRedirects = {
         committee: '/dashboard/committee',
-        lilav: '/dashboard/lilav'
+        lilav: '/dashboard/lilav',
+        weight: '/dashboard/weight'
     };
 
     // If already logged in and has allowed role
@@ -213,7 +214,7 @@ export default function MarketLogin() {
                             <div className="text-center mb-5 sm:mb-8">
                                 <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">Market Staff Login</h1>
                                 <p className="text-[var(--text-secondary)] text-sm sm:text-base">
-                                    For Committee & Lilav staff only
+                                    For Committee, Lilav & Weight staff only
                                 </p>
                             </div>
 

@@ -289,6 +289,7 @@ export default function DailyRates({ readOnly = false }) {
                                             step="0.5"
                                             value={rate.rate || ''}
                                             onChange={(e) => handleRateChange(rates.indexOf(rate), e.target.value)}
+                                            onWheel={(e) => e.target.blur()}
                                             placeholder="0.00"
                                             className="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-lg font-semibold"
                                         />
