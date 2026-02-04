@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
-import { Search, Filter, Phone, Plus, Store, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Phone, Plus, Store, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import AddTraderModal from '../../components/committee/AddTraderModal';
 import TraderDetailsModal from '../../components/committee/TraderDetailsModal';
 import api from '../../lib/api';
@@ -13,8 +13,7 @@ export default function TradersList() {
   const [traders, setTraders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,23 +51,33 @@ export default function TradersList() {
       const response = await api.get('/api/users?' + new URLSearchParams(params).toString());
 
       // Handle paginated response
+      let filteredTraders = [];
       if (response.data) {
-        setTraders(response.data || []);
-        setTotalPages(response.totalPages || 1);
-        setTotalCount(response.total || 0);
+        filteredTraders = (response.data || []).filter(t => t.role === 'trader');
       } else {
         // Fallback for non-paginated response
-        setTraders(response || []);
-        setTotalCount(response?.length || 0);
-        setTotalPages(1);
+        filteredTraders = (response || []).filter(t => t.role === 'trader');
       }
+
+      // Apply date filter if selected
+      if (selectedDate) {
+        filteredTraders = filteredTraders.filter(t => {
+          if (!t.createdAt) return false;
+          const traderDate = new Date(t.createdAt).toISOString().split('T')[0];
+          return traderDate === selectedDate;
+        });
+      }
+
+      setTraders(filteredTraders);
+      setTotalPages(response.totalPages || 1);
+      setTotalCount(filteredTraders.length);
     } catch (error) {
       console.error('Failed to fetch traders:', error);
       if (showLoading) toast.error('Failed to load traders');
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, [currentPage, debouncedSearch]);
+  }, [currentPage, debouncedSearch, selectedDate]);
 
   useEffect(() => {
     fetchTraders();
@@ -122,44 +131,28 @@ export default function TradersList() {
             className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm"
           />
         </div>
+        {/* Date Filter */}
         <div className="relative">
-          <button
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`flex items-center justify-center gap-2 px-4 py-3 border rounded-xl font-medium transition-colors ${statusFilter !== 'All'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
-          >
-            <Filter className="w-4 h-4" />
-            <span>{statusFilter === 'All' ? 'Filters' : statusFilter}</span>
-          </button>
-
-          {isFilterOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setIsFilterOpen(false)}
-              />
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-20 overflow-hidden">
-                <div className="p-1">
-                  {['All', 'Active', 'Inactive'].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => {
-                        setStatusFilter(status);
-                        setIsFilterOpen(false);
-                      }}
-                      className={`flex items-center w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${statusFilter === status
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'text-slate-600 hover:bg-slate-50'
-                        }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => {
+                setSelectedDate('');
+                setCurrentPage(1);
+              }}
+              className="absolute -right-2 -top-2 bg-slate-200 hover:bg-slate-300 rounded-full p-0.5"
+              title="Clear Date"
+            >
+              <X size={12} />
+            </button>
           )}
         </div>
       </div>
@@ -294,8 +287,8 @@ export default function TradersList() {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
-                          ? 'bg-emerald-600 text-white'
-                          : 'hover:bg-slate-100 text-slate-600'
+                        ? 'bg-emerald-600 text-white'
+                        : 'hover:bg-slate-100 text-slate-600'
                         }`}
                     >
                       {pageNum}

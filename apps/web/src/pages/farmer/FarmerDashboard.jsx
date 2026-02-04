@@ -615,6 +615,7 @@ const FarmerDashboard = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
+  const [selectedDate, setSelectedDate] = useState(''); // ✅ NEW: Date Filter State
   const [profileForm, setProfileForm] = useState({ ...profile });
 
   // EDIT FORM STATE
@@ -629,7 +630,7 @@ const FarmerDashboard = () => {
   // --- FETCH DATA FROM BACKEND ---
   const [markets, setMarkets] = useState([]); // ✅ State for markets list
 
-  const fetchRecords = useCallback(async (showLoading = true, page = 1, status = 'All') => {
+  const fetchRecords = useCallback(async (showLoading = true, page = 1, status = 'All', date = '') => {
     try {
       if (showLoading) setIsLoading(true);
       const params = {
@@ -639,6 +640,10 @@ const FarmerDashboard = () => {
       // Only add status if it's not 'All'
       if (status && status !== 'All') {
         params.status = status;
+      }
+      // ✅ Add date param if present
+      if (date) {
+        params.date = date;
       }
 
       const data = await api.records.myRecords(params);
@@ -675,7 +680,7 @@ const FarmerDashboard = () => {
   // ✅ Auto-refresh records and stats every 30 seconds
   // Pass current page and filter to keep view consistent
   useAutoRefresh(() => {
-    fetchRecords(false, pagination.page, filterStatus);
+    fetchRecords(false, pagination.page, filterStatus, selectedDate);
     fetchStats();
   }, { interval: 30000 });
 
@@ -690,7 +695,7 @@ const FarmerDashboard = () => {
 
   // ✅ NEW: Fetch records on mount
   useEffect(() => {
-    fetchRecords(true, 1, 'All');
+    fetchRecords(true, 1, 'All', '');
     fetchStats();
     loadProfile();
   }, []);
@@ -706,7 +711,7 @@ const FarmerDashboard = () => {
   // --- COMPUTED VALUES ---
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
-      fetchRecords(true, newPage, filterStatus);
+      fetchRecords(true, newPage, filterStatus, selectedDate);
       // Scroll to top of table
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -714,7 +719,13 @@ const FarmerDashboard = () => {
 
   const handleFilterChange = (status) => {
     setFilterStatus(status);
-    fetchRecords(true, 1, status); // Reset to page 1 on filter
+    fetchRecords(true, 1, status, selectedDate); // Reset to page 1 on filter
+  };
+
+  const handleDateFilterChange = (e) => {
+    const date = e.target.value;
+    setSelectedDate(date);
+    fetchRecords(true, 1, filterStatus, date); // Fetch with new date
   };
 
   const soldRecords = records.filter(r => ['Sold', 'Completed', 'Partial'].includes(r.display_status || r.status));
@@ -733,13 +744,15 @@ const FarmerDashboard = () => {
     });
   };
 
+
+
   // --- HANDLERS ---
   const handleAddRecord = async (data) => {
     try {
       await api.post('/api/records/add', data);
       toast.success('Records saved to database!');
       setView('dashboard');
-      fetchRecords(true, 1, filterStatus); // Refresh and go to page 1
+      fetchRecords(true, 1, filterStatus, selectedDate); // Refresh and go to page 1
       fetchStats();
     } catch (error) {
       console.error(error);
@@ -757,7 +770,7 @@ const FarmerDashboard = () => {
     try {
       await api.delete(`/api/records/${recordToDelete}`);
       toast.success('Record deleted successfully');
-      fetchRecords(true, pagination.page, filterStatus); // Refresh current page
+      fetchRecords(true, pagination.page, filterStatus, selectedDate); // Refresh current page
     } catch (error) {
       toast.error('Failed to delete record');
     } finally {
@@ -862,7 +875,7 @@ const FarmerDashboard = () => {
 
       toast.success("Record updated successfully!");
       setModals({ ...modals, editRecord: false });
-      fetchRecords();
+      fetchRecords(true, pagination.page, filterStatus, selectedDate);
     } catch (error) {
       console.error(error);
       toast.error('Failed to update record');
@@ -967,7 +980,7 @@ const FarmerDashboard = () => {
   if (view === 'addRecord') {
     return (
       <div className="min-h-screen bg-white">
-        <Toaster position="top-center" reverseOrder={false} />
+
         <FarmerNavbar />
         <div className="mt-16">
           <AddNewRecordSection
@@ -979,10 +992,28 @@ const FarmerDashboard = () => {
     );
   }
 
+  const handleDownloadReport = async () => {
+    try {
+      const blob = await api.get('/api/records/download-report', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `farmer_report_${profile.name || 'user'}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report');
+    }
+  };
+
   if (view === 'history') {
     return (
       <div className="min-h-screen bg-white">
-        <Toaster position="top-center" reverseOrder={false} />
+
         <FarmerNavbar />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
@@ -1046,7 +1077,7 @@ const FarmerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Toaster position="top-center" reverseOrder={false} />
+
       <FarmerNavbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
@@ -1063,6 +1094,13 @@ const FarmerDashboard = () => {
             </div>
 
             <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                onClick={handleDownloadReport}
+                className="hidden sm:flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition shadow-sm"
+              >
+                <Download size={20} className="text-gray-500" />
+                Download Report
+              </button>
               <button
                 onClick={() => setView('history')}
                 className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-6 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl transition hover:shadow-md"
@@ -1155,15 +1193,38 @@ const FarmerDashboard = () => {
               <p className="text-sm text-gray-600 mt-1">Manage and track all transactions</p>
             </div>
 
-            <div className="flex w-full sm:w-auto gap-3">
+            <div className="flex w-full sm:w-auto gap-3 items-center">
+              {/* ✅ NEW: Date Filter */}
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={handleDateFilterChange}
+                  className="px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 text-sm"
+                />
+                {selectedDate && (
+                  <button
+                    onClick={() => {
+                      setSelectedDate('');
+                      fetchRecords(true, 1, filterStatus, '');
+                    }}
+                    className="absolute -right-2 -top-2 bg-gray-200 hover:bg-gray-300 rounded-full p-0.5"
+                    title="Clear Date"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
               <select
                 value={filterStatus}
                 onChange={(e) => handleFilterChange(e.target.value)}
                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:border-green-500 text-sm"
               >
                 <option>All</option>
-                <option>Pending</option>
+                <option value="WeightPending">Weight Pending</option>
                 <option>Sold</option>
+                <option>Payment Pending</option>
                 <option>Partial</option>
               </select>
               {/* Sort removed temporary as it requires backend support for 'amount' sort with pagination. Default is 'Recent' */}
@@ -1711,7 +1772,10 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
               <div key={idx} className="text-xs bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 inline-block">
                 <span className="font-bold text-gray-800">₹{s.rate}</span>
                 <span className="text-gray-400 mx-1">/</span>
-                <span className="text-gray-600">{parseFloat(s.qty.toFixed(1))}{unit}</span>
+                <span className="text-gray-600">
+                  {unit === 'Crt' ? (s.carat || s.qty) : parseFloat(s.qty.toFixed(1))}
+                  {unit}
+                </span>
               </div>
             ))}
             {splits.length > 2 && (
@@ -1920,7 +1984,7 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
             {splits.map((split, idx) => (
               <div key={idx} className="flex justify-between text-xs text-gray-600">
                 <span>
-                  {parseFloat(split.qty.toFixed(2))} {unit}
+                  {unit === 'Crt' ? (split.carat || split.qty) : parseFloat(split.qty.toFixed(2))} {unit}
                   <span className="text-gray-400 mx-1">×</span>
                   ₹{split.rate}
                 </span>

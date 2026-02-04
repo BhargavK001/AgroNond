@@ -30,12 +30,26 @@ async function apiRequest(endpoint, options = {}) {
       throw new Error('Unauthorized');
     }
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.error || data.message || 'API request failed');
+      // Try to parse error message from JSON, fallback to text if failed
+      let errorMessage = 'API request failed';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch (e) {
+        // If not JSON, use status text
+        errorMessage = response.statusText;
+      }
+      throw new Error(errorMessage);
     }
 
+    // Handle Blob response for downloads
+    if (options.responseType === 'blob') {
+      return await response.blob();
+    }
+
+    // Default: Handle JSON response
+    const data = await response.json();
     return data;
   } catch (error) {
     console.error(`API Error [${endpoint}]:`, error);
