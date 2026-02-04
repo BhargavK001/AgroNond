@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
-import { Search, Filter, Phone, Plus, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Phone, Plus, Users, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import AddFarmerModal from '../../components/committee/AddFarmerModal';
 import FarmerDetailsModal from '../../components/committee/FarmerDetailsModal';
 import api from '../../lib/api';
@@ -13,8 +13,7 @@ export default function FarmersList() {
   const [farmers, setFarmers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedDate, setSelectedDate] = useState('');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,39 +48,47 @@ export default function FarmersList() {
         params.search = debouncedSearch;
       }
 
-      const response = await api.get('/api/users', { params: new URLSearchParams(params).toString() });
+      const response = await api.get('/api/users?' + new URLSearchParams(params).toString());
 
       // Handle paginated response
+      let filteredFarmers = [];
       if (response.data) {
-        const filteredFarmers = (response.data || []).filter(u => {
+        filteredFarmers = (response.data || []).filter(u => {
           const name = u.full_name?.toLowerCase() || '';
           const isSystem = name.includes('admin') || name.includes('committee') || name.includes('test') || name.includes('system');
           // Strict Role Check AND Name Check
           return (u.role === 'farmer') && !isSystem;
         });
-        setFarmers(filteredFarmers);
-        setTotalPages(response.totalPages || 1);
-        setTotalCount(filteredFarmers.length); // Update count based on filtered list
       } else {
         // Fallback for non-paginated response
         const list = response || [];
-        const filteredFarmers = list.filter(u => {
+        filteredFarmers = list.filter(u => {
           const name = u.full_name?.toLowerCase() || '';
           const isSystem = name.includes('admin') || name.includes('committee') || name.includes('test') || name.includes('system');
           // Strict Role Check AND Name Check
           return (u.role === 'farmer') && !isSystem;
         });
-        setFarmers(filteredFarmers);
-        setTotalCount(filteredFarmers.length);
-        setTotalPages(1);
       }
+
+      // Apply date filter if selected
+      if (selectedDate) {
+        filteredFarmers = filteredFarmers.filter(u => {
+          if (!u.createdAt) return false;
+          const farmerDate = new Date(u.createdAt).toISOString().split('T')[0];
+          return farmerDate === selectedDate;
+        });
+      }
+
+      setFarmers(filteredFarmers);
+      setTotalCount(filteredFarmers.length);
+      setTotalPages(response.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch farmers:', error);
       if (showLoading) toast.error('Failed to load farmers');
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, [currentPage, debouncedSearch]);
+  }, [currentPage, debouncedSearch, selectedDate]);
 
   useEffect(() => {
     fetchFarmers();
@@ -146,48 +153,28 @@ export default function FarmersList() {
             className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm"
           />
         </div>
-        <div className="relative z-20">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-colors ${showFilters || filterStatus !== 'all'
-              ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/20'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-          >
-            <Filter className={`w-4 h-4 ${filterStatus !== 'all' ? 'fill-emerald-700' : ''}`} />
-            <span>{filterStatus === 'all' ? 'Filters' : filterStatus === 'active' ? 'Active' : 'Inactive'}</span>
-          </motion.button>
-
-          {/* Filter Dropdown */}
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 overflow-hidden"
+        {/* Date Filter */}
+        <div className="relative">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => {
+                setSelectedDate('');
+                setCurrentPage(1);
+              }}
+              className="absolute -right-2 -top-2 bg-slate-200 hover:bg-slate-300 rounded-full p-0.5"
+              title="Clear Date"
             >
-              {[
-                { id: 'all', label: 'All Farmers' },
-                { id: 'active', label: 'Active Only' },
-                { id: 'inactive', label: 'Inactive Only' }
-              ].map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => {
-                    setFilterStatus(option.id);
-                    setShowFilters(false);
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm transition-colors ${filterStatus === option.id
-                    ? 'bg-emerald-50 text-emerald-700 font-medium'
-                    : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </motion.div>
+              <X size={12} />
+            </button>
           )}
         </div>
       </motion.div>

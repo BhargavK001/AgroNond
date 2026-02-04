@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { motion } from 'framer-motion';
-import { Search, Filter, Phone, Plus, Scale } from 'lucide-react';
+import { Search, Phone, Plus, Scale, X } from 'lucide-react';
 import AddWeightModal from '../../components/committee/AddWeightModal';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -11,8 +11,7 @@ export default function WeightList() {
     const [weightUsers, setWeightUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [showFilters, setShowFilters] = useState(false);
-    const [filterStatus, setFilterStatus] = useState('all');
+    const [selectedDate, setSelectedDate] = useState('');
 
     // Fetch weight users from API
     const fetchWeightUsers = useCallback(async (showLoading = true) => {
@@ -47,7 +46,19 @@ export default function WeightList() {
             (user.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (user.location || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (user.phone || '').includes(searchTerm);
-        return matchesSearch;
+
+        // Apply date filter if selected
+        let matchesDate = true;
+        if (selectedDate) {
+            if (!user.createdAt) {
+                matchesDate = false;
+            } else {
+                const userDate = new Date(user.createdAt).toISOString().split('T')[0];
+                matchesDate = userDate === selectedDate;
+            }
+        }
+
+        return matchesSearch && matchesDate;
     });
 
     const handleAddUser = (newUser) => {
@@ -93,6 +104,24 @@ export default function WeightList() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all text-sm"
                     />
+                </div>
+                {/* Date Filter */}
+                <div className="relative">
+                    <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm"
+                    />
+                    {selectedDate && (
+                        <button
+                            onClick={() => setSelectedDate('')}
+                            className="absolute -right-2 -top-2 bg-slate-200 hover:bg-slate-300 rounded-full p-0.5"
+                            title="Clear Date"
+                        >
+                            <X size={12} />
+                        </button>
+                    )}
                 </div>
             </motion.div>
 
