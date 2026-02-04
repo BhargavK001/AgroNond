@@ -416,4 +416,125 @@ router.post('/commission-rules', requireAuth, requireAdmin, async (req, res) => 
   }
 });
 
+
+
+/**
+ * GET /api/admin/download-user-report/:userId
+ * Download report for a specific user (Farmer/Trader)
+ */
+router.get('/download-user-report/:userId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let records = [];
+    let fields = [];
+    let filenamePrefix = '';
+
+    const userRole = user.role ? user.role.toLowerCase() : '';
+
+
+    if (userRole === 'farmer') {
+      filenamePrefix = 'farmer';
+      records = await Record.find({
+        farmer_id: userId,
+        status: { $in: ['Sold', 'Completed'] },
+        is_parent: { $ne: true }
+      })
+        .sort({ sold_at: -1 })
+        .populate('trader_id', 'full_name business_name');
+
+      fields = [
+        { label: 'Date', value: 'date' },
+        { label: 'Vegetable', value: 'vegetable' },
+        { label: 'Quantity (kg)', value: 'qty' },
+        { label: 'Carat', value: 'carat' },
+        { label: 'Rate', value: 'rate' },
+        { label: 'Sale Amount', value: 'amount' },
+        { label: 'Farmer Commission', value: 'commission' },
+        { label: 'Net Payable', value: 'net_payable' },
+        // { label: 'Trader', value: 'trader' }, // REMOVED
+        { label: 'Payment Status', value: 'payment_status' }
+      ];
+
+    } else if (userRole === 'trader') {
+      filenamePrefix = 'trader';
+      records = await Record.find({
+        trader_id: userId,
+        status: { $in: ['Sold', 'Completed'] }
+      })
+        .sort({ sold_at: -1 })
+        .populate('farmer_id', 'full_name');
+
+      fields = [
+        { label: 'Date', value: 'date' },
+        { label: 'Vegetable', value: 'vegetable' },
+        { label: 'Quantity (kg)', value: 'qty' },
+        { label: 'Carat', value: 'carat' },
+        { label: 'Rate', value: 'rate' },
+        { label: 'Sale Amount', value: 'amount' },
+        { label: 'Trader Commission', value: 'commission' },
+        { label: 'Net Receivable', value: 'net_receivable' },
+        // { label: 'Farmer', value: 'farmer' }, // REMOVED
+        { label: 'Payment Status', value: 'payment_status' }
+      ];
+    } else {
+      return res.status(400).json({ error: 'Report download only available for Farmers and Traders' });
+    }
+
+    const formattedRecords = records.map(record => {
+      const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
+
+      // Determine payment status safely
+      let payStatus = 'Pending';
+      if (userRole === 'farmer') {
+        payStatus = record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending');
+      } else {
+        payStatus = record.trader_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending');
+      }
+
+      // Determine commission safely
+      const comm = userRole === 'farmer' ? (record.farmer_commission || 0) : (record.trader_commission || 0);
+
+      const traderName = record.trader_id?.business_name || record.trader_id?.full_name || 'Unknown';
+      const farmerName = record.farmer_id?.full_name || 'Unknown';
+
+      return {
+        date: date.toLocaleDateString('en-IN'),
+        vegetable: record.vegetable || '',
+        qty: record.official_qty || record.quantity || 0,
+        carat: record.official_carat || record.carat || 0,
+        rate: record.sale_rate || 0,
+        amount: record.sale_amount || 0,
+        commission: comm,
+        net_payable: record.net_payable_to_farmer || ((record.sale_amount || 0) - (record.farmer_commission || 0)) || 0,
+        net_receivable: record.net_receivable_from_trader || ((record.sale_amount || 0) + (record.trader_commission || 0)) || 0,
+        // trader: traderName, // REMOVED
+        // farmer: farmerName, // REMOVED
+        payment_status: payStatus
+      };
+    });
+
+
+
+    const { Parser } = await import('json2csv');
+    const json2csvParser = new Parser({ fields });
+    const csv = json2csvParser.parse(formattedRecords);
+
+    res.header('Content-Type', 'text/csv');
+    // Sanitized filename
+    const safeName = user.full_name ? user.full_name.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'user';
+    res.header('Content-Disposition', `attachment; filename=${filenamePrefix}_report_${safeName}_${new Date().toISOString().split('T')[0]}.csv`);
+    res.status(200).send(csv);
+
+  } catch (error) {
+    console.error('Admin user report error:', error);
+    res.status(500).json({ error: 'Failed to generate report' });
+  }
+});
+
 export default router;

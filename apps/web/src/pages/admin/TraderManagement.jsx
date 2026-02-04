@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Building2, Phone, FileCheck, Filter, ChevronRight, X, AlertTriangle, IndianRupee, Package, Wheat, TrendingUp, Loader2 } from 'lucide-react';
+import { Search, Building2, Phone, FileCheck, Filter, ChevronRight, X, AlertTriangle, IndianRupee, Package, Wheat, TrendingUp, Loader2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -293,6 +293,25 @@ export default function TraderManagement() {
         trader.phone?.includes(searchTerm)
     );
 
+    const handleDownloadUserReport = async () => {
+        if (!selectedTrader) return;
+        try {
+            const blob = await api.get(`/api/admin/download-user-report/${selectedTrader._id}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `trader_report_${selectedTrader.full_name || selectedTrader.business_name}_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Failed to download report');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -411,13 +430,23 @@ export default function TraderManagement() {
                             {/* Header */}
                             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
                                 <h2 className="text-xl font-bold text-slate-800">Trader Profile</h2>
-                                <button
-                                    onClick={() => setSelectedTrader(null)}
-                                    className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleDownloadUserReport}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200"
+                                    >
+                                        <Download size={16} />
+                                        Download Report
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedTrader(null)}
+                                        className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
                             </div>
+                            {/* ... rest of the modal ... */}
 
                             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                                 <div className="flex flex-col md:flex-row gap-6">

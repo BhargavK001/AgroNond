@@ -411,6 +411,77 @@ router.get('/my-stats', requireAuth, async (req, res) => {
 });
 
 /**
+ * GET /api/records/download-report
+ * Download full sales history as CSV for Farmer
+ */
+router.get('/download-report', requireAuth, async (req, res) => {
+    try {
+        const farmerId = req.user._id;
+
+        // Fetch ALL Sold/Completed records for this farmer
+        // Exclude parent records to avoid duplication (show actual sales)
+        const records = await Record.find({
+            farmer_id: farmerId,
+            status: { $in: ['Sold', 'Completed'] },
+            is_parent: { $ne: true }
+        })
+            .sort({ sold_at: -1 })
+            .populate('trader_id', 'full_name business_name');
+
+        const formattedRecords = records.map(record => {
+            const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
+
+            // Determine payment status
+            const payStatus = record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending');
+
+            return {
+                date: date.toLocaleDateString('en-IN'),
+                time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                crop: record.vegetable,
+                qty: record.official_qty || record.quantity || 0,
+                carat: record.official_carat || record.carat || 0,
+                rate: record.sale_rate || 0,
+                amount: record.sale_amount || 0,
+                commission: record.farmer_commission || 0,
+                net_payable: record.net_payable_to_farmer || ((record.sale_amount || 0) - (record.farmer_commission || 0)),
+                // trader: record.trader_id?.business_name || record.trader_id?.full_name || 'Unknown', // REMOVED PRIVACY
+                status: record.status,
+                payment_status: payStatus
+            };
+        });
+
+        const { Parser } = await import('json2csv');
+
+        const fields = [
+            { label: 'Date', value: 'date' },
+            { label: 'Time', value: 'time' },
+            { label: 'Crop', value: 'crop' },
+            { label: 'Quantity (kg)', value: 'qty' },
+            { label: 'Carat', value: 'carat' },
+            { label: 'Rate/kg', value: 'rate' },
+            { label: 'Sale Amount', value: 'amount' },
+            { label: 'Commission', value: 'commission' },
+            { label: 'Net Payable', value: 'net_payable' },
+            // { label: 'Trader', value: 'trader' }, // REMOVED
+            { label: 'Payment Status', value: 'payment_status' }
+        ];
+
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(formattedRecords);
+
+        res.header('Content-Type', 'text/csv');
+        // Sanitized filename
+        const safeName = req.user.full_name ? req.user.full_name.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'farmer';
+        res.header('Content-Disposition', `attachment; filename=farmer_report_${safeName}_${new Date().toISOString().split('T')[0]}.csv`);
+        res.status(200).send(csv);
+
+    } catch (error) {
+        console.error('Download report error:', error);
+        res.status(500).json({ error: 'Failed to generate report' });
+    }
+});
+
+/**
  * GET /api/records/my-purchases
  * Fetch all purchases for the logged-in trader
  * PRIVACY: Exclude farmer details
