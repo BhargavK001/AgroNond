@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
-import { RefreshCw, Search, CheckCircle, Clock, IndianRupee, ArrowUpRight, ArrowDownLeft, X, Filter } from 'lucide-react';
+import { RefreshCw, Search, CheckCircle, Clock, IndianRupee, ArrowUpRight, ArrowDownLeft, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
 import CommitteeNavbar from '../../components/navigation/CommitteeNavbar';
@@ -10,6 +10,7 @@ const PaymentManagement = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // all, receivables, payables
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDate, setSelectedDate] = useState('');
 
     // Payment Modal
     const [selectedRecord, setSelectedRecord] = useState(null);
@@ -173,6 +174,13 @@ const PaymentManagement = () => {
         if (filter === 'payables') { // Pending to Farmer
             return record.farmer_payment_status === 'Pending';
         }
+
+        // Date Filter
+        if (selectedDate) {
+            const recordDate = new Date(record.createdAt).toISOString().split('T')[0];
+            if (recordDate !== selectedDate) return false;
+        }
+
         return true;
     });
 
@@ -249,16 +257,37 @@ const PaymentManagement = () => {
                         ))}
                     </div>
 
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                            type="text"
-                            // Removed Lot ID from placeholder
-                            placeholder="Search Farmer, Trader..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
+                    <div className="flex gap-4">
+                        {/* Date Filter */}
+                        <div className="relative">
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                onChange={(e) => setSelectedDate(e.target.value)}
+                                className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                            />
+                            {selectedDate && (
+                                <button
+                                    onClick={() => setSelectedDate('')}
+                                    className="absolute -right-2 -top-2 bg-slate-200 hover:bg-slate-300 rounded-full p-0.5"
+                                    title="Clear Date"
+                                >
+                                    <X size={12} />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                // Removed Lot ID from placeholder
+                                placeholder="Search Farmer, Trader..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                        </div>
                     </div>
                 </div>
 

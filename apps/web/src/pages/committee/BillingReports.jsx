@@ -99,6 +99,7 @@ export default function BillingReports() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('farmers');
   const [dateFilter, setDateFilter] = useState('all');
+  const [specificDate, setSpecificDate] = useState('');  // New: Specific date filter
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -213,11 +214,20 @@ export default function BillingReports() {
     }
   }, [activeTab]);
 
-  // PERFORMANCE: Memoize processed data
-  const currentData = useMemo(() =>
-    data.map(processRecord),
-    [data, processRecord]
-  );
+  // PERFORMANCE: Memoize processed data with specific date filtering
+  const currentData = useMemo(() => {
+    let processed = data.map(processRecord);
+
+    // Apply specific date filter if set
+    if (specificDate) {
+      processed = processed.filter(item => {
+        const itemDate = new Date(item.date).toISOString().split('T')[0];
+        return itemDate === specificDate;
+      });
+    }
+
+    return processed;
+  }, [data, processRecord, specificDate]);
 
   // PERFORMANCE: Memoize totals calculation
   const { totalBase, totalCommission, totalFinal } = useMemo(() => ({
@@ -362,6 +372,25 @@ export default function BillingReports() {
             <option value="week">This Week</option>
             <option value="month">This Month</option>
           </select>
+
+          {/* Specific Date Filter */}
+          <div className="relative">
+            <input
+              type="date"
+              value={specificDate}
+              onChange={(e) => setSpecificDate(e.target.value)}
+              className="px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm"
+            />
+            {specificDate && (
+              <button
+                onClick={() => setSpecificDate('')}
+                className="absolute -right-2 -top-2 bg-slate-200 hover:bg-slate-300 rounded-full p-0.5"
+                title="Clear Date"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
         </div>
         <button
           onClick={handleExport}
