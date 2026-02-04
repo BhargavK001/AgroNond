@@ -343,7 +343,7 @@ const WeightDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50">
-      <Toaster position="top-center" reverseOrder={false} />
+
 
       <WeightNavbar />
 

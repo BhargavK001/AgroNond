@@ -123,7 +123,7 @@ function App() {
       <AuthProvider>
         <NotificationProvider>
           <Router>
-            <Toaster position="top-right" />
+            <Toaster position="top-center" />
             <ErrorBoundary>
               <ScrollToTop />
               <Suspense fallback={<Loading />}>

@@ -967,7 +967,7 @@ const FarmerDashboard = () => {
   if (view === 'addRecord') {
     return (
       <div className="min-h-screen bg-white">
-        <Toaster position="top-center" reverseOrder={false} />
+
         <FarmerNavbar />
         <div className="mt-16">
           <AddNewRecordSection
@@ -982,7 +982,7 @@ const FarmerDashboard = () => {
   if (view === 'history') {
     return (
       <div className="min-h-screen bg-white">
-        <Toaster position="top-center" reverseOrder={false} />
+
         <FarmerNavbar />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
@@ -1046,7 +1046,7 @@ const FarmerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <Toaster position="top-center" reverseOrder={false} />
+
       <FarmerNavbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 mt-16">
