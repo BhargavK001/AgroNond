@@ -53,13 +53,26 @@ export default function FarmersList() {
 
       // Handle paginated response
       if (response.data) {
-        setFarmers(response.data || []);
+        const filteredFarmers = (response.data || []).filter(u => {
+          const name = u.full_name?.toLowerCase() || '';
+          const isSystem = name.includes('admin') || name.includes('committee') || name.includes('test') || name.includes('system');
+          // Strict Role Check AND Name Check
+          return (u.role === 'farmer') && !isSystem;
+        });
+        setFarmers(filteredFarmers);
         setTotalPages(response.totalPages || 1);
-        setTotalCount(response.total || 0);
+        setTotalCount(filteredFarmers.length); // Update count based on filtered list
       } else {
         // Fallback for non-paginated response
-        setFarmers(response || []);
-        setTotalCount(response?.length || 0);
+        const list = response || [];
+        const filteredFarmers = list.filter(u => {
+          const name = u.full_name?.toLowerCase() || '';
+          const isSystem = name.includes('admin') || name.includes('committee') || name.includes('test') || name.includes('system');
+          // Strict Role Check AND Name Check
+          return (u.role === 'farmer') && !isSystem;
+        });
+        setFarmers(filteredFarmers);
+        setTotalCount(filteredFarmers.length);
         setTotalPages(1);
       }
     } catch (error) {
@@ -324,8 +337,8 @@ export default function FarmersList() {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
-                          ? 'bg-emerald-600 text-white'
-                          : 'hover:bg-slate-100 text-slate-600'
+                        ? 'bg-emerald-600 text-white'
+                        : 'hover:bg-slate-100 text-slate-600'
                         }`}
                     >
                       {pageNum}

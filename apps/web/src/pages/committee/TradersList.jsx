@@ -53,13 +53,17 @@ export default function TradersList() {
 
       // Handle paginated response
       if (response.data) {
-        setTraders(response.data || []);
+        const allTraders = response.data || [];
+        const filteredTraders = allTraders.filter(t => t.role === 'trader');
+        setTraders(filteredTraders);
         setTotalPages(response.totalPages || 1);
-        setTotalCount(response.total || 0);
+        setTotalCount(filteredTraders.length);
       } else {
         // Fallback for non-paginated response
-        setTraders(response || []);
-        setTotalCount(response?.length || 0);
+        const list = response || [];
+        const filteredTraders = list.filter(t => t.role === 'trader');
+        setTraders(filteredTraders);
+        setTotalCount(filteredTraders.length);
         setTotalPages(1);
       }
     } catch (error) {
@@ -294,8 +298,8 @@ export default function TradersList() {
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
                       className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
-                          ? 'bg-emerald-600 text-white'
-                          : 'hover:bg-slate-100 text-slate-600'
+                        ? 'bg-emerald-600 text-white'
+                        : 'hover:bg-slate-100 text-slate-600'
                         }`}
                     >
                       {pageNum}

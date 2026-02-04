@@ -12,7 +12,6 @@ import {
     Wallet,
     ReceiptText,
     Eye,
-    Calendar,
     Scale
 } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -187,22 +186,7 @@ export default function LilavTransactions() {
                 </div>
 
                 {/* Date Picker - Prominent */}
-                <div className="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-                    <Calendar className="w-4 h-4 text-slate-400 ml-2" />
-                    <input
-                        type="date"
-                        value={dateRange.start}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                        className="text-sm font-medium text-slate-700 focus:outline-none"
-                    />
-                    <span className="text-slate-300">-</span>
-                    <input
-                        type="date"
-                        value={dateRange.end}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                        className="text-sm font-medium text-slate-700 focus:outline-none"
-                    />
-                </div>
+
             </motion.div>
 
             {/* Summary Stats - UPDATED: Show both kg and Carat */}
