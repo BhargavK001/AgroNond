@@ -21,9 +21,11 @@ export default function WeightList() {
             const response = await api.get('/api/users?role=weight');
             // Handle paginated response
             if (response.data) {
-                setWeightUsers(response.data || []);
+                const list = response.data || [];
+                setWeightUsers(list.filter(u => u.role === 'weight'));
             } else {
-                setWeightUsers(response || []);
+                const list = response || [];
+                setWeightUsers(list.filter(u => u.role === 'weight'));
             }
         } catch (error) {
             console.error('Failed to fetch weight users:', error);
