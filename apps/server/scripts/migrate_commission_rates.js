@@ -25,7 +25,7 @@ import Record from '../src/models/Record.js';
 async function migrateCommissionRates() {
     try {
         // Connect to MongoDB
-        const mongoUri = process.env.MONGO_URI;
+        const mongoUri = process.env.MONGODB_URI;
         if (!mongoUri) {
             throw new Error('MONGO_URI not found in environment variables');
         }
@@ -54,7 +54,7 @@ async function migrateCommissionRates() {
         for (const record of recordsToUpdate) {
             try {
                 const saleAmount = record.sale_amount || 0;
-                
+
                 // Calculate farmer commission rate from stored values
                 let farmerRate = 0;
                 if (saleAmount > 0 && record.farmer_commission) {
@@ -79,7 +79,7 @@ async function migrateCommissionRates() {
                 await record.save();
 
                 successCount++;
-                
+
                 if (successCount % 100 === 0) {
                     console.log(`Migrated ${successCount} records...`);
                 }
@@ -92,7 +92,7 @@ async function migrateCommissionRates() {
         console.log('\n=== Migration Complete ===');
         console.log(`Successfully migrated: ${successCount} records`);
         console.log(`Errors: ${errorCount} records`);
-        
+
     } catch (error) {
         console.error('Migration failed:', error);
         process.exit(1);
