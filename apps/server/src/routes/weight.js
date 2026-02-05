@@ -95,6 +95,9 @@ const calculateSale = async (record, qty, carat) => {
         sale_amount,
         farmer_commission,
         trader_commission,
+        // NEW: Store the rates used at this moment
+        farmer_commission_rate: farmerRate,
+        trader_commission_rate: traderRate,
         commission: farmer_commission + trader_commission,
         net_payable_to_farmer: sale_amount - farmer_commission,
         net_receivable_from_trader: sale_amount + trader_commission,

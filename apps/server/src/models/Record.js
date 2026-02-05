@@ -102,6 +102,15 @@ const recordSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    // Commission Rate Snapshot (stored at sale time)
+    farmer_commission_rate: {
+        type: Number,
+        default: 0  // Stores 0.04 for 4%
+    },
+    trader_commission_rate: {
+        type: Number,
+        default: 0  // Stores 0.09 for 9%
+    },
     net_payable_to_farmer: {
         type: Number,
         default: 0
