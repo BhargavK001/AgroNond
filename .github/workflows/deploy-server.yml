@@ -21,19 +21,51 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            # 1. Go to project folder (Update this path if it's different!)
-            cd ~/AgroNond || exit 1
+
+            set -e  # Stop on error
             
-            # 2. Pull latest code
-            echo "Pulling latest code..."
-            git pull origin main
+            PROJECT_DIR=~/AgroNond
+            SERVER_DIR=apps/server
+
+            echo "🚀 Starting Deployment..."
             
-            # 3. Go to server folder
-            echo "Installing dependencies..."
-            cd apps/server || exit 1
-            npm install
+            # 1. Navigate to project
+            cd $PROJECT_DIR || exit 1
+
+            # 2. SAVE STATE (Checkpoint)
+            OLD_COMMIT=$(git rev-parse HEAD)
+            echo "📍 Checkpoint saved: $OLD_COMMIT"
+
+            # 3. CLEAN & PULL
+            echo "🧹 Cleaning local changes..."
+            git reset --hard HEAD
             
-            # 4. Restart server
-            echo "Restarting application..."
+            echo "⬇️ Pulling latest code..."
+            if ! git pull origin main; then
+              echo "❌ Git Pull Failed. No changes made."
+              exit 1
+            fi
+
+            # 4. INSTALL & BUILD (With Rollback)
+            echo "📦 Installing server dependencies..."
+            cd $SERVER_DIR || exit 1
+            
+            if ! npm install; then
+              echo "⚠️ NPM Install Failed! Rolling back..."
+              cd $PROJECT_DIR
+              git reset --hard $OLD_COMMIT
+              
+              # Restore old dependencies
+              cd $SERVER_DIR
+              npm install
+              
+              echo "✅ Rolled back to stable version."
+              exit 1
+            fi
+
+            # 5. RESTART
+            echo "🔄 Restarting Service..."
             pm2 restart all
+            
+            echo "✅ Deployment Successful!"
 
