@@ -63,8 +63,18 @@ router.get('/stats', requireAuth, requireCommitteeAccess, async (req, res) => {
             }
         });
 
-        const farmerCommission = Math.round(totalCommission * (4 / 13));
-        const traderCommission = Math.round(totalCommission * (9 / 13));
+        // Calculate aggregate commissions from stored values
+        const farmerCommissionStats = await Record.aggregate([
+            { $match: { status: { $in: ['Sold', 'Completed'] } } },
+            { $group: { _id: null, total: { $sum: '$farmer_commission' } } }
+        ]);
+        const traderCommissionStats = await Record.aggregate([
+            { $match: { status: { $in: ['Sold', 'Completed'] } } },
+            { $group: { _id: null, total: { $sum: '$trader_commission' } } }
+        ]);
+
+        const farmerCommission = farmerCommissionStats[0]?.total || 0;
+        const traderCommission = traderCommissionStats[0]?.total || 0;
 
         res.json({
             totalFarmers,
