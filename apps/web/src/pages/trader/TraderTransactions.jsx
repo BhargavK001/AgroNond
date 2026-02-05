@@ -62,6 +62,7 @@ export default function TraderTransactions() {
         rate: t.sale_rate,
         grossAmount: t.sale_amount,
         commission: t.trader_commission || Math.round((t.sale_amount || 0) * 0.09),
+        trader_commission_rate: t.trader_commission_rate, // Pass the stored rate
         totalCost: t.net_receivable_from_trader || t.total_amount || (t.sale_amount + (t.trader_commission || Math.round((t.sale_amount || 0) * 0.09))),
         status: t.status,
         paymentStatus: (t.trader_payment_status || t.payment_status || 'pending').toLowerCase()
@@ -558,7 +559,7 @@ export default function TraderTransactions() {
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-200">
                 <div>
-                  <p className="text-[9px] text-violet-500 uppercase">Commission ({txn.grossAmount ? Math.round((txn.commission / txn.grossAmount) * 100) : 0}%)</p>
+                  <p className="text-[9px] text-violet-500 uppercase">Commission ({txn.trader_commission_rate ? (txn.trader_commission_rate * 100).toFixed(1) : (txn.grossAmount ? Math.round((txn.commission / txn.grossAmount) * 100) : 0)}%)</p>
                   <p className="font-medium text-xs text-violet-600">₹{txn.commission?.toLocaleString('en-IN') || 0}</p>
                 </div>
                 <div className="text-right">

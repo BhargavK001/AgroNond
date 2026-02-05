@@ -264,9 +264,10 @@ const TransactionInvoice = ({ transaction, committeeInfo }) => {
     };
 
     const purchaseAmount = transaction.grossAmount || 0;
-    const commissionRate = 0.09;
+    const commissionRate = transaction.trader_commission_rate || 0.09;
     const commissionAmount = transaction.commission || (purchaseAmount * commissionRate);
     const totalAmount = transaction.totalCost || (purchaseAmount + commissionAmount);
+    const commissionPercent = (commissionRate * 100).toFixed(1);
 
     const committee = committeeInfo || {
         name: 'MIT Devcode Software',
@@ -348,7 +349,7 @@ const TransactionInvoice = ({ transaction, committeeInfo }) => {
                     </View>
                     <View style={styles.totalRow}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <Text style={styles.totalLabel}>Market Fee ({purchaseAmount ? Math.round((commissionAmount / purchaseAmount) * 100) : 0}%)</Text>
+                            <Text style={styles.totalLabel}>Market Fee ({commissionPercent}%)</Text>
                             <Text style={styles.feeNote}>(Commission)</Text>
                         </View>
                         <Text style={styles.totalValue}>₹{commissionAmount.toLocaleString('en-IN')}</Text>

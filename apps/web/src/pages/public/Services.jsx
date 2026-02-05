@@ -3,7 +3,7 @@ import Button from '../../components/ui/Button';
 const commissionModel = [
   {
     title: 'Farmer Commission',
-    rate: '4%',
+    rate: '4%*',
     description: 'Deducted from the farmer\'s total billing amount',
     icon: <FarmerIcon />,
     details: [
@@ -15,7 +15,7 @@ const commissionModel = [
   },
   {
     title: 'Trader Commission',
-    rate: '9%',
+    rate: '9%*',
     description: 'Deducted from the trader\'s total purchase amount',
     icon: <TraderIcon />,
     details: [
@@ -180,6 +180,12 @@ export default function Services() {
                 </div>
               </div>
             ))}
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-sm text-[var(--text-secondary)]">
+              * Default rates shown. Actual rates may vary and are set by market admin.
+            </p>
           </div>
         </div>
       </section>

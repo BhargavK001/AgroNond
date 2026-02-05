@@ -248,7 +248,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
               <span className="font-medium">₹{totalSaleAmount.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between items-center text-red-500">
-              <span>Commission ({totalSaleAmount > 0 ? ((estimatedCommission / totalSaleAmount) * 100).toFixed(1) : 0}%)</span>
+              <span>Commission ({record.farmer_commission_rate ? (record.farmer_commission_rate * 100).toFixed(1) : (totalSaleAmount > 0 ? ((estimatedCommission / totalSaleAmount) * 100).toFixed(1) : 0)}%)</span>
               <span className="font-medium">- ₹{estimatedCommission.toLocaleString('en-IN')}</span>
             </div>
             {isPaid && record.farmer_payment_mode && (

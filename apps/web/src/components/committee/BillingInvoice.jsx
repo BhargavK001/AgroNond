@@ -506,7 +506,9 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
     })();
 
     // ── Commission percentage ──
-    const commissionPercent = baseAmount > 0 ? ((commission / baseAmount) * 100).toFixed(1) : '4.0';
+    const commissionPercent = data.commissionRate 
+        ? (data.commissionRate * 100).toFixed(1)
+        : (baseAmount > 0 ? ((commission / baseAmount) * 100).toFixed(1) : '4.0');
 
     // ── Quantity display string ──
     const getQuantityDisplay = () => {

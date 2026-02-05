@@ -212,9 +212,9 @@ export default function BillingReports() {
       netFarmer = record.net_payable_to_farmer;
       netTrader = record.net_receivable_from_trader;
     } else {
-      const totalCommission = record.commission || 0;
-      farmerComm = Math.round(totalCommission * (4 / 13));
-      traderComm = Math.round(totalCommission * (9 / 13));
+      // Legacy fallback: use stored commission values directly if available
+      farmerComm = record.farmer_commission || 0;
+      traderComm = record.trader_commission || 0;
       netFarmer = baseAmount - farmerComm;
       netTrader = baseAmount + traderComm;
     }
@@ -234,6 +234,7 @@ export default function BillingReports() {
         carat: caratValue,
         baseAmount: baseAmount,
         commission: farmerComm,
+        commissionRate: record.farmer_commission_rate, // Pass the stored rate
         finalAmount: netFarmer,
         status: record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
         type: 'pay'
@@ -248,6 +249,7 @@ export default function BillingReports() {
         carat: caratValue,
         baseAmount: baseAmount,
         commission: traderComm,
+        commissionRate: record.trader_commission_rate, // Pass the stored rate
         finalAmount: netTrader,
         status: record.trader_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
         type: 'receive'

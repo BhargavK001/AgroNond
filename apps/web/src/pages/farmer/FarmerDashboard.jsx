@@ -956,6 +956,7 @@ const FarmerDashboard = () => {
       splits: record.splits || [], // Pass splits for multi-row PDF display
       baseAmount: totalSaleAmount,
       commission: commission,
+      commissionRate: record.farmer_commission_rate, // Pass the stored rate snapshot
       finalAmount: netPayable,
       status: isPaymentPending ? 'Payment Pending' :
         (computedStatus === 'Sold' ? 'Full' :
