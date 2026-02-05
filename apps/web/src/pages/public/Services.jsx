@@ -184,7 +184,7 @@ export default function Services() {
           
           <div className="mt-6 text-center">
             <p className="text-sm text-[var(--text-secondary)]">
-              * Default rates shown. Actual rates may vary and are set by market admin.
+              * Default rates shown. Actual rates may vary and are set by the market admin.
             </p>
           </div>
         </div>
