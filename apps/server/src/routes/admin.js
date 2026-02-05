@@ -357,57 +357,9 @@ router.post('/commission-rules', requireAuth, requireAdmin, async (req, res) => 
       created_by: req.user._id
     });
 
-    // Retroactive update for Pending records to reflect new rate
-    // User expects unpaid bills to update when rate changes
-    try {
-      const filter = {
-        status: { $in: ['Sold', 'Completed'] }
-      };
-
-      // Only update records where payment is pending for the specific role
-      if (role_type === 'farmer') {
-        filter.farmer_payment_status = 'Pending';
-      } else if (role_type === 'trader') {
-        filter.trader_payment_status = 'Pending';
-      }
-
-      const pendingRecords = await Record.find(filter);
-
-      let updatedCount = 0;
-      for (const record of pendingRecords) {
-        let needsSave = false;
-
-        if (role_type === 'farmer') {
-          const newComm = Math.round((record.sale_amount || 0) * newRate);
-          // Only update if changed (epsilon check not needed for integer math but safe)
-          if (record.farmer_commission !== newComm) {
-            record.farmer_commission = newComm;
-            record.net_payable_to_farmer = (record.sale_amount || 0) - newComm;
-            // Update total commission (sum of farmer + trader)
-            // Use existing trader_commission or calculate it? Better use existing to avoid side effects
-            record.commission = newComm + (record.trader_commission || 0);
-            needsSave = true;
-          }
-        } else if (role_type === 'trader') {
-          const newComm = Math.round((record.sale_amount || 0) * newRate);
-          if (record.trader_commission !== newComm) {
-            record.trader_commission = newComm;
-            record.net_receivable_from_trader = (record.sale_amount || 0) + newComm;
-            record.commission = (record.farmer_commission || 0) + newComm;
-            needsSave = true;
-          }
-        }
-
-        if (needsSave) {
-          await record.save();
-          updatedCount++;
-        }
-      }
-      console.log(`Updated ${updatedCount} pending records with new ${role_type} rate: ${newRate}`);
-    } catch (updateError) {
-      console.error('Failed to update pending records:', updateError);
-      // Don't fail the request, just log it
-    }
+    // Retroactive update removed to preserve historical accuracy. 
+    // Old records should retain their original commission rates.
+    console.log(`New commission rule created: ${role_type} @ ${newRate}`);
 
     res.status(201).json(newRule);
   } catch (error) {

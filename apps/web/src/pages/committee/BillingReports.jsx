@@ -206,12 +206,14 @@ export default function BillingReports() {
 
     let farmerComm, traderComm, netFarmer, netTrader;
 
-    if (hasNewFields) {
+    // Priority: 1. New Fields (Exact Storage), 2. Fallback (Legacy)
+    if (record.farmer_commission !== undefined && record.trader_commission !== undefined) {
       farmerComm = record.farmer_commission;
       traderComm = record.trader_commission;
-      netFarmer = record.net_payable_to_farmer;
-      netTrader = record.net_receivable_from_trader;
+      netFarmer = record.net_payable_to_farmer || (baseAmount - farmerComm);
+      netTrader = record.net_receivable_from_trader || (baseAmount + traderComm);
     } else {
+      // Legacy Fallback for very old records (Hardcoded 4% / 9% split of total commission)
       const totalCommission = record.commission || 0;
       farmerComm = Math.round(totalCommission * (4 / 13));
       traderComm = Math.round(totalCommission * (9 / 13));

@@ -110,6 +110,15 @@ const recordSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    // Captured Commission Rates (at time of sale)
+    farmer_commission_rate: {
+        type: Number,
+        default: 0
+    },
+    trader_commission_rate: {
+        type: Number,
+        default: 0
+    },
     // Detailed Payment Status
     farmer_payment_status: {
         type: String,
