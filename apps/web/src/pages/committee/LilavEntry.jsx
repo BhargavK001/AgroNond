@@ -1,71 +1,88 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,
     User,
+    Users,
     Package,
-    Scale,
-    IndianRupee,
-    ShoppingCart,
     Check,
     Loader2,
     RefreshCw,
     X,
-    Plus,
-    Edit2,
     Trash2,
-    ArrowRight,
-    CheckCircle2
+    ChevronDown,
+    Save,
+    Plus
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
 
-import AddFarmerModal from '../../components/committee/AddFarmerModal';
-import AddTraderModal from '../../components/committee/AddTraderModal';
-
 export default function LilavEntry() {
-    // --- Data States ---
+    // --- Data (Pre-loaded) ---
     const [farmers, setFarmers] = useState([]);
     const [traders, setTraders] = useState([]);
     const [dailyRates, setDailyRates] = useState([]);
-    const [weighedRecords, setWeighedRecords] = useState([]);
+    const [pendingCrops, setPendingCrops] = useState([]);
 
-    // --- Loading States ---
-    const [loading, setLoading] = useState(true);
-    const [loadingRecords, setLoadingRecords] = useState(false);
-    const [processingId, setProcessingId] = useState(null);
+    // --- Loading ---
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-    // --- Selection / Input States ---
-    const [tokenInput, setTokenInput] = useState('');
-    const [nameSearch, setNameSearch] = useState('');
+    // --- Selections ---
     const [selectedFarmer, setSelectedFarmer] = useState(null);
+    const [selectedTrader, setSelectedTrader] = useState(null);
+    const [selectedCrops, setSelectedCrops] = useState([]);
 
-    // --- Active Auction State ---
-    const [activeRecord, setActiveRecord] = useState(null);
-    const [saleForm, setSaleForm] = useState({
-        trader_id: '',
-        sale_rate: '',
-        sale_unit: 'kg',
-        allocation_qty: ''
-    });
-    const [traderAllocations, setTraderAllocations] = useState([]);
-    const [editingAllocationIndex, setEditingAllocationIndex] = useState(null);
+    // --- Dropdown States ---
+    const [farmerSearch, setFarmerSearch] = useState('');
     const [traderSearch, setTraderSearch] = useState('');
+    const [showFarmerList, setShowFarmerList] = useState(false);
+    const [showTraderList, setShowTraderList] = useState(false);
 
-    // --- References for Focus Management ---
-    const tokenInputRef = useRef(null);
-    const rateInputRef = useRef(null);
-    const traderSearchRef = useRef(null);
+    // --- Add User Modals ---
+    const [showAddFarmerModal, setShowAddFarmerModal] = useState(false);
+    const [showAddTraderModal, setShowAddTraderModal] = useState(false);
+    const [newFarmer, setNewFarmer] = useState({ full_name: '', phone: '' });
+    const [newTrader, setNewTrader] = useState({ full_name: '', phone: '', business_name: '' });
+    const [addingUser, setAddingUser] = useState(false);
 
-    // --- Initialization ---
+    // --- Item Table ---
+    const [itemDetails, setItemDetails] = useState({});
+
+    // --- Refs for click-outside ---
+    const farmerDropdownRef = useRef(null);
+    const traderDropdownRef = useRef(null);
+
+    // --- Click outside to close dropdowns ---
     useEffect(() => {
-        fetchInitialData();
-        setTimeout(() => tokenInputRef.current?.focus(), 500);
+        const handleClickOutside = (event) => {
+            if (farmerDropdownRef.current && !farmerDropdownRef.current.contains(event.target)) {
+                setShowFarmerList(false);
+            }
+            if (traderDropdownRef.current && !traderDropdownRef.current.contains(event.target)) {
+                setShowTraderList(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const fetchInitialData = async () => {
+    // --- Load ALL data on mount ---
+    useEffect(() => {
+        fetchAllData();
+    }, []);
+
+    // --- Auto-refresh every 30 seconds ---
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchAllData(true); // silent refresh
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchAllData = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setInitialLoading(true);
             const [farmersRes, tradersRes, ratesRes] = await Promise.all([
                 api.get('/api/users?role=farmer'),
                 api.get('/api/users?role=trader'),
@@ -75,618 +92,686 @@ export default function LilavEntry() {
             setTraders(tradersRes?.data || tradersRes || []);
             setDailyRates(ratesRes || []);
         } catch (error) {
-            console.error('Error fetching data:', error);
-            toast.error('Failed to load initial data');
+            if (!silent) toast.error('Failed to load data');
         } finally {
-            setLoading(false);
+            if (!silent) setInitialLoading(false);
         }
     };
 
-    useEffect(() => {
-        if (!tokenInput.trim()) return;
-        const found = farmers.find(f =>
-            f.farmerId?.toLowerCase() === tokenInput.toLowerCase() ||
-            f.customId?.toLowerCase() === tokenInput.toLowerCase()
-        );
-        if (found) {
-            handleSelectFarmer(found);
-        }
-    }, [tokenInput, farmers]);
-
+    // --- Fetch pending crops when farmer selected ---
     useEffect(() => {
         if (selectedFarmer?._id) {
-            fetchWeighedRecords(selectedFarmer._id);
+            fetchPendingCrops(selectedFarmer._id);
         } else {
-            setWeighedRecords([]);
+            setPendingCrops([]);
+            setSelectedCrops([]);
+            setItemDetails({});
         }
     }, [selectedFarmer]);
 
-    const handleSelectFarmer = (farmer) => {
-        setSelectedFarmer(farmer);
-        setTokenInput('');
-        setNameSearch('');
-        setActiveRecord(null);
-    };
-
-    const fetchWeighedRecords = async (farmerId) => {
+    const fetchPendingCrops = async (farmerId) => {
         try {
-            setLoadingRecords(true);
             const response = await api.get(`/api/records/pending/${farmerId}`);
-            setWeighedRecords(response || []);
+            const crops = response || [];
+            setPendingCrops(crops);
+
+            const details = {};
+            crops.forEach(crop => {
+                const rate = dailyRates.find(r => r.vegetable.toLowerCase() === crop.vegetable.toLowerCase());
+                const { caratValue, qtyValue } = getEffectiveValues(crop);
+                const totalQty = caratValue > 0 ? caratValue : qtyValue;
+                details[crop._id] = {
+                    rate: crop.prev_rate || rate?.rate || '',
+                    qty: totalQty
+                };
+            });
+            setItemDetails(details);
         } catch (error) {
-            console.error('Error fetching records:', error);
-        } finally {
-            setLoadingRecords(false);
+            console.error('Error:', error);
         }
     };
 
     const getEffectiveValues = (record) => {
         if (record.has_remaining) {
-            return {
-                caratValue: record.remaining_carat || 0,
-                qtyValue: record.remaining_qty || 0
-            };
+            return { caratValue: record.remaining_carat || 0, qtyValue: record.remaining_qty || 0 };
         }
         const caratValue = (record.official_carat > 0) ? record.official_carat : (record.carat || 0);
         const qtyValue = (record.official_qty > 0) ? record.official_qty : (record.quantity || 0);
         return { caratValue, qtyValue };
     };
 
-    const startAuction = (record) => {
-        const todayRate = dailyRates.find(r => r.vegetable.toLowerCase() === record.vegetable.toLowerCase());
-        const { caratValue } = getEffectiveValues(record);
-        const recordUnit = caratValue > 0 ? 'carat' : 'kg';
-        const initialRate = record.prev_rate || todayRate?.rate || '';
+    // --- Farmer Selection ---
+    const handleSelectFarmer = (farmer) => {
+        setSelectedFarmer(farmer);
+        setFarmerSearch('');
+        setShowFarmerList(false);
+        setSelectedCrops([]);
+    };
 
-        setActiveRecord(record);
-        setSaleForm({
-            trader_id: '',
-            sale_rate: initialRate,
-            sale_unit: recordUnit,
-            allocation_qty: ''
-        });
-        setTraderAllocations([]);
-        setEditingAllocationIndex(null);
+    const clearFarmer = () => {
+        setSelectedFarmer(null);
+        setPendingCrops([]);
+        setSelectedCrops([]);
+        setItemDetails({});
+    };
+
+    // --- Trader Selection ---
+    const handleSelectTrader = (trader) => {
+        setSelectedTrader(trader);
         setTraderSearch('');
-
-        setTimeout(() => rateInputRef.current?.focus(), 50);
+        setShowTraderList(false);
     };
 
-    const cancelAuction = () => {
-        setActiveRecord(null);
-        setTraderAllocations([]);
+    const clearTrader = () => {
+        setSelectedTrader(null);
     };
 
-    const handleAddAllocation = () => {
-        if (!saleForm.trader_id) return toast.error('Select a trader');
-        if (!saleForm.allocation_qty || parseFloat(saleForm.allocation_qty) <= 0) return toast.error('Invalid Qty');
-        if (!saleForm.sale_rate || parseFloat(saleForm.sale_rate) <= 0) return toast.error('Invalid Rate');
-
-        const trader = traders.find(t => t._id === saleForm.trader_id);
-        if (!trader) return toast.error('Trader not found');
-
-        const { caratValue, qtyValue } = getEffectiveValues(activeRecord);
-        const totalAvailable = caratValue > 0 ? caratValue : qtyValue;
-        const currentAllocated = traderAllocations.reduce((sum, a, idx) =>
-            idx !== editingAllocationIndex ? sum + parseFloat(a.quantity) : sum, 0);
-
-        if (currentAllocated + parseFloat(saleForm.allocation_qty) > totalAvailable) {
-            return toast.error(`Max available: ${totalAvailable - currentAllocated}`);
-        }
-
-        const newAlloc = {
-            trader_id: trader._id,
-            trader_name: trader.full_name,
-            business_name: trader.business_name,
-            quantity: parseFloat(saleForm.allocation_qty),
-            rate: parseFloat(saleForm.sale_rate)
-        };
-
-        if (editingAllocationIndex !== null) {
-            setTraderAllocations(prev => {
-                const copy = [...prev];
-                copy[editingAllocationIndex] = newAlloc;
-                return copy;
-            });
-            setEditingAllocationIndex(null);
-        } else {
-            setTraderAllocations(prev => [...prev, newAlloc]);
-        }
-
-        setSaleForm(prev => ({
-            ...prev,
-            trader_id: '',
-            allocation_qty: ''
-        }));
-        setTraderSearch('');
-        document.querySelector('#qty-input')?.focus();
-    };
-
-    const deleteAllocation = (idx) => {
-        setTraderAllocations(prev => prev.filter((_, i) => i !== idx));
-    };
-
-    const confirmSale = async () => {
-        if (traderAllocations.length === 0) return toast.error('Add at least one trader');
+    // --- Add Farmer ---
+    const handleAddFarmer = async () => {
+        if (!newFarmer.full_name.trim()) return toast.error('Enter farmer name');
+        if (!newFarmer.phone.trim() || newFarmer.phone.length < 10) return toast.error('Enter valid phone number');
 
         try {
-            setProcessingId(activeRecord._id);
-            const allocationsPayload = traderAllocations.map(a => ({
-                trader_id: a.trader_id,
-                quantity: a.quantity,
-                rate: a.rate
-            }));
-
-            await api.patch(`/api/records/${activeRecord._id}/sell`, {
-                allocations: allocationsPayload,
-                sale_unit: saleForm.sale_unit
+            setAddingUser(true);
+            const result = await api.admin.users.create({
+                full_name: newFarmer.full_name.trim(),
+                phone: newFarmer.phone.trim(),
+                role: 'farmer'
             });
-
-            toast.success('Sold successfully!');
-            setWeighedRecords(prev => prev.filter(r => r._id !== activeRecord._id));
-            setActiveRecord(null);
+            toast.success('Farmer added successfully!');
+            setShowAddFarmerModal(false);
+            setNewFarmer({ full_name: '', phone: '' });
+            await fetchAllData(true);
+            if (result?._id) {
+                setSelectedFarmer(result);
+            }
         } catch (error) {
-            console.error('Sale error:', error);
-            toast.error('Sale failed');
+            toast.error(error.message || 'Failed to add farmer');
         } finally {
-            setProcessingId(null);
+            setAddingUser(false);
         }
     };
 
+    // --- Add Trader ---
+    const handleAddTrader = async () => {
+        if (!newTrader.full_name.trim()) return toast.error('Enter trader name');
+        if (!newTrader.phone.trim() || newTrader.phone.length < 10) return toast.error('Enter valid phone number');
+
+        try {
+            setAddingUser(true);
+            const result = await api.admin.users.create({
+                full_name: newTrader.full_name.trim(),
+                phone: newTrader.phone.trim(),
+                business_name: newTrader.business_name.trim() || undefined,
+                role: 'trader'
+            });
+            toast.success('Trader added successfully!');
+            setShowAddTraderModal(false);
+            setNewTrader({ full_name: '', phone: '', business_name: '' });
+            await fetchAllData(true);
+            if (result?._id) {
+                setSelectedTrader(result);
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to add trader');
+        } finally {
+            setAddingUser(false);
+        }
+    };
+
+    // --- Crop Selection ---
+    const toggleCropSelection = (cropId) => {
+        setSelectedCrops(prev =>
+            prev.includes(cropId)
+                ? prev.filter(id => id !== cropId)
+                : [...prev, cropId]
+        );
+    };
+
+    const selectAllCrops = () => {
+        setSelectedCrops(pendingCrops.map(c => c._id));
+    };
+
+    // --- Item Details Update ---
+    const updateItemDetail = (cropId, field, value) => {
+        setItemDetails(prev => ({
+            ...prev,
+            [cropId]: { ...prev[cropId], [field]: value }
+        }));
+    };
+
+    // --- Remove from selection ---
+    const removeFromSelection = (cropId) => {
+        setSelectedCrops(prev => prev.filter(id => id !== cropId));
+    };
+
+    // --- Save Sale ---
+    const handleSave = async () => {
+        if (!selectedFarmer) return toast.error('Select a farmer');
+        if (!selectedTrader) return toast.error('Select a trader');
+        if (selectedCrops.length === 0) return toast.error('Select at least one crop');
+
+        for (const cropId of selectedCrops) {
+            const detail = itemDetails[cropId];
+            if (!detail?.rate || parseFloat(detail.rate) <= 0) {
+                return toast.error('Enter rate for all items');
+            }
+            if (!detail?.qty || parseFloat(detail.qty) <= 0) {
+                return toast.error('Enter quantity for all items');
+            }
+        }
+
+        try {
+            setSaving(true);
+
+            for (const cropId of selectedCrops) {
+                const crop = pendingCrops.find(c => c._id === cropId);
+                const detail = itemDetails[cropId];
+                const { caratValue } = getEffectiveValues(crop);
+                const sale_unit = caratValue > 0 ? 'carat' : 'kg';
+
+                await api.patch(`/api/records/${cropId}/sell`, {
+                    allocations: [{
+                        trader_id: selectedTrader._id,
+                        quantity: parseFloat(detail.qty),
+                        rate: parseFloat(detail.rate)
+                    }],
+                    sale_unit
+                });
+            }
+
+            toast.success(`${selectedCrops.length} item(s) sold!`);
+            setPendingCrops(prev => prev.filter(c => !selectedCrops.includes(c._id)));
+            setSelectedCrops([]);
+        } catch (error) {
+            toast.error('Sale failed');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // --- Filtered Lists ---
     const filteredFarmers = useMemo(() => {
-        if (!nameSearch.trim()) return [];
+        if (!farmerSearch.trim()) return farmers;
         return farmers.filter(f =>
-            f.full_name?.toLowerCase().includes(nameSearch.toLowerCase()) ||
-            f.phone?.includes(nameSearch)
-        ).slice(0, 5);
-    }, [farmers, nameSearch]);
+            f.full_name?.toLowerCase().includes(farmerSearch.toLowerCase()) ||
+            f.phone?.includes(farmerSearch) ||
+            f.farmerId?.toLowerCase().includes(farmerSearch.toLowerCase())
+        );
+    }, [farmers, farmerSearch]);
 
     const filteredTraders = useMemo(() => {
-        if (!traderSearch.trim()) return traders.slice(0, 10);
+        if (!traderSearch.trim()) return traders;
         return traders.filter(t =>
             t.full_name?.toLowerCase().includes(traderSearch.toLowerCase()) ||
             t.business_name?.toLowerCase().includes(traderSearch.toLowerCase())
-        ).slice(0, 10);
+        );
     }, [traders, traderSearch]);
 
-    const remainingQty = useMemo(() => {
-        if (!activeRecord) return 0;
-        const { caratValue, qtyValue } = getEffectiveValues(activeRecord);
-        const total = caratValue > 0 ? caratValue : qtyValue;
-        const allocated = traderAllocations.reduce((sum, a) => sum + a.quantity, 0);
-        return total - allocated;
-    }, [activeRecord, traderAllocations]);
+    // --- Selected crops data ---
+    const selectedCropsData = useMemo(() => {
+        return pendingCrops.filter(c => selectedCrops.includes(c._id));
+    }, [pendingCrops, selectedCrops]);
 
-    if (loading) return (
-        <div className="flex justify-center items-center h-screen">
-            <Loader2 className="w-10 h-10 animate-spin text-emerald-600" />
-        </div>
-    );
+    // --- Total Amount ---
+    const totalAmount = useMemo(() => {
+        return selectedCropsData.reduce((sum, crop) => {
+            const detail = itemDetails[crop._id] || {};
+            return sum + (parseFloat(detail.qty) || 0) * (parseFloat(detail.rate) || 0);
+        }, 0);
+    }, [selectedCropsData, itemDetails]);
+
+    // --- Loading Screen ---
+    if (initialLoading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+        );
+    }
 
     return (
-        <div className="h-[calc(100vh-100px)] flex gap-6 p-4 bg-slate-50/50">
-
-            {/* --- LEFT PANEL --- */}
-            <div className="w-[350px] flex flex-col gap-4">
-
-                {/* 1. Token Input */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-300 transition-colors">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Token Number
-                    </label>
-                    <div className="relative group">
-                        <input
-                            ref={tokenInputRef}
-                            type="text"
-                            value={tokenInput}
-                            onChange={(e) => setTokenInput(e.target.value)}
-                            className="w-full text-4xl font-black text-center py-4 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all uppercase placeholder:text-slate-200 text-slate-800 tracking-widest"
-                            placeholder="A-000"
-                        />
-                        {tokenInput && (
-                            <button
-                                onClick={() => setTokenInput('')}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 bg-slate-100 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                            >
-                                <X size={20} />
-                            </button>
-                        )}
-                    </div>
+        <div className="min-h-screen bg-gray-50">
+            {/* Header Bar */}
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="px-6 py-4 flex items-center justify-between">
+                    <h1 className="text-xl font-semibold text-gray-900">Lilav Entry</h1>
+                    <button
+                        onClick={() => fetchAllData()}
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+                        title="Refresh"
+                    >
+                        <RefreshCw size={18} />
+                    </button>
                 </div>
-
-                {/* 2. Farmer Name Search */}
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">
-                        Search Farmer
-                    </label>
-                    <div className="relative mb-4">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                        <input
-                            type="text"
-                            value={nameSearch}
-                            onChange={(e) => setNameSearch(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-100 text-sm font-medium transition-all"
-                            placeholder="Search by name or mobile..."
-                        />
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                        {filteredFarmers.map(farmer => (
-                            <button
-                                key={farmer._id}
-                                onClick={() => handleSelectFarmer(farmer)}
-                                className="w-full text-left p-3 hover:bg-emerald-50 rounded-xl border border-transparent hover:border-emerald-200 transition-all group flex items-center gap-3"
-                            >
-                                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform">
-                                    {farmer.initials || farmer.full_name?.charAt(0)}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-slate-900 truncate">{farmer.full_name}</p>
-                                    <p className="text-xs text-slate-500 font-medium truncate">{farmer.phone}</p>
-                                </div>
-                            </button>
-                        ))}
-                        {nameSearch && filteredFarmers.length === 0 && (
-                            <div className="text-center text-slate-400 py-8 text-sm flex flex-col items-center gap-2">
-                                <User size={24} className="opacity-20" />
-                                <span>No farmers found</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 3. Selected Farmer Card */}
-                <AnimatePresence>
-                    {selectedFarmer && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                            className="bg-white p-5 rounded-2xl border-2 border-emerald-500 shadow-xl shadow-emerald-100/50 relative overflow-hidden"
-                        >
-                            <label className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider mb-3 block flex items-center justify-between">
-                                <span>Active Farmer</span>
-                                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px]">Verified</span>
-                            </label>
-
-                            <div className="flex items-center gap-4 mb-4 relative z-10">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-emerald-200">
-                                    {selectedFarmer.full_name?.charAt(0)}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="text-xl font-bold text-slate-900 leading-tight truncate" title={selectedFarmer.full_name}>
-                                        {selectedFarmer.full_name}
-                                    </h2>
-                                    <p className="text-slate-500 text-sm font-medium mt-1 truncate">
-                                        {selectedFarmer.phone}
-                                    </p>
-                                    <p className="text-xs font-mono text-emerald-600 bg-emerald-50 inline-block px-1.5 py-0.5 rounded mt-1">
-                                        {selectedFarmer.farmerId || 'NO-ID'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => setSelectedFarmer(null)}
-                                className="w-full py-2.5 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-xl text-sm font-bold transition-colors border border-slate-200 hover:border-red-200 flex items-center justify-center gap-2"
-                            >
-                                <X size={16} />
-                                Change Farmer
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
-            {/* --- RIGHT PANEL --- */}
-            <div className="flex-1 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div className="px-6 py-6">
+                {/* === SELECTION BOXES === */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                            <Package size={20} />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-900">Pending Crops</h2>
-                            <p className="text-xs text-slate-400 font-medium">Select a crop to start auction</p>
-                        </div>
-                    </div>
-                    {weighedRecords.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold">
-                                {weighedRecords.length} Items
-                            </span>
-                            <button
-                                onClick={() => selectedFarmer && fetchWeighedRecords(selectedFarmer._id)}
-                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            >
-                                <RefreshCw size={18} />
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                {/* Content Area */}
-                <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
-                    {!selectedFarmer ? (
-                        <div className="h-full flex flex-col items-center justify-center opacity-40">
-                            <div className="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                                <User size={48} className="text-slate-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-700">Waiting for Farmer Selection</h3>
-                            <p className="text-slate-500 mt-2">Scan a token or search for a farmer on the left</p>
-                        </div>
-                    ) : weighedRecords.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center">
-                            <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-4">
-                                <CheckCircle2 size={40} className="text-green-500" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800">All Caught Up!</h3>
-                            <p className="text-slate-500 mt-2">No pending crops found for this farmer.</p>
-                        </div>
-                    ) : activeRecord ? (
-                        /* --- INLINE AUCTION INTERFACE --- */
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.98 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden h-full flex flex-col"
-                        >
-                            {/* Record Header */}
-                            <div className="bg-white border-b border-slate-100 p-5 flex justify-between items-start">
-                                <div>
-                                    <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-wider mb-1">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                        Live Auction
+                    {/* BOX 1: Farmer */}
+                    <div ref={farmerDropdownRef} className="relative">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Farmer Name <span className="text-gray-400">*</span>
+                        </label>
+                        {selectedFarmer ? (
+                            <div className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-semibold text-emerald-700">
+                                        {selectedFarmer.full_name?.charAt(0)}
                                     </div>
-                                    <h3 className="text-3xl font-black text-slate-900">{activeRecord.vegetable}</h3>
-                                    <p className="text-slate-400 text-sm font-medium mt-1">Lot #{activeRecord._id.slice(-6).toUpperCase()}</p>
+                                    <div>
+                                        <p className="font-medium text-gray-900">{selectedFarmer.full_name}</p>
+                                        <p className="text-sm text-gray-500">{selectedFarmer.phone} • {selectedFarmer.farmerId || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <button onClick={clearFarmer} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div
+                                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors shadow-sm"
+                                    onClick={() => setShowFarmerList(true)}
+                                >
+                                    <span className="text-gray-400">Select or add a farmer</span>
+                                    <ChevronDown size={18} className="text-gray-400" />
                                 </div>
 
-                                <div className="text-right">
-                                    <div className="text-3xl font-black text-slate-900 flex items-center justify-end gap-1">
-                                        {getEffectiveValues(activeRecord).caratValue > 0
-                                            ? <><span className="text-purple-600">{getEffectiveValues(activeRecord).caratValue}</span> <span className="text-sm text-slate-400 font-bold self-end mb-2">Crt</span></>
-                                            : <><span className="text-emerald-600">{getEffectiveValues(activeRecord).qtyValue}</span> <span className="text-sm text-slate-400 font-bold self-end mb-2">Kg</span></>
-                                        }
-                                    </div>
-                                    <button
-                                        onClick={cancelAuction}
-                                        className="mt-2 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors"
-                                    >
-                                        CANCEL
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-                                {/* Left: Input Area */}
-                                <div className="flex-1 p-6 flex flex-col gap-6">
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-emerald-100 focus-within:border-emerald-500 transition-all">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Auction Rate (₹)</label>
-                                            <input
-                                                ref={rateInputRef}
-                                                type="number"
-                                                className="w-full text-3xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-300"
-                                                placeholder="00"
-                                                value={saleForm.sale_rate}
-                                                onChange={e => setSaleForm({ ...saleForm, sale_rate: e.target.value })}
-                                                onKeyDown={e => e.key === 'Enter' && document.querySelector('#qty-input').focus()}
-                                            />
-                                        </div>
-                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 focus-within:ring-2 focus-within:ring-emerald-100 focus-within:border-emerald-500 transition-all relative">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Quantity</label>
-                                            <input
-                                                id="qty-input"
-                                                type="number"
-                                                className="w-full text-3xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-300"
-                                                placeholder={remainingQty}
-                                                value={saleForm.allocation_qty}
-                                                onChange={e => setSaleForm({ ...saleForm, allocation_qty: e.target.value })}
-                                                onKeyDown={e => e.key === 'Enter' && traderSearchRef.current?.focus()}
-                                            />
-                                            <div className="absolute top-4 right-4 text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">
-                                                Max: {remainingQty}
+                                {showFarmerList && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                        <div className="p-3 border-b border-gray-100 bg-gray-50">
+                                            <div className="relative">
+                                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    autoFocus
+                                                    value={farmerSearch}
+                                                    onChange={(e) => setFarmerSearch(e.target.value)}
+                                                    placeholder="Search by name, phone, or token..."
+                                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none"
+                                                />
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div className="flex-1 flex flex-col min-h-0">
-                                        <label className="text-xs font-bold text-slate-500 uppercase mb-3">Select Trader</label>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                            <input
-                                                ref={traderSearchRef}
-                                                type="text"
-                                                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-50 focus:border-emerald-500 outline-none font-medium"
-                                                placeholder="Search by name..."
-                                                value={traderSearch}
-                                                onChange={e => setTraderSearch(e.target.value)}
-                                            />
-                                        </div>
-
-                                        {/* ✅ FIXED: Professional Trader Selection - Light green + border outline */}
-                                        <div className="mt-3 flex-1 overflow-y-auto min-h-[150px] border border-slate-100 rounded-xl bg-slate-50/50 p-2 custom-scrollbar">
-                                            {filteredTraders.map(trader => {
-                                                const isSelected = saleForm.trader_id === trader._id;
-                                                return (
-                                                    <div
-                                                        key={trader._id}
-                                                        onClick={() => setSaleForm({ ...saleForm, trader_id: trader._id })}
-                                                        className={`
-                                                            w-full p-3 mb-1.5 rounded-xl flex items-center gap-3 cursor-pointer transition-all
-                                                            ${isSelected
-                                                                ? 'bg-emerald-50 border-2 border-emerald-500 shadow-sm'
-                                                                : 'bg-white border border-slate-100 hover:border-slate-200 hover:bg-slate-50'
-                                                            }
-                                                        `}
+                                        <div className="max-h-64 overflow-y-auto">
+                                            {filteredFarmers.length === 0 ? (
+                                                <div className="px-4 py-6 text-center text-gray-400 text-sm">No farmers found</div>
+                                            ) : (
+                                                filteredFarmers.slice(0, 15).map(f => (
+                                                    <button
+                                                        key={f._id}
+                                                        onClick={() => handleSelectFarmer(f)}
+                                                        className="w-full text-left px-4 py-3 hover:bg-emerald-50 flex items-center gap-4 border-b border-gray-50 transition-colors"
                                                     >
-                                                        {/* Avatar */}
-                                                        <div
-                                                            className={`
-                                                                w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0
-                                                                ${isSelected
-                                                                    ? 'bg-emerald-500 text-white'
-                                                                    : 'bg-slate-100 text-slate-500'
-                                                                }
-                                                            `}
-                                                        >
-                                                            {trader.full_name?.[0]?.toUpperCase() || 'T'}
-                                                        </div>
-
-                                                        {/* Name & Business */}
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className={`text-sm font-semibold truncate ${isSelected ? 'text-emerald-700' : 'text-slate-700'}`}>
-                                                                {trader.full_name}
-                                                            </p>
-                                                            <p className={`text-xs truncate ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                                {trader.business_name || 'No business name'}
-                                                            </p>
-                                                        </div>
-
-                                                        {/* Check Icon */}
-                                                        {isSelected && (
-                                                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
-                                                                <Check size={14} className="text-white" strokeWidth={3} />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={handleAddAllocation}
-                                        className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
-                                    >
-                                        <Plus size={18} />
-                                        Add Allocation
-                                    </button>
-                                </div>
-
-                                {/* Right: Allocation List & Actions */}
-                                <div className="w-full lg:w-[320px] bg-slate-50/50 p-6 flex flex-col">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <h4 className="font-bold text-slate-800">Allocated Split</h4>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded-md ${remainingQty === 0 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                            {remainingQty === 0 ? 'FULL' : `${remainingQty} REMAINING`}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-                                        {traderAllocations.length === 0 ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl py-8">
-                                                <p className="text-sm font-medium">No traders added</p>
-                                            </div>
-                                        ) : (
-                                            traderAllocations.map((alloc, idx) => (
-                                                <motion.div
-                                                    initial={{ opacity: 0, x: 20 }}
-                                                    animate={{ opacity: 1, x: 0 }}
-                                                    key={idx}
-                                                    className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center group"
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs ring-1 ring-emerald-100">
-                                                            {idx + 1}
+                                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-semibold text-emerald-700">
+                                                            {f.full_name?.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-slate-800 text-sm">{alloc.trader_name}</p>
-                                                            <p className="text-xs text-slate-500 font-medium">
-                                                                {alloc.quantity}{getEffectiveValues(activeRecord).caratValue > 0 ? 'Crt' : 'Kg'} × ₹{alloc.rate}
-                                                            </p>
+                                                            <p className="font-medium text-gray-900">{f.full_name}</p>
+                                                            <p className="text-sm text-gray-500">{f.phone} {f.farmerId && `• ${f.farmerId}`}</p>
                                                         </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => deleteAllocation(idx)}
-                                                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                    >
-                                                        <Trash2 size={16} />
                                                     </button>
-                                                </motion.div>
-                                            ))
-                                        )}
-                                    </div>
-
-                                    <div className="mt-auto space-y-3">
-                                        <div className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center">
-                                            <span className="text-xs font-bold text-slate-400 uppercase">Total Value</span>
-                                            <span className="text-lg font-black text-slate-900">
-                                                ₹{traderAllocations.reduce((sum, a) => sum + (a.quantity * a.rate), 0).toLocaleString()}
-                                            </span>
+                                                ))
+                                            )}
                                         </div>
-                                        <button
-                                            disabled={traderAllocations.length === 0}
-                                            onClick={confirmSale}
-                                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-xl shadow-emerald-200 transition-all flex items-center justify-center gap-2 transform active:scale-95"
-                                        >
-                                            {processingId ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
-                                            CONFIRM & SAVE
-                                        </button>
+                                        {/* Add Farmer Button */}
+                                        <div className="p-3 border-t border-gray-100 bg-gray-50">
+                                            <button
+                                                onClick={() => { setShowFarmerList(false); setShowAddFarmerModal(true); }}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm"
+                                            >
+                                                <Plus size={16} />
+                                                Add New Farmer
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    {/* BOX 2: Trader */}
+                    <div ref={traderDropdownRef} className="relative">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Trader <span className="text-gray-400">*</span>
+                        </label>
+                        {selectedTrader ? (
+                            <div className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
+                                        {selectedTrader.full_name?.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-900">{selectedTrader.full_name}</p>
+                                        <p className="text-sm text-gray-500">{selectedTrader.business_name || selectedTrader.phone}</p>
                                     </div>
                                 </div>
+                                <button onClick={clearTrader} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                    <X size={18} />
+                                </button>
                             </div>
-                        </motion.div>
-                    ) : (
-                        /* --- LIST OF PENDING ITEMS --- */
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {weighedRecords.map(record => {
-                                const vals = getEffectiveValues(record);
-                                return (
-                                    <motion.button
-                                        key={record._id}
-                                        onClick={() => startAuction(record)}
-                                        layoutId={record._id}
-                                        className="bg-white rounded-2xl border border-slate-200 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-50 transition-all text-left flex flex-col overflow-hidden group"
-                                    >
-                                        <div className="p-5 flex-1">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide ${vals.caratValue > 0
-                                                    ? 'bg-purple-50 text-purple-600'
-                                                    : 'bg-emerald-50 text-emerald-600'
-                                                    }`}>
-                                                    {vals.caratValue > 0 ? 'Carat Lot' : 'Weighed Lot'}
-                                                </div>
-                                                <span className="text-[10px] font-mono text-slate-300">
-                                                    #{record._id.slice(-4)}
-                                                </span>
-                                            </div>
+                        ) : (
+                            <>
+                                <div
+                                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors shadow-sm"
+                                    onClick={() => setShowTraderList(true)}
+                                >
+                                    <span className="text-gray-400">Select or add a trader</span>
+                                    <ChevronDown size={18} className="text-gray-400" />
+                                </div>
 
-                                            <h3
-                                                className="font-bold text-slate-900 text-lg leading-tight mb-2 line-clamp-2"
-                                                title={record.vegetable}
+                                {showTraderList && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                        <div className="p-3 border-b border-gray-100 bg-gray-50">
+                                            <div className="relative">
+                                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    autoFocus
+                                                    value={traderSearch}
+                                                    onChange={(e) => setTraderSearch(e.target.value)}
+                                                    placeholder="Search trader..."
+                                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="max-h-64 overflow-y-auto">
+                                            {filteredTraders.length === 0 ? (
+                                                <div className="px-4 py-6 text-center text-gray-400 text-sm">No traders found</div>
+                                            ) : (
+                                                filteredTraders.slice(0, 15).map(t => (
+                                                    <button
+                                                        key={t._id}
+                                                        onClick={() => handleSelectTrader(t)}
+                                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 flex items-center gap-4 border-b border-gray-50 transition-colors"
+                                                    >
+                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
+                                                            {t.full_name?.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-gray-900">{t.full_name}</p>
+                                                            <p className="text-sm text-gray-500">{t.business_name || t.phone}</p>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                        {/* Add Trader Button */}
+                                        <div className="p-3 border-t border-gray-100 bg-gray-50">
+                                            <button
+                                                onClick={() => { setShowTraderList(false); setShowAddTraderModal(true); }}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                                             >
-                                                {record.vegetable}
-                                            </h3>
-
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="text-2xl font-black text-slate-800">
-                                                    {vals.caratValue > 0 ? vals.caratValue : vals.qtyValue}
-                                                </span>
-                                                <span className="text-xs font-bold text-slate-400 uppercase">
-                                                    {vals.caratValue > 0 ? 'Crt' : 'Kg'}
-                                                </span>
-                                            </div>
+                                                <Plus size={16} />
+                                                Add New Trader
+                                            </button>
                                         </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
 
-                                        <div className="bg-emerald-50 px-5 py-3.5 border-t border-emerald-100 flex justify-between items-center group-hover:bg-emerald-600 transition-colors">
-                                            <span className="text-xs font-bold text-emerald-700 group-hover:text-white uppercase tracking-wide">
-                                                Start Auction
-                                            </span>
-                                            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-emerald-600 transform group-hover:translate-x-1 transition-all shadow-sm flex-shrink-0">
-                                                <ArrowRight size={14} strokeWidth={3} />
-                                            </div>
-                                        </div>
-                                    </motion.button>
-                                )
-                            })}
+                {/* === PENDING CROPS === */}
+                <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                            <Package size={16} className="text-gray-400" />
+                            Pending Crops {pendingCrops.length > 0 && <span className="text-gray-400">({pendingCrops.length})</span>}
+                        </h3>
+                        {pendingCrops.length > 0 && (
+                            <button onClick={selectAllCrops} className="text-sm text-emerald-600 hover:text-emerald-800 font-medium hover:underline">
+                                Select All
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="min-h-[50px]">
+                        {pendingCrops.length === 0 ? (
+                            <div className="text-gray-400 text-sm">
+                                {selectedFarmer ? 'No pending crops for this farmer' : 'Select a farmer to view pending crops'}
+                            </div>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {pendingCrops.map(crop => {
+                                    const isSelected = selectedCrops.includes(crop._id);
+                                    const { caratValue, qtyValue } = getEffectiveValues(crop);
+                                    const qty = caratValue > 0 ? caratValue : qtyValue;
+                                    const unit = caratValue > 0 ? 'Crt' : 'Kg';
+
+                                    return (
+                                        <button
+                                            key={crop._id}
+                                            onClick={() => toggleCropSelection(crop._id)}
+                                            className={`
+                                                px-4 py-2.5 rounded-lg text-sm font-medium transition-all border
+                                                ${isSelected
+                                                    ? 'bg-emerald-50 border-emerald-400 text-emerald-800 shadow-sm'
+                                                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                                                }
+                                            `}
+                                        >
+                                            <span className="font-semibold">{crop.vegetable}</span>
+                                            <span className="ml-2 opacity-70">{qty} {unit}</span>
+                                            {isSelected && <Check size={14} className="inline ml-2 text-emerald-600" />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* === ITEM TABLE === */}
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6 shadow-sm">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Item Details</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">Quantity</th>
+                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">Rate (₹)</th>
+                                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">Amount</th>
+                                <th className="w-12"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {selectedCropsData.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="px-5 py-8 text-center text-gray-400 text-sm">
+                                        Type or click to select an item from pending crops above
+                                    </td>
+                                </tr>
+                            ) : (
+                                selectedCropsData.map(crop => {
+                                    const { caratValue } = getEffectiveValues(crop);
+                                    const unit = caratValue > 0 ? 'Crt' : 'Kg';
+                                    const detail = itemDetails[crop._id] || {};
+                                    const amount = (parseFloat(detail.qty) || 0) * (parseFloat(detail.rate) || 0);
+
+                                    return (
+                                        <tr key={crop._id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-5 py-4">
+                                                <p className="font-medium text-gray-900">{crop.vegetable}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">#{crop._id.slice(-6)}</p>
+                                            </td>
+                                            <td className="px-4 py-4">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        value={detail.qty || ''}
+                                                        onChange={(e) => updateItemDetail(crop._id, 'qty', e.target.value)}
+                                                        className="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
+                                                    />
+                                                    <span className="text-xs text-gray-500">{unit}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 text-center">
+                                                <input
+                                                    type="number"
+                                                    value={detail.rate || ''}
+                                                    onChange={(e) => updateItemDetail(crop._id, 'rate', e.target.value)}
+                                                    className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-5 py-4 text-right font-semibold text-gray-900">
+                                                ₹{amount.toLocaleString()}
+                                            </td>
+                                            <td className="px-3 py-4">
+                                                <button
+                                                    onClick={() => removeFromSelection(crop._id)}
+                                                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+
+                    {/* Footer with Total */}
+                    <div className="bg-gray-50 border-t border-gray-200 px-5 py-4 flex items-center justify-between">
+                        <div className="text-sm text-gray-500">
+                            {selectedCropsData.length} item(s) selected
                         </div>
-                    )}
+                        <div className="text-right">
+                            <span className="text-sm font-medium text-gray-500 uppercase">Total</span>
+                            <p className="text-2xl font-bold text-gray-900 mt-1">₹{totalAmount.toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* === SAVE BUTTON === */}
+                <div className="flex justify-start">
+                    <button
+                        onClick={handleSave}
+                        disabled={saving || selectedCrops.length === 0 || !selectedFarmer || !selectedTrader}
+                        className="px-8 py-3.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2 transition-colors shadow-lg disabled:shadow-none"
+                    >
+                        {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                        Save & Assign for Weight
+                    </button>
                 </div>
             </div>
+
+            {/* === ADD FARMER MODAL === */}
+            {showAddFarmerModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">Add New Farmer</h3>
+                            <button onClick={() => setShowAddFarmerModal(false)} className="p-1 text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                                <input
+                                    type="text"
+                                    value={newFarmer.full_name}
+                                    onChange={(e) => setNewFarmer(prev => ({ ...prev, full_name: e.target.value }))}
+                                    placeholder="Enter farmer name"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                                <input
+                                    type="tel"
+                                    value={newFarmer.phone}
+                                    onChange={(e) => setNewFarmer(prev => ({ ...prev, phone: e.target.value }))}
+                                    placeholder="Enter 10-digit phone number"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                            <button
+                                onClick={() => setShowAddFarmerModal(false)}
+                                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAddFarmer}
+                                disabled={addingUser}
+                                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {addingUser && <Loader2 size={16} className="animate-spin" />}
+                                Add Farmer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* === ADD TRADER MODAL === */}
+            {showAddTraderModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">Add New Trader</h3>
+                            <button onClick={() => setShowAddTraderModal(false)} className="p-1 text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                                <input
+                                    type="text"
+                                    value={newTrader.full_name}
+                                    onChange={(e) => setNewTrader(prev => ({ ...prev, full_name: e.target.value }))}
+                                    placeholder="Enter trader name"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                                <input
+                                    type="tel"
+                                    value={newTrader.phone}
+                                    onChange={(e) => setNewTrader(prev => ({ ...prev, phone: e.target.value }))}
+                                    placeholder="Enter 10-digit phone number"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={newTrader.business_name}
+                                    onChange={(e) => setNewTrader(prev => ({ ...prev, business_name: e.target.value }))}
+                                    placeholder="Enter business name"
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                            <button
+                                onClick={() => setShowAddTraderModal(false)}
+                                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAddTrader}
+                                disabled={addingUser}
+                                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {addingUser && <Loader2 size={16} className="animate-spin" />}
+                                Add Trader
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
