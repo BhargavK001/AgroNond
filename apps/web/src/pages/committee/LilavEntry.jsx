@@ -118,8 +118,8 @@ export default function LilavEntry() {
             const details = {};
             crops.forEach(crop => {
                 const rate = dailyRates.find(r => r.vegetable.toLowerCase() === crop.vegetable.toLowerCase());
-                const { caratValue, qtyValue } = getEffectiveValues(crop);
-                const totalQty = caratValue > 0 ? caratValue : qtyValue;
+                const { nagValue, qtyValue } = getEffectiveValues(crop);
+                const totalQty = nagValue > 0 ? nagValue : qtyValue;
                 details[crop._id] = {
                     rate: crop.prev_rate || rate?.rate || '',
                     qty: totalQty
@@ -133,11 +133,14 @@ export default function LilavEntry() {
 
     const getEffectiveValues = (record) => {
         if (record.has_remaining) {
-            return { caratValue: record.remaining_carat || 0, qtyValue: record.remaining_qty || 0 };
+            return {
+                nagValue: record.remaining_nag || 0,
+                qtyValue: record.remaining_qty || 0
+            };
         }
-        const caratValue = (record.official_carat > 0) ? record.official_carat : (record.carat || 0);
+        const nagValue = (record.official_nag > 0) ? record.official_nag : (record.nag || 0);
         const qtyValue = (record.official_qty > 0) ? record.official_qty : (record.quantity || 0);
-        return { caratValue, qtyValue };
+        return { nagValue, qtyValue };
     };
 
     // --- Farmer Selection ---
@@ -267,8 +270,8 @@ export default function LilavEntry() {
             for (const cropId of selectedCrops) {
                 const crop = pendingCrops.find(c => c._id === cropId);
                 const detail = itemDetails[cropId];
-                const { caratValue } = getEffectiveValues(crop);
-                const sale_unit = caratValue > 0 ? 'carat' : 'kg';
+                const { nagValue } = getEffectiveValues(crop);
+                const sale_unit = nagValue > 0 ? 'nag' : 'kg';
 
                 await api.patch(`/api/records/${cropId}/sell`, {
                     allocations: [{
@@ -538,9 +541,9 @@ export default function LilavEntry() {
                             <div className="flex flex-wrap gap-2">
                                 {pendingCrops.map(crop => {
                                     const isSelected = selectedCrops.includes(crop._id);
-                                    const { caratValue, qtyValue } = getEffectiveValues(crop);
-                                    const qty = caratValue > 0 ? caratValue : qtyValue;
-                                    const unit = caratValue > 0 ? 'Crt' : 'Kg';
+                                    const { nagValue, qtyValue } = getEffectiveValues(crop);
+                                    const qty = nagValue > 0 ? nagValue : qtyValue;
+                                    const unit = nagValue > 0 ? 'Nag' : 'Kg';
 
                                     return (
                                         <button
@@ -586,8 +589,8 @@ export default function LilavEntry() {
                                 </tr>
                             ) : (
                                 selectedCropsData.map(crop => {
-                                    const { caratValue } = getEffectiveValues(crop);
-                                    const unit = caratValue > 0 ? 'Crt' : 'Kg';
+                                    const { nagValue } = getEffectiveValues(crop);
+                                    const unit = nagValue > 0 ? 'Nag' : 'Kg';
                                     const detail = itemDetails[crop._id] || {};
                                     const amount = (parseFloat(detail.qty) || 0) * (parseFloat(detail.rate) || 0);
 

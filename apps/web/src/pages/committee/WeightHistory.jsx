@@ -15,9 +15,9 @@ const InlineWeightEdit = ({ record, onSave }) => {
     const [isSaving, setIsSaving] = useState(false);
     const inputRef = useRef(null);
 
-    const isCarat = record.est_carat > 0 || record.updated_carat > 0;
-    const currentVal = record.updated_weight || record.updated_carat || 0;
-    const unit = isCarat ? 'Crt' : 'kg';
+    const isNag = record.est_nag > 0 || record.updated_nag > 0;
+    const currentVal = record.updated_weight || record.updated_nag || 0;
+    const unit = isNag ? 'Nag' : 'kg';
 
     useEffect(() => {
         if (isEditing) {
@@ -39,7 +39,7 @@ const InlineWeightEdit = ({ record, onSave }) => {
 
         setIsSaving(true);
         try {
-            await onSave(record.id, parseFloat(value), isCarat);
+            await onSave(record.id, parseFloat(value), isNag);
             setIsEditing(false);
         } catch (err) {
             console.error(err);
@@ -76,7 +76,7 @@ const InlineWeightEdit = ({ record, onSave }) => {
 
     return (
         <div className="flex items-center gap-2">
-            <span className={`font-bold ${isCarat ? 'text-purple-600' : 'text-emerald-600'}`}>
+            <span className={`font-bold ${isNag ? 'text-purple-600' : 'text-emerald-600'}`}>
                 {currentVal} {unit}
             </span>
             <button
@@ -114,9 +114,9 @@ export default function WeightHistory() {
                 farmer_name: r.farmer_id?.full_name || 'Unknown',
                 item: r.vegetable,
                 est_weight: r.quantity,
-                est_carat: r.carat,
+                est_nag: r.nag,
                 updated_weight: r.official_qty,
-                updated_carat: r.official_carat,
+                updated_nag: r.official_nag,
                 status: r.status,
             }));
 
@@ -148,11 +148,11 @@ export default function WeightHistory() {
     }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Edit Handler
-    const handleWeightUpdate = async (id, value, isCarat) => {
+    const handleWeightUpdate = async (id, value, isNag) => {
         try {
             const updates = {
-                official_qty: isCarat ? null : value,
-                official_carat: isCarat ? value : null
+                official_qty: isNag ? null : value,
+                official_nag: isNag ? value : null
             };
 
             // Use PATCH for partial updates to avoid overwriting/destroying the record
@@ -279,7 +279,7 @@ export default function WeightHistory() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-slate-500 text-sm">
-                                        {record.est_weight > 0 ? `${record.est_weight} kg` : `${record.est_carat} Crt`}
+                                        {record.est_weight > 0 ? `${record.est_weight} kg` : `${record.est_nag} Nag`}
                                     </td>
                                     <td className="px-6 py-4">
                                         <InlineWeightEdit record={record} onSave={handleWeightUpdate} />

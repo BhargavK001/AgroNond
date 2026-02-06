@@ -34,8 +34,8 @@ const InlineWeightInput = ({ record, onWeightSave, disabled }) => {
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef(null);
 
-  const isCaratBased = record.est_carat > 0;
-  const unit = isCaratBased ? 'Crt' : 'kg';
+  const isNagBased = record.est_nag > 0;
+  const unit = isNagBased ? 'Nag' : 'kg';
 
   const handleSave = async () => {
     const value = parseFloat(weight);
@@ -43,7 +43,7 @@ const InlineWeightInput = ({ record, onWeightSave, disabled }) => {
 
     setIsSaving(true);
     try {
-      await onWeightSave(record.id, value, isCaratBased);
+      await onWeightSave(record.id, value, isNagBased);
       setWeight('');
     } catch (err) {
       // Error handled in parent
@@ -81,7 +81,7 @@ const InlineWeightInput = ({ record, onWeightSave, disabled }) => {
           className={`w-24 sm:w-28 px-3 py-2 text-center font-semibold rounded-lg border-2 transition-all outline-none
             ${isSaving
               ? 'bg-gray-50 border-gray-200 text-gray-400'
-              : isCaratBased
+              : isNagBased
                 ? 'border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-purple-700'
                 : 'border-green-200 focus:border-green-500 focus:ring-2 focus:ring-green-100 text-green-700'
             }`}
@@ -92,7 +92,7 @@ const InlineWeightInput = ({ record, onWeightSave, disabled }) => {
           </div>
         )}
       </div>
-      <span className={`text-sm font-medium ${isCaratBased ? 'text-purple-600' : 'text-green-600'}`}>
+      <span className={`text-sm font-medium ${isNagBased ? 'text-purple-600' : 'text-green-600'}`}>
         {unit}
       </span>
     </div>
@@ -167,9 +167,9 @@ const WeightDashboard = () => {
         farmer_id: r.farmer_id?.farmerId || r.farmer_id || 'Unknown',
         item: r.vegetable,
         est_weight: r.quantity,
-        est_carat: r.carat,
+        est_nag: r.nag,
         updated_weight: r.official_qty,
-        updated_carat: r.official_carat,
+        updated_nag: r.official_nag,
         status: r.status,
         record_ref_id: r._id
       });
@@ -230,15 +230,15 @@ const WeightDashboard = () => {
   // --- HANDLERS ---
 
   // Auto-save weight handler
-  const handleWeightSave = async (recordId, value, isCaratBased) => {
+  const handleWeightSave = async (recordId, value, isNagBased) => {
     // Optimistic update
     setPendingRecords(prev => prev.filter(r => r.id !== recordId));
 
     try {
       await api.weight.createRecord({
         recordRefId: recordId,
-        updatedWeight: isCaratBased ? null : value,
-        updatedCarat: isCaratBased ? value : null
+        updatedWeight: isNagBased ? null : value,
+        updatedNag: isNagBased ? value : null
       });
 
       toast.success('Weight saved!', { duration: 2000, position: 'bottom-center' });
@@ -375,7 +375,7 @@ const WeightDashboard = () => {
                     <div className="text-right">
                       <p className="text-xs text-gray-400">Estimated</p>
                       <p className="font-medium text-gray-600">
-                        {record.est_weight > 0 ? `${record.est_weight} kg` : `${record.est_carat} Crt`}
+                        {record.est_weight > 0 ? `${record.est_weight} kg` : `${record.est_nag} Nag`}
                       </p>
                     </div>
                   </div>
@@ -413,7 +413,7 @@ const WeightDashboard = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
-                        {record.est_weight > 0 ? `${record.est_weight} kg` : `${record.est_carat} Crt`}
+                        {record.est_weight > 0 ? `${record.est_weight} kg` : `${record.est_nag} Nag`}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
@@ -496,8 +496,8 @@ const WeightDashboard = () => {
                           <p className="font-semibold text-gray-900">{record.farmer_id}</p>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${['Done', 'Sold', 'Weighed'].includes(record.status)
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-orange-100 text-orange-700'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-orange-100 text-orange-700'
                           }`}>
                           {record.status}
                         </span>
@@ -511,10 +511,10 @@ const WeightDashboard = () => {
                         <div className="text-right">
                           <span className="text-xs text-gray-400 block">Official</span>
                           <span className={`text-lg font-bold ${record.updated_weight ? 'text-green-600' :
-                              record.updated_carat ? 'text-purple-600' : 'text-gray-400'
+                            record.updated_nag ? 'text-purple-600' : 'text-gray-400'
                             }`}>
                             {record.updated_weight ? `${record.updated_weight} kg` :
-                              record.updated_carat ? `${record.updated_carat} Crt` : '-'}
+                              record.updated_nag ? `${record.updated_nag} Nag` : '-'}
                           </span>
                         </div>
                       </div>
@@ -572,20 +572,20 @@ const WeightDashboard = () => {
                           </td>
                           <td className="px-4 py-3 text-gray-500">
                             {record.est_weight > 0 ? `${record.est_weight} kg` :
-                              record.est_carat > 0 ? `${record.est_carat} Crt` : '-'}
+                              record.est_nag > 0 ? `${record.est_nag} Nag` : '-'}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`font-bold ${record.updated_weight ? 'text-green-600' :
-                                record.updated_carat ? 'text-purple-600' : 'text-gray-400'
+                              record.updated_nag ? 'text-purple-600' : 'text-gray-400'
                               }`}>
                               {record.updated_weight ? `${record.updated_weight} kg` :
-                                record.updated_carat ? `${record.updated_carat} Crt` : '-'}
+                                record.updated_nag ? `${record.updated_nag} Nag` : '-'}
                             </span>
                           </td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1 ${['Done', 'Sold', 'Weighed'].includes(record.status)
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-orange-100 text-orange-700'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-orange-100 text-orange-700'
                               }`}>
                               {['Done', 'Sold', 'Weighed'].includes(record.status)
                                 ? <CheckCircle size={12} />
@@ -676,8 +676,8 @@ const WeightDashboard = () => {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Status</p>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1.5 ${['Done', 'Sold', 'Weighed'].includes(selectedRecord.status)
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-orange-100 text-orange-700'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-orange-100 text-orange-700'
                   }`}>
                   {['Done', 'Sold', 'Weighed'].includes(selectedRecord.status)
                     ? <CheckCircle size={14} />
@@ -697,14 +697,14 @@ const WeightDashboard = () => {
               <div className="p-3 rounded-xl border border-gray-100">
                 <p className="text-xs text-gray-400 mb-1">Estimated</p>
                 <p className="text-xl font-bold text-gray-400">
-                  {selectedRecord.est_weight > 0 ? `${selectedRecord.est_weight} kg` : `${selectedRecord.est_carat} Crt`}
+                  {selectedRecord.est_weight > 0 ? `${selectedRecord.est_weight} kg` : `${selectedRecord.est_nag} Nag`}
                 </p>
               </div>
               <div className="p-3 rounded-xl border border-green-100 bg-green-50">
                 <p className="text-xs text-green-600 mb-1">Official</p>
                 <p className="text-xl font-bold text-green-700">
                   {selectedRecord.updated_weight ? `${selectedRecord.updated_weight} kg` :
-                    selectedRecord.updated_carat ? `${selectedRecord.updated_carat} Crt` : '-'}
+                    selectedRecord.updated_nag ? `${selectedRecord.updated_nag} Nag` : '-'}
                 </p>
               </div>
             </div>
@@ -718,18 +718,18 @@ const WeightDashboard = () => {
                 <span className="text-gray-500">Item</span>
                 <span className="font-semibold text-gray-900">{selectedRecord.item}</span>
               </div>
-              {(selectedRecord.updated_weight || selectedRecord.updated_carat) && (
+              {(selectedRecord.updated_weight || selectedRecord.updated_nag) && (
                 <div className="flex justify-between py-2">
                   <span className="text-gray-500">Difference</span>
-                  <span className={`font-semibold ${(selectedRecord.updated_weight || selectedRecord.updated_carat) >=
-                      (selectedRecord.est_weight || selectedRecord.est_carat)
-                      ? 'text-green-600'
-                      : 'text-red-500'
+                  <span className={`font-semibold ${(selectedRecord.updated_weight || selectedRecord.updated_nag) >=
+                    (selectedRecord.est_weight || selectedRecord.est_nag)
+                    ? 'text-green-600'
+                    : 'text-red-500'
                     }`}>
                     {(
-                      (selectedRecord.updated_weight || selectedRecord.updated_carat) -
-                      (selectedRecord.est_weight || selectedRecord.est_carat)
-                    ).toFixed(2)} {selectedRecord.updated_weight ? 'kg' : 'Crt'}
+                      (selectedRecord.updated_weight || selectedRecord.updated_nag) -
+                      (selectedRecord.est_weight || selectedRecord.est_nag)
+                    ).toFixed(2)} {selectedRecord.updated_weight ? 'kg' : 'Nag'}
                   </span>
                 </div>
               )}

@@ -34,7 +34,7 @@ export default function TransactionHistory() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editFormData, setEditFormData] = useState({
         weight: '',
-        carat: '',
+        nag: '',
         rate: ''
     });
     const [isUpdating, setIsUpdating] = useState(false);
@@ -121,7 +121,7 @@ export default function TransactionHistory() {
         e.stopPropagation();
         setEditFormData({
             weight: tx.official_qty || '',
-            carat: tx.carat || '',
+            nag: tx.nag || '',
             rate: tx.sale_rate || ''
         });
         setSelectedTransaction(tx);
@@ -135,7 +135,7 @@ export default function TransactionHistory() {
         try {
             const updates = {
                 official_qty: parseFloat(editFormData.weight),
-                carat: parseFloat(editFormData.carat),
+                nag: parseFloat(editFormData.nag),
                 sale_rate: parseFloat(editFormData.rate)
             };
 
@@ -523,17 +523,17 @@ export default function TransactionHistory() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Carat</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nag</label>
                                     <input
                                         type="number"
-                                        value={editFormData.carat}
-                                        onChange={(e) => setEditFormData({ ...editFormData, carat: e.target.value })}
+                                        value={editFormData.nag}
+                                        onChange={(e) => setEditFormData({ ...editFormData, nag: e.target.value })}
                                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                                         placeholder="0.00"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Rate (₹/kg or ₹/crt)</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Rate (₹/kg or ₹/nag)</label>
                                     <input
                                         type="number"
                                         value={editFormData.rate}

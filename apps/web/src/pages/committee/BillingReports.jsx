@@ -88,14 +88,14 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, type, amount, name, isProcess
 };
 
 // Helper function to format quantity display
-const formatQtyDisplay = (qty, carat) => {
+const formatQtyDisplay = (qty, nag) => {
   const hasQty = qty && qty > 0;
-  const hasCarat = carat && carat > 0;
+  const hasNag = nag && nag > 0;
 
-  if (hasQty && hasCarat) {
-    return `${qty}kg | ${carat}Crt`;
-  } else if (hasCarat) {
-    return `${carat}Crt`;
+  if (hasQty && hasNag) {
+    return `${qty}kg | ${nag}Nag`;
+  } else if (hasNag) {
+    return `${nag}Nag`;
   } else {
     return `${qty || 0}kg`;
   }
@@ -228,14 +228,13 @@ export default function BillingReports() {
     } else {
       traderComm = Math.round(baseAmount * traderRate);
     }
+// Net amounts
+netFarmer = record.net_payable_to_farmer || (baseAmount - farmerComm);
+netTrader = record.net_receivable_from_trader || (baseAmount + traderComm);
 
-    // Net amounts
-    netFarmer = record.net_payable_to_farmer || (baseAmount - farmerComm);
-    netTrader = record.net_receivable_from_trader || (baseAmount + traderComm);
-
-    const caratValue = (record.official_carat && record.official_carat > 0)
-      ? record.official_carat
-      : (record.carat || 0);
+const nagValue = (record.official_nag && record.official_nag > 0)
+  ? record.official_nag
+  : (record.nag || 0);
     const qtyValue = record.qtySold || record.official_qty || record.quantity || 0;
 
     if (activeTab === 'farmers') {
@@ -248,7 +247,7 @@ export default function BillingReports() {
         phone: record.farmer_id?.phone,
         crop: record.vegetable,
         qty: qtyValue,
-        carat: caratValue,
+        nag: nagValue,
         baseAmount: baseAmount,
         commission: farmerComm,
         commissionRate: farmerRate, // Pass explicit rate
@@ -265,7 +264,7 @@ export default function BillingReports() {
         address: record.trader_id?.address,
         crop: record.vegetable,
         qty: qtyValue,
-        carat: caratValue,
+        nag: nagValue,
         baseAmount: baseAmount,
         commission: traderComm,
         commissionRate: traderRate, // Pass explicit rate
@@ -353,7 +352,7 @@ export default function BillingReports() {
       new Date(item.date).toLocaleDateString('en-IN'),
       item.name,
       item.crop,
-      formatQtyDisplay(item.qty, item.carat),
+      formatQtyDisplay(item.qty, item.nag),
       item.baseAmount,
       item.commission,
       item.finalAmount,
@@ -633,7 +632,7 @@ export default function BillingReports() {
                     </td>
                     <td className="px-6 py-5">
                       <span className="inline-flex px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold">
-                        {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
+                        {item.crop} • {formatQtyDisplay(item.qty, item.nag)}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-right">
@@ -725,7 +724,7 @@ export default function BillingReports() {
                       <h3 className="font-bold text-slate-900">{item.name}</h3>
                     </div>
                     <span className="inline-flex px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-medium mt-2">
-                      {item.crop} • {formatQtyDisplay(item.qty, item.carat)}
+                      {item.crop} • {formatQtyDisplay(item.qty, item.nag)}
                     </span>
                   </div>
                   <StatusBadge status={item.status} />

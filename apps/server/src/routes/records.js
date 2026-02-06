@@ -51,17 +51,17 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     const pId = child.parent_record_id.toString();
                     if (!parentMap[pId]) {
                         parentMap[pId] = {
-                            splits: [], soldQty: 0, soldCarat: 0, totalSaleAmount: 0,
-                            childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingCarat: 0, weightPendingCount: 0,
+                            splits: [], soldQty: 0, soldNag: 0, totalSaleAmount: 0,
+                            childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingNag: 0, weightPendingCount: 0,
                             totalFarmerCommission: 0, totalTraderCommission: 0
                         };
                     }
                     // Weight Pending Logic
                     const isWeightPending = child.status === 'RateAssigned' &&
-                        (child.official_qty || 0) === 0 && (child.official_carat || 0) === 0;
+                        (child.official_qty || 0) === 0 && (child.official_nag || 0) === 0;
 
                     const childQty = isWeightPending ? (child.allocated_qty || child.quantity || 0) : (child.official_qty || child.quantity || 0);
-                    const childCarat = isWeightPending ? (child.allocated_carat || child.carat || 0) : (child.official_carat || child.carat || 0);
+                    const childNag = isWeightPending ? (child.allocated_nag || child.nag || 0) : (child.official_nag || child.nag || 0);
                     const amount = child.sale_amount || child.total_amount || 0;
 
                     // Accumulate Commissions
@@ -70,11 +70,11 @@ router.get('/my-records', requireAuth, async (req, res) => {
 
                     if (isWeightPending) {
                         parentMap[pId].weightPendingQty += childQty;
-                        parentMap[pId].weightPendingCarat += childCarat;
+                        parentMap[pId].weightPendingNag += childNag;
                         parentMap[pId].weightPendingCount += 1;
                     } else {
                         parentMap[pId].soldQty += childQty;
-                        parentMap[pId].soldCarat += childCarat;
+                        parentMap[pId].soldNag += childNag;
                         parentMap[pId].totalSaleAmount += amount;
                         // Only add commission for valid sales
                         if (['Sold', 'Completed'].includes(child.status)) {
@@ -86,7 +86,7 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     if (['Sold', 'Completed'].includes(child.status)) parentMap[pId].soldCount += 1;
 
                     parentMap[pId].splits.push({
-                        _id: child._id, qty: childQty, carat: childCarat, rate: child.sale_rate || 0,
+                        _id: child._id, qty: childQty, nag: childNag, rate: child.sale_rate || 0,
                         amount: amount, date: child.sold_at || child.createdAt, status: child.status,
                         isWeightPending: isWeightPending, payment_status: child.farmer_payment_status || 'Pending'
                     });
@@ -96,12 +96,12 @@ router.get('/my-records', requireAuth, async (req, res) => {
             return records.map(record => {
                 if (record.is_parent) {
                     const data = parentMap[record._id.toString()] || {
-                        splits: [], soldQty: 0, soldCarat: 0, totalSaleAmount: 0,
-                        childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingCarat: 0, weightPendingCount: 0
+                        splits: [], soldQty: 0, soldNag: 0, totalSaleAmount: 0,
+                        childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingNag: 0, weightPendingCount: 0
                     };
 
                     record.aggregated_sold_qty = data.soldQty;
-                    record.aggregated_sold_carat = data.soldCarat;
+                    record.aggregated_sold_nag = data.soldNag;
                     record.aggregated_sale_amount = data.totalSaleAmount;
                     // ✅ Map Aggregated Commissions
                     record.aggregated_farmer_commission = data.totalFarmerCommission;
@@ -111,14 +111,14 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     record.sold_count = data.soldCount;
                     record.splits = data.splits;
 
-                    const totalSold = record.sale_unit === 'carat' ? data.soldCarat : data.soldQty;
+                    const totalSold = record.sale_unit === 'nag' ? data.soldNag : data.soldQty;
                     record.aggregated_avg_rate = totalSold > 0 ? (data.totalSaleAmount / totalSold) : 0;
 
                     record.awaiting_qty = (record.quantity || 0) - data.soldQty;
-                    record.awaiting_carat = (record.carat || 0) - data.soldCarat;
+                    record.awaiting_nag = (record.nag || 0) - data.soldNag;
 
                     record.weight_pending_qty = data.weightPendingQty;
-                    record.weight_pending_carat = data.weightPendingCarat;
+                    record.weight_pending_nag = data.weightPendingNag;
 
                     const soldSplits = data.splits.filter(s => ['Sold', 'Completed'].includes(s.status));
                     const hasUnpaid = soldSplits.some(s => s.payment_status === 'Pending');
@@ -126,11 +126,11 @@ router.get('/my-records', requireAuth, async (req, res) => {
 
                     // Compute Status
                     const totalQty = record.quantity || 0;
-                    const totalCarat = record.carat || 0;
-                    const hasWeightPending = data.weightPendingQty > 0.01 || data.weightPendingCarat > 0.01;
-                    const hasSoldSomething = data.soldQty > 0.01 || data.soldCarat > 0.01;
+                    const totalNag = record.nag || 0;
+                    const hasWeightPending = data.weightPendingQty > 0.01 || data.weightPendingNag > 0.01;
+                    const hasSoldSomething = data.soldQty > 0.01 || data.soldNag > 0.01;
                     const hasRemaining = (totalQty > 0 && (data.soldQty + data.weightPendingQty) < totalQty - 0.01) ||
-                        (totalCarat > 0 && (data.soldCarat + data.weightPendingCarat) < totalCarat - 0.01);
+                        (totalNag > 0 && (data.soldNag + data.weightPendingNag) < totalNag - 0.01);
 
                     if (hasWeightPending && !hasSoldSomething) record.display_status = 'WeightPending';
                     else if (hasWeightPending && hasSoldSomething) record.display_status = 'WeightPending';
@@ -315,7 +315,7 @@ router.get('/download-report', requireAuth, async (req, res) => {
                 time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
                 crop: record.vegetable,
                 qty: record.official_qty || record.quantity || 0,
-                carat: record.official_carat || record.carat || 0,
+                nag: record.official_nag || record.nag || 0,
                 rate: record.sale_rate || 0,
                 amount: record.sale_amount || 0,
                 commission: record.farmer_commission || 0,
@@ -333,7 +333,7 @@ router.get('/download-report', requireAuth, async (req, res) => {
             { label: 'Time', value: 'time' },
             { label: 'Crop', value: 'crop' },
             { label: 'Quantity (kg)', value: 'qty' },
-            { label: 'Carat', value: 'carat' },
+            { label: 'Nag', value: 'nag' },
             { label: 'Rate/kg', value: 'rate' },
             { label: 'Sale Amount', value: 'amount' },
             { label: 'Commission', value: 'commission' },
@@ -508,7 +508,7 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
             // Calculate sold quantity and find previous rate
             // Calculate sold quantity and find previous rate
             let soldQty = 0;
-            let soldCarat = 0;
+            let soldNag = 0;
             let prevRate = 0;
             const splits = []; // New: Collect split details
             let totalAmountSum = 0; // New: Sum of all amounts
@@ -517,10 +517,10 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
                 // Include RateAssigned and Weighed as 'sold'/allocated so they don't show up as pending
                 if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
                     const childQty = child.official_qty || child.quantity || 0;
-                    const childCarat = child.official_carat || child.carat || 0;
+                    const childNag = child.official_nag || child.nag || 0;
 
                     soldQty += childQty;
-                    soldCarat += childCarat;
+                    soldNag += childNag;
 
                     // Capture rate from first sold child to lock it for subsequent splits (legacy behavior, kept for reference)
                     if (!prevRate && child.sale_rate) {
@@ -531,7 +531,7 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
                     splits.push({
                         _id: child._id,
                         qty: childQty,
-                        carat: childCarat,
+                        nag: childNag,
                         rate: child.sale_rate || 0,
                         amount: child.sale_amount || child.total_amount || 0, // Fallback
                         date: child.sold_at || child.createdAt,
@@ -545,16 +545,16 @@ router.get('/pending/:farmerId', requireAuth, async (req, res) => {
 
             // Calculate remaining
             const remainingQty = (parent.quantity || 0) - soldQty;
-            const remainingCarat = (parent.carat || 0) - soldCarat;
+            const remainingNag = (parent.nag || 0) - soldNag;
 
             // Only include if there's remaining quantity to sell
-            if (remainingQty > 0.01 || remainingCarat > 0.01) {
+            if (remainingQty > 0.01 || remainingNag > 0.01) {
                 enrichedParentRecords.push({
                     ...parent,
                     remaining_qty: parseFloat(remainingQty.toFixed(2)),
-                    remaining_carat: parseFloat(remainingCarat.toFixed(2)),
+                    remaining_nag: parseFloat(remainingNag.toFixed(2)),
                     sold_qty: parseFloat(soldQty.toFixed(2)),
-                    sold_carat: parseFloat(soldCarat.toFixed(2)),
+                    sold_nag: parseFloat(soldNag.toFixed(2)),
                     has_remaining: true,
                     prev_rate: prevRate, // Send previous rate to frontend
                     splits: splits, // New: Send split details
@@ -594,8 +594,8 @@ router.post('/add', requireAuth, async (req, res) => {
             market: market,
             vegetable: item.vegetable,
             quantity: item.quantity,
-            carat: item.carat || 0,
-            sale_unit: (item.carat && item.carat > 0) ? 'carat' : 'kg',
+            nag: item.nag || 0,
+            sale_unit: (item.nag && item.nag > 0) ? 'nag' : 'kg',
             status: 'Pending',
             qtySold: 0,
             rate: 0,
@@ -612,21 +612,13 @@ router.post('/add', requireAuth, async (req, res) => {
     }
 });
 
-// ==========================================
-//  3. DYNAMIC ID ROUTES (Must come last)
-// ==========================================
-
-/**
- * PUT /api/records/:id
- * Update a record (Edit Quantity/Market)
- */
 router.put('/:id', requireAuth, async (req, res) => {
     try {
-        const { market, quantity, carat } = req.body;
+        const { market, quantity, nag } = req.body;
 
         const record = await Record.findOneAndUpdate(
             { _id: req.params.id, farmer_id: req.user._id },
-            { market, quantity, carat: carat || 0 },
+            { market, quantity, nag: nag || 0 },
             { new: true }
         );
 
@@ -664,19 +656,19 @@ router.delete('/:id', requireAuth, async (req, res) => {
 router.patch('/:id/weight', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { official_qty, official_carat } = req.body;
+        const { official_qty, official_nag } = req.body;
         // Import notification service dynamically to avoid circular dependencies if any
         const { createNotification } = await import('../services/notificationService.js');
 
-        if (official_qty == null && official_carat == null) {
-            return res.status(400).json({ error: 'Weight or Carat required' });
+        if (official_qty == null && official_nag == null) {
+            return res.status(400).json({ error: 'Weight or Nag required' });
         }
 
         const record = await Record.findByIdAndUpdate(
             id,
             {
                 official_qty,
-                official_carat: official_carat || 0,
+                official_nag: official_nag || 0,
                 status: 'Weighed',
                 weighed_by: req.user._id,
                 weighed_at: new Date()
@@ -694,7 +686,7 @@ router.patch('/:id/weight', requireAuth, async (req, res) => {
                 recipient: record.farmer_id,
                 type: 'info',
                 title: 'Weight Recorded',
-                message: `Your produce (${record.vegetable}) has been weighed: ${record.official_qty} kg / ${record.official_carat} carat.`,
+                message: `Your produce (${record.vegetable}) has been weighed: ${record.official_qty} kg / ${record.official_nag} nag.`,
                 data: { recordId: record._id, type: 'weight' }
             });
         }
@@ -866,15 +858,15 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
 
             let alreadySold = 0;
             // If it's already a parent record, subtract what's already been sold to child records
+            // This `alreadySold` is a bit ambiguous as it doesn't specify unit.
+            // It's used in the `availableKg` and `availableNag` calculations below
+            // with an `approx check`. This might need refinement if `alreadySold`
+            // needs to be unit-specific. For now, keeping it as is from the original context.
             if (record.is_parent) {
                 const existingChildren = await Record.find({ parent_record_id: record._id });
                 for (const child of existingChildren) {
                     if (['Sold', 'Completed', 'RateAssigned', 'Weighed'].includes(child.status)) {
-                        // This `alreadySold` is a bit ambiguous as it doesn't specify unit.
-                        // It's used in the `availableKg` and `availableCarat` calculations below
-                        // with an `approx check`. This might need refinement if `alreadySold`
-                        // needs to be unit-specific. For now, keeping it as is from the original context.
-                        const childQty = (child.official_qty || child.quantity || child.official_carat || child.carat || 0);
+                        const childQty = (child.official_qty || child.quantity || child.official_nag || child.nag || 0);
                         alreadySold += childQty;
                     }
                 }
@@ -884,22 +876,22 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
             const availableKg = (record.official_qty || record.quantity || 0) -
                 (record.sale_unit === 'kg' && record.is_parent ? alreadySold : 0); // Approx check for alreadySold
 
-            const availableCarat = (record.official_carat || record.carat || 0) -
-                (record.sale_unit === 'carat' && record.is_parent ? alreadySold : 0);
+            const availableNag = (record.official_nag || record.nag || 0) -
+                (record.sale_unit === 'nag' && record.is_parent ? alreadySold : 0);
 
             // Determine intention
             const totalAllocated = allocations.reduce((sum, a) => sum + parseFloat(a.quantity || 0), 0);
 
             // Initial assumption from request or record
-            let targetUnit = sale_unit || (availableCarat > 0 ? 'carat' : 'kg');
-            let totalAvailable = targetUnit === 'carat' ? availableCarat : availableKg;
+            let targetUnit = sale_unit || (availableNag > 0 ? 'nag' : 'kg');
+            let totalAvailable = targetUnit === 'nag' ? availableNag : availableKg;
 
             // SMART FIX: If selected unit has 0 availability (or less than allocated) BUT other unit has enough
             // explicitly switch to the other unit.
-            // This handles mismatch where frontend sends 'carat' but we only have 'kg', or vice versa.
+            // This handles mismatch where frontend sends 'nag' but we only have 'kg', or vice versa.
             if (totalAvailable < totalAllocated) {
-                const otherUnit = targetUnit === 'carat' ? 'kg' : 'carat';
-                const otherAvailable = targetUnit === 'carat' ? availableKg : availableCarat;
+                const otherUnit = targetUnit === 'nag' ? 'kg' : 'nag';
+                const otherAvailable = targetUnit === 'nag' ? availableKg : availableNag;
 
                 console.log(`Mismatch detected! Requested ${targetUnit} (${totalAvailable}) < Allocated (${totalAllocated}). Checking ${otherUnit} (${otherAvailable})...`);
 
@@ -910,7 +902,7 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
                 }
             }
 
-            const isCarat = targetUnit === 'carat';
+            const isNag = targetUnit === 'nag';
 
             // Use small epsilon for floating point comparison
             if (totalAllocated > totalAvailable + 0.01) {
@@ -932,7 +924,7 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
 
             // Create child records for each allocation
             const createdRecords = [];
-            // isCarat is already determined above
+            // isNag is already determined above
 
             for (let i = 0; i < allocations.length; i++) {
                 const allocation = allocations[i];
@@ -945,16 +937,16 @@ router.patch('/:id/sell', requireAuth, async (req, res) => {
                 console.log(`Creating child record ${i}: lot_id=${childLotId}, trader=${allocation.trader_id}, qty=${allocation.quantity}`);
 
                 // Create a new child record for this trader
-                // NOTE: official_qty and official_carat are left as 0 - weight staff will fill them
+                // NOTE: official_qty and official_nag are left as 0 - weight staff will fill them
                 const childRecord = new Record({
                     farmer_id: record.farmer_id,
                     vegetable: record.vegetable,
                     market: record.market,
-                    quantity: isCarat ? 0 : parseFloat(allocation.quantity), // Estimated/allocated qty
-                    carat: isCarat ? parseFloat(allocation.quantity) : 0,
-                    // official_qty/official_carat left as default 0 - to be filled by weight staff
-                    allocated_qty: isCarat ? 0 : parseFloat(allocation.quantity),
-                    allocated_carat: isCarat ? parseFloat(allocation.quantity) : 0,
+                    quantity: isNag ? 0 : parseFloat(allocation.quantity), // Estimated/allocated qty
+                    nag: isNag ? parseFloat(allocation.quantity) : 0,
+                    // official_qty/official_nag left as default 0 - to be filled by weight staff
+                    allocated_qty: isNag ? 0 : parseFloat(allocation.quantity),
+                    allocated_nag: isNag ? parseFloat(allocation.quantity) : 0,
                     trader_id: allocation.trader_id,
                     sale_rate: parseFloat(allocation.rate),
                     sale_unit: targetUnit,
@@ -1128,9 +1120,9 @@ router.get('/completed', requireAuth, async (req, res) => {
                     sold_by: { _id: 1, full_name: 1 },
                     vegetable: 1,
                     quantity: 1,
-                    carat: 1,
+                    nag: 1,
                     official_qty: 1,
-                    official_carat: 1,
+                    official_nag: 1,
                     sale_rate: 1,
                     sale_amount: 1,
                     farmer_commission: 1,

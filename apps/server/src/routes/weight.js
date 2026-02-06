@@ -71,10 +71,10 @@ router.get('/pending', requireAuth, async (req, res) => {
 
 
 // HELPER: Calculate Sale
-const calculateSale = async (record, qty, carat) => {
+const calculateSale = async (record, qty, nag) => {
     let sale_amount = 0;
-    if (record.sale_unit === 'carat') {
-        sale_amount = carat * record.sale_rate;
+    if (record.sale_unit === 'nag') {
+        sale_amount = nag * record.sale_rate;
     } else {
         sale_amount = qty * record.sale_rate;
     }
@@ -125,11 +125,11 @@ const calculateSale = async (record, qty, carat) => {
 // POST /api/weight/record (Add/Update)
 router.post('/record', requireAuth, async (req, res) => {
     try {
-        const { recordRefId, farmerId, item, estWeight, estCarat, updatedWeight, updatedCarat, date } = req.body;
+        const { recordRefId, farmerId, item, estWeight, estNag, updatedWeight, updatedNag, date } = req.body;
 
         let record;
         const official_qty = updatedWeight ? parseFloat(updatedWeight) : 0;
-        const official_carat = updatedCarat ? parseFloat(updatedCarat) : 0;
+        const official_nag = updatedNag ? parseFloat(updatedNag) : 0;
 
         if (recordRefId) {
             // Updating existing record (likely RateAssigned)
@@ -137,18 +137,18 @@ router.post('/record', requireAuth, async (req, res) => {
             if (!record) return res.status(404).json({ error: 'Record not found' });
 
             record.official_qty = official_qty;
-            record.official_carat = official_carat;
+            record.official_nag = official_nag;
             record.weighed_by = req.user._id;
             record.weighed_at = new Date();
 
             // If Rate is Assigned, Finalize Sale!
-            if (record.status === 'RateAssigned' && (official_qty > 0 || official_carat > 0)) {
-                const saleData = await calculateSale(record, official_qty, official_carat);
+            if (record.status === 'RateAssigned' && (official_qty > 0 || official_nag > 0)) {
+                const saleData = await calculateSale(record, official_qty, official_nag);
                 Object.assign(record, saleData);
                 record.sold_by = req.user._id; // Weight person completes the sale
             } else {
                 // Fallback for just weighing (if ever needed)
-                record.status = (official_qty || official_carat) ? 'Weighed' : 'Pending';
+                record.status = (official_qty || official_nag) ? 'Weighed' : 'Pending';
             }
 
             if (date) {
@@ -164,7 +164,7 @@ router.post('/record', requireAuth, async (req, res) => {
                     recipient: record.farmer_id,
                     type: 'success',
                     title: 'Produce Sold',
-                    message: `Your ${record.vegetable} has been weighed (${official_qty}kg / ${official_carat}crt) and sold. Total: ₹${record.total_amount}.`,
+                    message: `Your ${record.vegetable} has been weighed (${official_qty}kg / ${official_nag} nag) and sold. Total: ₹${record.total_amount}.`,
                     data: { recordId: record._id, type: 'sold' }
                 });
             }
@@ -187,10 +187,10 @@ router.post('/record', requireAuth, async (req, res) => {
                 farmer_id: farmerObjectId,
                 vegetable: item,
                 quantity: estWeight || 0,
-                carat: estCarat || 0,
+                nag: estNag || 0,
                 official_qty,
-                official_carat,
-                status: (official_qty || official_carat) ? 'Weighed' : 'Pending',
+                official_nag,
+                status: (official_qty || official_nag) ? 'Weighed' : 'Pending',
                 weighed_by: req.user._id,
                 weighed_at: new Date(),
                 market: 'Manual',
@@ -208,9 +208,9 @@ router.post('/record', requireAuth, async (req, res) => {
             description: AuditDescriptions.createWeight(
                 record.farmer_id?.full_name || 'Farmer',
                 record.vegetable,
-                official_qty || official_carat
+                official_qty || official_nag
             ),
-            changes: { official_qty, official_carat, status: record.status },
+            changes: { official_qty, official_nag, status: record.status },
             ipAddress: getClientIp(req)
         });
 
@@ -224,30 +224,30 @@ router.post('/record', requireAuth, async (req, res) => {
 // PUT /api/weight/record/:id (Update existing weight record)
 router.put('/record/:id', requireAuth, async (req, res) => {
     try {
-        const { updatedWeight, official_carat } = req.body;
+        const { updatedWeight, official_nag } = req.body;
 
         const record = await Record.findById(req.params.id);
         if (!record) return res.status(404).json({ error: 'Record not found' });
 
         const official_qty = updatedWeight ? parseFloat(updatedWeight) : 0;
-        const o_carat = official_carat ? parseFloat(official_carat) : 0;
+        const o_nag = official_nag ? parseFloat(official_nag) : 0;
 
         record.official_qty = official_qty;
-        record.official_carat = o_carat;
+        record.official_nag = o_nag;
         record.weighed_by = req.user._id;
         record.weighed_at = new Date();
 
         // If it was already Sold or RateAssigned, re-calculate
-        if ((record.status === 'RateAssigned' || record.status === 'Sold') && (official_qty > 0 || o_carat > 0)) {
+        if ((record.status === 'RateAssigned' || record.status === 'Sold') && (official_qty > 0 || o_nag > 0)) {
             // Only if we have rate info
             if (record.sale_rate && record.sale_rate > 0) {
-                const saleData = await calculateSale(record, official_qty, o_carat);
+                const saleData = await calculateSale(record, official_qty, o_nag);
                 Object.assign(record, saleData);
             } else {
                 record.status = 'Weighed'; // Downgrade if no rate? Shouldn't happen in new flow
             }
         } else {
-            record.status = (official_qty || o_carat) ? 'Weighed' : 'Pending';
+            record.status = (official_qty || o_nag) ? 'Weighed' : 'Pending';
         }
 
         await record.save();
