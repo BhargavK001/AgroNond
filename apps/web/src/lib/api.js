@@ -183,6 +183,13 @@ export const api = {
       },
       summary: () => apiRequest('/api/admin/audit-logs/summary', { method: 'GET' }),
     },
+    settings: {
+      list: () => apiRequest('/api/admin/settings', { method: 'GET' }),
+      update: (key, value, description) => apiRequest(`/api/admin/settings/${key}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ value, description })
+      }),
+    },
   },
 
   // Finance
