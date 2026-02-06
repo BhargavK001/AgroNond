@@ -230,6 +230,18 @@ export const api = {
     updateProfile: (data) => apiRequest('/api/weight/profile', { method: 'PUT', body: JSON.stringify(data) }),
   },
 
+  // Vegetables
+  vegetables: {
+    list: () => apiRequest('/api/vegetables', { method: 'GET' }),
+    create: (data) => apiRequest('/api/vegetables', { method: 'POST', body: JSON.stringify(data) }),
+    bulkCreate: (vegetables) => apiRequest('/api/vegetables/bulk', { method: 'POST', body: JSON.stringify({ vegetables }) }),
+    seed: () => apiRequest('/api/vegetables/seed', { method: 'POST' }),
+    update: (id, data) => apiRequest(`/api/vegetables/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    bulkUpdate: (ids, updates) => apiRequest('/api/vegetables/bulk-update', { method: 'POST', body: JSON.stringify({ ids, updates }) }),
+    delete: (id) => apiRequest(`/api/vegetables/${id}`, { method: 'DELETE' }),
+    bulkDelete: (ids) => apiRequest('/api/vegetables/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
+  },
+
   // Notifications
   notifications: {
     list: () => apiRequest('/api/notifications', { method: 'GET' }),
