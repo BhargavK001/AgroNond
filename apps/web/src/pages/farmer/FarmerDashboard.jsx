@@ -176,8 +176,8 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     quintal: ''
   });
 
-  // ✅ NEW: Carat field state
-  const [carat, setCarat] = useState('');
+  // ✅ NEW: Nag field state (single vegetable count - multiples of 100)
+  const [nag, setNag] = useState('');
 
   const [addedItems, setAddedItems] = useState([]);
 
@@ -234,14 +234,14 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     setSelectedVegetable('');
     setSearchTerm('');
     setQuantities({ kg: '', ton: '', quintal: '' });
-    setCarat(''); // ✅ Clear carat field
+    setNag(''); // ✅ Clear nag field
     setIsDropdownOpen(false);
   };
 
   const handleQuantityChange = (value, type) => {
-    // ✅ NEW: If typing in Quantity, clear Carat
+    // ✅ NEW: If typing in Quantity, clear Nag
     if (value) {
-      setCarat('');
+      setNag('');
     }
 
     if (value === '') {
@@ -275,11 +275,11 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
     });
   };
 
-  // ✅ NEW: Handler for Carat change
-  const handleCaratChange = (value) => {
-    setCarat(value);
+  // ✅ NEW: Handler for Nag change
+  const handleNagChange = (value) => {
+    setNag(value);
 
-    // If typing in Carat, clear Quantities
+    // If typing in Nag, clear Quantities
     if (value) {
       setQuantities({ kg: '', ton: '', quintal: '' });
     }
@@ -291,26 +291,26 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
       return;
     }
 
-    // ✅ VALIDATION: At least one field must be filled (quantity OR carat)
+    // ✅ VALIDATION: At least one field must be filled (quantity OR nag)
     const hasQuantity = quantities.kg && parseFloat(quantities.kg) > 0;
-    const hasCarat = carat && parseFloat(carat) > 0;
+    const hasNag = nag && parseFloat(nag) > 0;
 
-    if (!hasQuantity && !hasCarat) {
-      toast.error('Please enter either Quantity (Kg) or Carat');
+    if (!hasQuantity && !hasNag) {
+      toast.error('Please enter either Quantity (Kg) or Nag');
       return;
     }
 
     // Safety check (shouldn't happen with UI logic, but good practice)
-    if (hasQuantity && hasCarat) {
-      toast.error('Please enter only Quantity OR Carat, not both.');
+    if (hasQuantity && hasNag) {
+      toast.error('Please enter only Quantity OR Nag, not both.');
       return;
     }
 
-    // ✅ VALIDATION: Quantity must be a multiple of 10
-    if (hasQuantity) {
-      const qty = parseFloat(quantities.kg);
-      if (qty % 10 !== 0) {
-        toast.error('Quantity (Kg) must be a multiple of 10 (e.g., 10, 20, 30, 110, 150)');
+    // ✅ VALIDATION: Nag must be a multiple of 100
+    if (hasNag) {
+      const nagVal = parseFloat(nag);
+      if (nagVal % 100 !== 0) {
+        toast.error('Nag must be a multiple of 100 (e.g., 100, 200, 300)');
         return;
       }
     }
@@ -325,7 +325,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
       id: Date.now(),
       vegetable: selectedVegetable,
       quantity: parseFloat(quantities.kg) || 0, // Default to 0 if not filled
-      carat: parseFloat(carat) || 0 // ✅ Store carat value
+      nag: parseFloat(nag) || 0 // ✅ Store nag value
     };
 
     setAddedItems([...addedItems, newItem]);
@@ -414,7 +414,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                           {item.quantity > 0 ? (
                             <p>Qty: {item.quantity} kg</p>
                           ) : (
-                            <p>Carat: {item.carat}</p>
+                            <p>Nag: {item.nag}</p>
                           )}
                         </div>
                       </div>
@@ -526,11 +526,11 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
               )}
             </div>
 
-            {/* Quantity and Carat Inputs - Side by Side */}
+            {/* Quantity and Nag Inputs - Side by Side */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Quantity Input */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Leave empty if using Carat)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Quantity (Leave empty if using Nag)</label>
                 <label className="block text-xs text-gray-500 mb-1 font-medium">Kilograms (Kg)</label>
                 <input
                   type="number"
@@ -544,17 +544,17 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
                 />
               </div>
 
-              {/* Carat Input */}
+              {/* Nag Input */}
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Carat (Leave empty if using Quantity)</label>
-                <label className="block text-xs text-gray-500 mb-1 font-medium">Carat (Crt)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Nag (Leave empty if using Quantity)</label>
+                <label className="block text-xs text-gray-500 mb-1 font-medium">Nag Count</label>
                 <input
                   type="number"
-                  value={carat}
-                  onChange={(e) => handleCaratChange(e.target.value)}
+                  value={nag}
+                  onChange={(e) => handleNagChange(e.target.value)}
                   onWheel={(e) => e.target.blur()}
-                  placeholder="Enter carat (e.g., 1, 2, 3...)"
-                  step="1"
+                  placeholder="Enter nag (e.g., 100, 200, 300...)"
+                  step="100"
                   min="0"
                   className="w-full px-4 py-3 rounded-xl border border-green-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 outline-none bg-green-50/50 text-gray-900 font-semibold"
                 />
@@ -562,7 +562,7 @@ const AddNewRecordSection = ({ onBack, onSave }) => {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-              <p><strong>Note:</strong> Enter value in <strong>either</strong> Quantity <strong>OR</strong> Carat. Filling one will automatically clear the other.</p>
+              <p><strong>Note:</strong> Enter value in <strong>either</strong> Quantity <strong>OR</strong> Nag. Filling one will automatically clear the other. Nag must be in multiples of 100.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -636,7 +636,7 @@ const FarmerDashboard = () => {
     market: '',
     vegetable: '',
     quantities: { kg: '', ton: '', quintal: '' },
-    carat: '' // ✅ Add carat to edit form
+    nag: '' // ✅ Add nag to edit form
   });
 
   // --- FETCH DATA FROM BACKEND ---
@@ -794,15 +794,15 @@ const FarmerDashboard = () => {
         ton: qty > 0 ? (qty / 1000).toFixed(3) : '',
         quintal: qty > 0 ? (qty / 100).toFixed(2) : ''
       },
-      carat: record.carat ? record.carat.toString() : '' // ✅ Load carat value
+      nag: record.nag ? record.nag.toString() : '' // ✅ Load nag value
     });
     setModals({ ...modals, editRecord: true });
   };
 
   const handleEditQuantityChange = (value, type) => {
-    // If typing in Quantity, clear Carat
+    // If typing in Quantity, clear Nag
     if (value) {
-      setEditFormData(prev => ({ ...prev, carat: '' }));
+      setEditFormData(prev => ({ ...prev, nag: '' }));
     }
 
     if (value === '') {
@@ -842,26 +842,26 @@ const FarmerDashboard = () => {
     }));
   };
 
-  const handleEditCaratChange = (value) => {
-    // If typing in Carat, clear Quantities
+  const handleEditNagChange = (value) => {
+    // If typing in Nag, clear Quantities
     if (value) {
       setEditFormData(prev => ({
         ...prev,
         quantities: { kg: '', ton: '', quintal: '' },
-        carat: value
+        nag: value
       }));
     } else {
-      setEditFormData(prev => ({ ...prev, carat: value }));
+      setEditFormData(prev => ({ ...prev, nag: value }));
     }
   };
 
   const handleUpdateRecord = async () => {
     const newKg = parseFloat(editFormData.quantities.kg) || 0;
-    const newCarat = parseFloat(editFormData.carat) || 0;
+    const newNag = parseFloat(editFormData.nag) || 0;
 
     // ✅ VALIDATION: At least one field must be filled
-    if (newKg <= 0 && newCarat <= 0) {
-      toast.error("Please enter either Quantity (Kg) or Carat");
+    if (newKg <= 0 && newNag <= 0) {
+      toast.error("Please enter either Quantity (Kg) or Nag");
       return;
     }
 
@@ -874,7 +874,7 @@ const FarmerDashboard = () => {
       await api.put(`/api/records/${editFormData.id}`, {
         market: editFormData.market,
         quantity: newKg,
-        carat: newCarat // ✅ Send carat to backend
+        nag: newNag // ✅ Send nag to backend
       });
 
       toast.success("Record updated successfully!");
@@ -1292,8 +1292,8 @@ const FarmerDashboard = () => {
               <p className="font-bold text-gray-900">
                 {selectedRecord.quantity > 0
                   ? `${selectedRecord.quantity} kg`
-                  : selectedRecord.carat > 0
-                    ? `${selectedRecord.carat} Crt`
+                  : selectedRecord.nag > 0
+                    ? `${selectedRecord.nag} Nag`
                     : '-'}
               </p>
             </div>
@@ -1409,16 +1409,16 @@ const FarmerDashboard = () => {
               </div>
             </div>
 
-            {/* ✅ NEW: Carat Edit Field */}
+            {/* ✅ NEW: Nag Edit Field */}
             <div>
-              <label className="block text-xs text-gray-500 mb-1 font-medium">Carat</label>
+              <label className="block text-xs text-gray-500 mb-1 font-medium">Nag (multiples of 100)</label>
               <input
                 type="number"
-                value={editFormData.carat}
-                onChange={(e) => setEditFormData({ ...editFormData, carat: e.target.value })}
+                value={editFormData.nag}
+                onChange={(e) => handleEditNagChange(e.target.value)}
                 onWheel={(e) => e.target.blur()}
-                placeholder="0"
-                step="1"
+                placeholder="100, 200, 300..."
+                step="100"
                 min="0"
                 className="w-full px-4 py-3 rounded-xl border border-purple-300 focus:border-green-600 focus:ring-2 focus:ring-purple-100 outline-none bg-purple-50/30 text-gray-900 font-semibold"
               />
@@ -1585,11 +1585,11 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
   const invoiceData = getInvoiceData(record);
 
   const hasQuantity = record.quantity > 0;
-  const unit = hasQuantity ? 'kg' : 'Crt';
-  const totalQty = hasQuantity ? record.quantity : record.carat;
+  const unit = hasQuantity ? 'kg' : 'Nag';
+  const totalQty = hasQuantity ? record.quantity : record.nag;
 
   // Extract values for UI display from the unified data
-  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat;
+  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.nag;
   const avgRate = invoiceData.rate;
   const netPayable = invoiceData.finalAmount;
   const totalSaleAmount = invoiceData.baseAmount;
@@ -1635,10 +1635,10 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
         <div className="w-full min-w-[160px]">
           <div className="flex justify-between text-xs mb-1.5 font-semibold">
             <span className={soldQty > 0 ? "text-green-600" : "text-gray-400"}>
-              Sold: {parseFloat(soldQty.toFixed(2))} {unit}
+              Sold: {parseFloat((soldQty || 0).toFixed(2))} {unit}
             </span>
             <span className="text-gray-600">
-              / {parseFloat(totalQty.toFixed(2))} {unit}
+              / {parseFloat((totalQty || 0).toFixed(2))} {unit}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden mb-1.5">
@@ -1663,7 +1663,7 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
           )}
           {awaitingQty > 0.01 && computedStatus !== 'WeightPending' && (
             <p className="text-xs text-amber-600 font-medium">
-              {parseFloat(awaitingQty.toFixed(2))} {unit} remaining
+              {parseFloat((awaitingQty || 0).toFixed(2))} {unit} remaining
             </p>
           )}
         </div>
@@ -1678,7 +1678,7 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
                 <span className="font-bold text-gray-800">₹{s.rate}</span>
                 <span className="text-gray-400 mx-1">/</span>
                 <span className="text-gray-600">
-                  {unit === 'Crt' ? (s.carat || s.qty) : parseFloat(s.qty.toFixed(1))}
+                  {unit === 'Nag' ? (s.nag || s.qty) : parseFloat((s.qty || 0).toFixed(1))}
                   {unit}
                 </span>
               </div>
@@ -1759,11 +1759,11 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
   const invoiceData = getInvoiceData(record);
 
   const hasQuantity = record.quantity > 0;
-  const unit = hasQuantity ? 'kg' : 'Crt';
-  const totalQty = hasQuantity ? record.quantity : record.carat;
+  const unit = hasQuantity ? 'kg' : 'Nag';
+  const totalQty = (hasQuantity ? record.quantity : record.nag) || 0;
 
   // Extract values for UI display
-  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat;
+  const soldQty = (invoiceData.qty > 0 ? invoiceData.qty : invoiceData.nag) || 0;
   const totalSaleAmount = invoiceData.baseAmount;
   const splits = invoiceData.splits || [];
 
@@ -1817,10 +1817,10 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
       <div className="mb-4">
         <div className="flex justify-between text-xs mb-1.5 font-medium">
           <span className={soldQty > 0 ? "text-green-700" : "text-gray-500"}>
-            Sold: {parseFloat(soldQty.toFixed(2))} {unit}
+            Sold: {parseFloat((soldQty || 0).toFixed(2))} {unit}
           </span>
           <span className="text-gray-900">
-            Total: {parseFloat(totalQty.toFixed(2))} {unit}
+            Total: {parseFloat((totalQty || 0).toFixed(2))} {unit}
           </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
@@ -1845,7 +1845,7 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
         )}
         {awaitingQty > 0.01 && computedStatus !== 'WeightPending' && (
           <p className="text-[10px] text-amber-600 mt-1 font-medium text-right">
-            {parseFloat(awaitingQty.toFixed(2))} {unit} remaining
+            {parseFloat((awaitingQty || 0).toFixed(2))} {unit} remaining
           </p>
         )}
       </div>
@@ -1862,7 +1862,7 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
             {splits.map((split, idx) => (
               <div key={idx} className="flex justify-between text-xs text-gray-600">
                 <span>
-                  {unit === 'Crt' ? (split.carat || split.qty) : parseFloat(split.qty.toFixed(2))} {unit}
+                  {unit === 'Nag' ? (split.nag || split.qty) : parseFloat(split.qty.toFixed(2))} {unit}
                   <span className="text-gray-400 mx-1">×</span>
                   ₹{split.rate}
                 </span>

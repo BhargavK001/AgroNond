@@ -123,19 +123,19 @@ export default function LilavEntry() {
     const getEffectiveValues = (record) => {
         if (record.has_remaining) {
             return {
-                caratValue: record.remaining_carat || 0,
+                nagValue: record.remaining_nag || 0,
                 qtyValue: record.remaining_qty || 0
             };
         }
-        const caratValue = (record.official_carat > 0) ? record.official_carat : (record.carat || 0);
+        const nagValue = (record.official_nag > 0) ? record.official_nag : (record.nag || 0);
         const qtyValue = (record.official_qty > 0) ? record.official_qty : (record.quantity || 0);
-        return { caratValue, qtyValue };
+        return { nagValue, qtyValue };
     };
 
     const startAuction = (record) => {
         const todayRate = dailyRates.find(r => r.vegetable.toLowerCase() === record.vegetable.toLowerCase());
-        const { caratValue } = getEffectiveValues(record);
-        const recordUnit = caratValue > 0 ? 'carat' : 'kg';
+        const { nagValue } = getEffectiveValues(record);
+        const recordUnit = nagValue > 0 ? 'nag' : 'kg';
         const initialRate = record.prev_rate || todayRate?.rate || '';
 
         setActiveRecord(record);
@@ -165,8 +165,8 @@ export default function LilavEntry() {
         const trader = traders.find(t => t._id === saleForm.trader_id);
         if (!trader) return toast.error('Trader not found');
 
-        const { caratValue, qtyValue } = getEffectiveValues(activeRecord);
-        const totalAvailable = caratValue > 0 ? caratValue : qtyValue;
+        const { nagValue, qtyValue } = getEffectiveValues(activeRecord);
+        const totalAvailable = nagValue > 0 ? nagValue : qtyValue;
         const currentAllocated = traderAllocations.reduce((sum, a, idx) =>
             idx !== editingAllocationIndex ? sum + parseFloat(a.quantity) : sum, 0);
 
@@ -251,8 +251,8 @@ export default function LilavEntry() {
 
     const remainingQty = useMemo(() => {
         if (!activeRecord) return 0;
-        const { caratValue, qtyValue } = getEffectiveValues(activeRecord);
-        const total = caratValue > 0 ? caratValue : qtyValue;
+        const { nagValue, qtyValue } = getEffectiveValues(activeRecord);
+        const total = nagValue > 0 ? nagValue : qtyValue;
         const allocated = traderAllocations.reduce((sum, a) => sum + a.quantity, 0);
         return total - allocated;
     }, [activeRecord, traderAllocations]);
@@ -446,8 +446,8 @@ export default function LilavEntry() {
 
                                 <div className="text-right">
                                     <div className="text-3xl font-black text-slate-900 flex items-center justify-end gap-1">
-                                        {getEffectiveValues(activeRecord).caratValue > 0
-                                            ? <><span className="text-purple-600">{getEffectiveValues(activeRecord).caratValue}</span> <span className="text-sm text-slate-400 font-bold self-end mb-2">Crt</span></>
+                                        {getEffectiveValues(activeRecord).nagValue > 0
+                                            ? <><span className="text-purple-600">{getEffectiveValues(activeRecord).nagValue}</span> <span className="text-sm text-slate-400 font-bold self-end mb-2">Nag</span></>
                                             : <><span className="text-emerald-600">{getEffectiveValues(activeRecord).qtyValue}</span> <span className="text-sm text-slate-400 font-bold self-end mb-2">Kg</span></>
                                         }
                                     </div>
@@ -596,7 +596,7 @@ export default function LilavEntry() {
                                                         <div>
                                                             <p className="font-bold text-slate-800 text-sm">{alloc.trader_name}</p>
                                                             <p className="text-xs text-slate-500 font-medium">
-                                                                {alloc.quantity}{getEffectiveValues(activeRecord).caratValue > 0 ? 'Crt' : 'Kg'} × ₹{alloc.rate}
+                                                                {alloc.quantity}{getEffectiveValues(activeRecord).nagValue > 0 ? ' Nag' : ' Kg'} × ₹{alloc.rate}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -644,11 +644,11 @@ export default function LilavEntry() {
                                     >
                                         <div className="p-5 flex-1">
                                             <div className="flex justify-between items-start mb-3">
-                                                <div className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide ${vals.caratValue > 0
+                                                <div className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide ${vals.nagValue > 0
                                                     ? 'bg-purple-50 text-purple-600'
                                                     : 'bg-emerald-50 text-emerald-600'
                                                     }`}>
-                                                    {vals.caratValue > 0 ? 'Carat Lot' : 'Weighed Lot'}
+                                                    {vals.nagValue > 0 ? 'Nag Lot' : 'Weighed Lot'}
                                                 </div>
                                                 <span className="text-[10px] font-mono text-slate-300">
                                                     #{record._id.slice(-4)}
@@ -664,10 +664,10 @@ export default function LilavEntry() {
 
                                             <div className="flex items-baseline gap-1">
                                                 <span className="text-2xl font-black text-slate-800">
-                                                    {vals.caratValue > 0 ? vals.caratValue : vals.qtyValue}
+                                                    {vals.nagValue > 0 ? vals.nagValue : vals.qtyValue}
                                                 </span>
                                                 <span className="text-xs font-bold text-slate-400 uppercase">
-                                                    {vals.caratValue > 0 ? 'Crt' : 'Kg'}
+                                                    {vals.nagValue > 0 ? 'Nag' : 'Kg'}
                                                 </span>
                                             </div>
                                         </div>

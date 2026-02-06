@@ -29,8 +29,8 @@ const DownloadModal = ({ isOpen, onClose, invoiceData, recordId }) => {
             <p className="font-semibold text-gray-800">{invoiceData.crop}</p>
             <p className="text-sm text-gray-500">
               {invoiceData.qty > 0 && `${invoiceData.qty} kg`}
-              {invoiceData.qty > 0 && invoiceData.carat > 0 && ' | '}
-              {invoiceData.carat > 0 && `${invoiceData.carat} Crt`}
+              {invoiceData.qty > 0 && invoiceData.nag > 0 && ' | '}
+              {invoiceData.nag > 0 && `${invoiceData.nag} Nag`}
             </p>
             <p className="text-lg font-bold text-emerald-600 mt-2">
               ₹{invoiceData.finalAmount?.toLocaleString()}
@@ -70,10 +70,10 @@ const SoldRecordCard = ({ record, farmerName }) => {
   // --- LOGIC PORTED FROM DASHBOARD ---
   const isParent = record.is_parent === true;
   const hasQuantity = record.quantity > 0;
-  const unit = hasQuantity ? 'kg' : 'Crt';
+  const unit = hasQuantity ? 'kg' : 'Nag';
 
-  const totalQty = hasQuantity ? record.quantity : record.carat;
-  const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
+  const totalQty = hasQuantity ? record.quantity : record.nag;
+  const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_nag || 0);
 
   let soldQty = 0;
   let awaitingQty = 0;
@@ -81,8 +81,8 @@ const SoldRecordCard = ({ record, farmerName }) => {
   let splits = record.splits || [];
 
   if (isParent) {
-    soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-    awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
+    soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_nag || 0);
+    awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_nag || 0);
     totalSaleAmount = record.aggregated_sale_amount || 0;
   } else {
     // Legacy or single record logic
@@ -164,7 +164,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
     crop: record.vegetable,
     // Use actual sold quantities
     qty: hasQuantity ? soldQty : 0,
-    carat: !hasQuantity ? soldQty : 0,
+    nag: !hasQuantity ? soldQty : 0,
     rate: parseFloat(avgRate) || 0,
     splits: splits || [], // Pass splits for multi-row PDF display
     baseAmount: totalSaleAmount,

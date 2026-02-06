@@ -8,8 +8,8 @@ export const getInvoiceData = (record, farmerName = 'Farmer') => {
     const isParent = record.is_parent === true;
     const hasQuantity = record.quantity > 0;
 
-    const totalQty = hasQuantity ? record.quantity : record.carat;
-    const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
+    const totalQty = hasQuantity ? record.quantity : record.nag;
+    const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_nag || 0);
 
     let soldQty = 0;
     let awaitingQty = 0;
@@ -17,8 +17,8 @@ export const getInvoiceData = (record, farmerName = 'Farmer') => {
     let splits = record.splits || [];
 
     if (isParent) {
-        soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-        awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
+        soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_nag || 0);
+        awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_nag || 0);
         totalSaleAmount = record.aggregated_sale_amount || 0;
     } else {
         // Legacy or single record logic
@@ -103,7 +103,7 @@ export const getInvoiceData = (record, farmerName = 'Farmer') => {
         crop: record.vegetable,
         // Use actual sold quantities
         qty: hasQuantity ? soldQty : 0,
-        carat: !hasQuantity ? soldQty : 0,
+        nag: !hasQuantity ? soldQty : 0,
         rate: parseFloat(avgRate) || 0,
         splits: splits,
         baseAmount: totalSaleAmount,

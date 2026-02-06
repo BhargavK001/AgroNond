@@ -148,18 +148,18 @@ const recordSchema = new mongoose.Schema({
     trader_payment_date: {
         type: Date
     },
-    // Carat Logic
-    carat: {
+    // Nag Logic (single unit count, e.g., 1 apple = 1 Nag)
+    nag: {
         type: Number,
         default: 0
     },
-    official_carat: {
+    official_nag: {
         type: Number,
         default: 0
     },
     sale_unit: {
         type: String,
-        enum: ['kg', 'carat'],
+        enum: ['kg', 'nag'],
         default: 'kg'
     },
     // Split Record Fields (for multi-trader lot splitting)
@@ -175,7 +175,7 @@ const recordSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    allocated_carat: {
+    allocated_nag: {
         type: Number,
         default: 0
     }

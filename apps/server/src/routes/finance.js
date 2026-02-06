@@ -422,10 +422,10 @@ router.get('/billing-records', async (req, res) => {
         const transformedRecords = records.map(record => {
             const recordObj = record.toObject();
 
-            // If sale_unit is not set, infer from carat data
+            // If sale_unit is not set, infer from nag data
             if (!recordObj.sale_unit) {
-                const caratValue = recordObj.official_carat || recordObj.carat || 0;
-                recordObj.sale_unit = caratValue > 0 ? 'carat' : 'kg';
+                const nagValue = recordObj.official_nag || recordObj.nag || 0;
+                recordObj.sale_unit = nagValue > 0 ? 'nag' : 'kg';
             }
 
             return recordObj;

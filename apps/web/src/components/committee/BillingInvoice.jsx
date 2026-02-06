@@ -461,11 +461,11 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
 
     // ── Quantities ──
     const quantity = data.qty || data.quantity || 0;
-    const carat = data.carat || data.crt || 0;
+    const nag = data.nag || 0;
     const hasQuantity = quantity > 0;
-    const hasCarat = carat > 0;
-    const unit = hasQuantity ? 'kg' : 'Crt';
-    const displayQty = hasQuantity ? quantity : carat;
+    const hasNag = nag > 0;
+    const unit = hasQuantity ? 'kg' : 'Nag';
+    const displayQty = hasQuantity ? quantity : nag;
 
     // ── Amounts — driven by what has ACTUALLY been received/sold ──
     //    SoldRecordCard already computes soldQty-based baseAmount & commission
@@ -476,14 +476,14 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
 
     // Calculate rate - use provided rate or calculate as fallback
     let rate = data.rate || 0;
-    let rateUnit = hasQuantity ? 'kg' : 'Crt';
+    let rateUnit = hasQuantity ? 'kg' : 'Nag';
 
     // Fallback calculation if rate not provided
     if (rate === 0 && baseAmount > 0) {
         if (hasQuantity && quantity > 0) {
             rate = baseAmount / quantity;
-        } else if (hasCarat && carat > 0) {
-            rate = baseAmount / carat;
+        } else if (hasNag && nag > 0) {
+            rate = baseAmount / nag;
         }
     }
 
@@ -493,7 +493,7 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
     const rateDetailsLines = (() => {
         if (splits.length > 0) {
             return splits.map((s, i) => {
-                const sUnit = hasQuantity ? 'kg' : 'Crt';
+                const sUnit = hasQuantity ? 'kg' : 'Nag';
                 return `₹${formatNumber(s.rate)} for ${formatNumber(s.qty)} ${sUnit}`;
             });
         }
@@ -511,11 +511,10 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
         ? (data.commissionRate * 100).toFixed(1)
         : (baseAmount > 0 ? ((commission / baseAmount) * 100).toFixed(1) : '4.0');
 
-    // ── Quantity display string ──
     const getQuantityDisplay = () => {
-        if (hasQuantity && hasCarat) return `${formatNumber(quantity)} kg / ${formatNumber(carat)} Crt`;
+        if (hasQuantity && hasNag) return `${formatNumber(quantity)} kg / ${formatNumber(nag)} Nag`;
         if (hasQuantity) return `${formatNumber(quantity)} kg`;
-        if (hasCarat) return `${formatNumber(carat)} Crt`;
+        if (hasNag) return `${formatNumber(nag)} Nag`;
         return '-';
     };
 
@@ -602,11 +601,11 @@ const BillingInvoice = ({ data, type = 'farmer' }) => {
                         // Render individual rows for each split
                         data.splits.map((split, index) => {
                             const splitQty = split.qty || split.quantity || 0;
-                            const splitCarat = split.carat || 0;
+                            const splitNag = split.nag || 0;
                             const splitRate = split.rate || 0;
                             const splitAmount = split.amount || (splitQty * splitRate);
-                            const splitUnit = splitQty > 0 ? 'kg' : 'Crt';
-                            const displaySplitQty = splitQty > 0 ? splitQty : splitCarat;
+                            const splitUnit = splitQty > 0 ? 'kg' : 'Nag';
+                            const displaySplitQty = splitQty > 0 ? splitQty : splitNag;
 
                             return (
                                 <View style={styles.tableRow} key={index}>

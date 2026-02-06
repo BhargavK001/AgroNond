@@ -5,24 +5,24 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 // Helper function for clean quantity display
-const formatQtyDisplay = (qty, carat) => {
+const formatQtyDisplay = (qty, nag) => {
     const hasQty = qty && qty > 0;
-    const hasCarat = carat && carat > 0;
+    const hasNag = nag && nag > 0;
 
-    if (hasQty && hasCarat) {
-        return <>{qty} kg <span className="text-purple-600 font-medium">| {carat} Crt</span></>;
-    } else if (hasCarat) {
-        return <span className="text-purple-600 font-medium">{carat} Crt</span>;
+    if (hasQty && hasNag) {
+        return <>{qty} kg <span className="text-purple-600 font-medium">| {nag} Nag</span></>;
+    } else if (hasNag) {
+        return <span className="text-purple-600 font-medium">{nag} Nag</span>;
     } else {
         return <>{qty || 0} kg</>;
     }
 };
 
 // Helper to get rate unit
-const getRateUnit = (qty, carat) => {
-    const hasCarat = carat && carat > 0;
+const getRateUnit = (qty, nag) => {
+    const hasNag = nag && nag > 0;
     const hasQty = qty && qty > 0;
-    return hasCarat && !hasQty ? 'Crt' : 'kg';
+    return hasNag && !hasQty ? 'Nag' : 'kg';
 };
 
 export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
@@ -359,18 +359,18 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                                             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                                                 {stats.vegetableSummary.map((veg) => {
                                                     const colors = getVegetableColor(veg.name);
-                                                    // Check for carat in vegetable summary
-                                                    const hasCarat = veg.carat && veg.carat > 0;
+                                                    // Check for nag in vegetable summary
+                                                    const hasNag = veg.nag && veg.nag > 0;
                                                     const hasQty = veg.quantity && veg.quantity > 0;
                                                     return (
                                                         <div key={veg.name} className={`${colors.bg} ${colors.border} border rounded-xl p-3`}>
                                                             <p className={`text-xs font-bold ${colors.text} uppercase mb-1`}>{veg.name}</p>
                                                             {/* CLEAN DISPLAY */}
                                                             <p className="text-lg font-bold text-slate-800">
-                                                                {hasQty && hasCarat ? (
-                                                                    <>{veg.quantity} kg <span className="text-purple-600">| {veg.carat} Crt</span></>
-                                                                ) : hasCarat ? (
-                                                                    <span className="text-purple-600">{veg.carat} Crt</span>
+                                                                {hasQty && hasNag ? (
+                                                                    <>{veg.quantity} kg <span className="text-purple-600">| {veg.nag} Nag</span></>
+                                                                ) : hasNag ? (
+                                                                    <span className="text-purple-600">{veg.nag} Nag</span>
                                                                 ) : (
                                                                     <>{veg.quantity || 0} kg</>
                                                                 )}
@@ -411,10 +411,10 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                                                     ) : (
                                                         history.map((record) => {
                                                             const colors = getVegetableColor(record.vegetable);
-                                                            // Get qty and carat values
+                                                            // Get qty and nag values
                                                             const qty = record.official_qty || record.quantity || 0;
-                                                            const carat = record.official_carat || record.carat || 0;
-                                                            const rateUnit = getRateUnit(qty, carat);
+                                                            const nag = record.official_nag || record.nag || 0;
+                                                            const rateUnit = getRateUnit(qty, nag);
 
                                                             return (
                                                                 <tr key={record._id} className="hover:bg-slate-50/50 transition-colors">
@@ -431,7 +431,7 @@ export default function FarmerDetailsModal({ isOpen, onClose, farmer }) {
                                                                     </td>
                                                                     {/* CLEAN QTY DISPLAY */}
                                                                     <td className="px-6 py-4 text-right text-sm font-medium text-slate-700">
-                                                                        {formatQtyDisplay(qty, carat)}
+                                                                        {formatQtyDisplay(qty, nag)}
                                                                     </td>
                                                                     {/* DYNAMIC RATE UNIT */}
                                                                     <td className="px-6 py-4 text-right text-sm text-slate-600">

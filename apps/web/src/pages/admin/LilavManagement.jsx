@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Gavel, User, Coins, TrendingUp, Filter } from 'lucide-react';
 import api from '../../lib/api';
 
-export default function LilavManagement() {
+export default function LilavMaNagement() {
     const [searchTerm, setSearchTerm] = useState('');
 
     const { data: bids, isLoading } = useQuery({
@@ -21,7 +21,7 @@ export default function LilavManagement() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Lilav (Auction) Management</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">Lilav (Auction) MaNagement</h1>
                     <p className="text-gray-500 mt-1">Real-time auction records and sales history</p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export default function LilavManagement() {
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-slate-800">{bid.vegetable}</div>
                                             <div className="text-sm text-slate-500">
-                                                {bid.official_qty > 0 ? `${bid.official_qty} kg` : (bid.carat > 0 ? `${bid.carat} Crt` : '-')} • {bid.farmer_id?.full_name}
+                                                {bid.official_qty > 0 ? `${bid.official_qty} kg` : (bid.Nag > 0 ? `${bid.Nag} Nag` : '-')} • {bid.farmer_id?.full_name}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -85,7 +85,7 @@ export default function LilavManagement() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <span className="font-bold text-slate-700 bg-slate-50 px-2 py-1 rounded">
-                                                ₹{bid.sale_rate} {bid.official_qty > 0 ? '/ kg' : (bid.carat > 0 ? '/ crt' : '')}
+                                                ₹{bid.sale_rate} {bid.official_qty > 0 ? '/ kg' : (bid.Nag > 0 ? '/ Nag' : '')}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
