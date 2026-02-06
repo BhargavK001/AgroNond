@@ -1586,10 +1586,10 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
 
   const hasQuantity = record.quantity > 0;
   const unit = hasQuantity ? 'kg' : 'Crt';
-  const totalQty = hasQuantity ? record.quantity : record.carat;
+  const totalQty = (hasQuantity ? record.quantity : record.carat) || 0;
 
   // Extract values for UI display from the unified data
-  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat;
+  const soldQty = (invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat) || 0;
   const avgRate = invoiceData.rate;
   const netPayable = invoiceData.finalAmount;
   const totalSaleAmount = invoiceData.baseAmount;
@@ -1760,10 +1760,10 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
 
   const hasQuantity = record.quantity > 0;
   const unit = hasQuantity ? 'kg' : 'Crt';
-  const totalQty = hasQuantity ? record.quantity : record.carat;
+  const totalQty = (hasQuantity ? record.quantity : record.carat) || 0;
 
   // Extract values for UI display
-  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat;
+  const soldQty = (invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat) || 0;
   const totalSaleAmount = invoiceData.baseAmount;
   const splits = invoiceData.splits || [];
 
