@@ -1585,11 +1585,12 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
   const invoiceData = getInvoiceData(record);
 
   const hasQuantity = record.quantity > 0;
-  const unit = hasQuantity ? 'kg' : 'Nag';
-  const totalQty = hasQuantity ? record.quantity : record.nag;
 
-  // Extract values for UI display from the unified data
-  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.nag;
+  const unit = hasQuantity ? 'kg' : 'Nag';
+const totalQty = (hasQuantity ? record.quantity : record.nag) || 0;
+
+// Extract values for UI display from the unified data
+const soldQty = (invoiceData.qty > 0 ? invoiceData.qty : invoiceData.nag) || 0;
   const avgRate = invoiceData.rate;
   const netPayable = invoiceData.finalAmount;
   const totalSaleAmount = invoiceData.baseAmount;
@@ -1758,12 +1759,12 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
   // Logic Scope via Shared Helper
   const invoiceData = getInvoiceData(record);
 
-  const hasQuantity = record.quantity > 0;
-  const unit = hasQuantity ? 'kg' : 'Nag';
-  const totalQty = (hasQuantity ? record.quantity : record.nag) || 0;
+const hasQuantity = record.quantity > 0;
+const unit = hasQuantity ? 'kg' : 'Nag';
+const totalQty = (hasQuantity ? record.quantity : record.nag) || 0;
 
-  // Extract values for UI display
-  const soldQty = (invoiceData.qty > 0 ? invoiceData.qty : invoiceData.nag) || 0;
+// Extract values for UI display
+const soldQty = (invoiceData.qty > 0 ? invoiceData.qty : invoiceData.nag) || 0;
   const totalSaleAmount = invoiceData.baseAmount;
   const splits = invoiceData.splits || [];
 

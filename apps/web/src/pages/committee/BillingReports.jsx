@@ -204,29 +204,37 @@ export default function BillingReports() {
 
   // Process Record
   const processRecord = useCallback((record) => {
-    const hasNewFields = record.net_payable_to_farmer !== undefined;
     const baseAmount = record.sale_amount || 0;
+
+    // Get rates (default to 4% / 9% if not set)
+    const farmerRate = commissionRates.farmer ? (commissionRates.farmer / 100) : 0.04;
+    const traderRate = commissionRates.trader ? (commissionRates.trader / 100) : 0.09;
 
     let farmerComm, traderComm, netFarmer, netTrader;
 
-    // Priority: 1. New Fields (Exact Storage), 2. Fallback (Legacy)
-    if (record.farmer_commission !== undefined && record.trader_commission !== undefined) {
+    // Logic aligned with SoldRecordCard:
+    // 1. Use explicit field if available
+    // 2. Else calculate based on rate * baseAmount
+    // 3. Fallback to legacy split only if absolutely needed (omitted here for consistency with Farmer Dashboard)
+
+    if (record.farmer_commission !== undefined) {
       farmerComm = record.farmer_commission;
-      traderComm = record.trader_commission;
-      netFarmer = record.net_payable_to_farmer || (baseAmount - farmerComm);
-      netTrader = record.net_receivable_from_trader || (baseAmount + traderComm);
     } else {
-      // Legacy Fallback for very old records (Hardcoded 4% / 9% split of total commission)
-      const totalCommission = record.commission || 0;
-      farmerComm = Math.round(totalCommission * (4 / 13));
-      traderComm = Math.round(totalCommission * (9 / 13));
-      netFarmer = baseAmount - farmerComm;
-      netTrader = baseAmount + traderComm;
+      farmerComm = Math.round(baseAmount * farmerRate);
     }
 
-    const nagValue = (record.official_nag && record.official_nag > 0)
-      ? record.official_nag
-      : (record.nag || 0);
+    if (record.trader_commission !== undefined) {
+      traderComm = record.trader_commission;
+    } else {
+      traderComm = Math.round(baseAmount * traderRate);
+    }
+// Net amounts
+netFarmer = record.net_payable_to_farmer || (baseAmount - farmerComm);
+netTrader = record.net_receivable_from_trader || (baseAmount + traderComm);
+
+const nagValue = (record.official_nag && record.official_nag > 0)
+  ? record.official_nag
+  : (record.nag || 0);
     const qtyValue = record.qtySold || record.official_qty || record.quantity || 0;
 
     if (activeTab === 'farmers') {
@@ -234,11 +242,15 @@ export default function BillingReports() {
         id: record._id,
         date: record.sold_at || record.createdAt,
         name: record.farmer_id?.full_name || 'Unknown Farmer',
+        address: record.farmer_id?.address,
+        village: record.farmer_id?.village,
+        phone: record.farmer_id?.phone,
         crop: record.vegetable,
         qty: qtyValue,
         nag: nagValue,
         baseAmount: baseAmount,
         commission: farmerComm,
+        commissionRate: farmerRate, // Pass explicit rate
         finalAmount: netFarmer,
         status: record.farmer_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
         type: 'pay'
@@ -248,17 +260,20 @@ export default function BillingReports() {
         id: record._id,
         date: record.sold_at || record.createdAt,
         name: record.trader_id?.business_name || record.trader_id?.full_name || 'Unknown Trader',
+        phone: record.trader_id?.phone,
+        address: record.trader_id?.address,
         crop: record.vegetable,
         qty: qtyValue,
         nag: nagValue,
         baseAmount: baseAmount,
         commission: traderComm,
+        commissionRate: traderRate, // Pass explicit rate
         finalAmount: netTrader,
         status: record.trader_payment_status || (record.payment_status === 'paid' ? 'Paid' : 'Pending'),
         type: 'receive'
       };
     }
-  }, [activeTab]);
+  }, [activeTab, commissionRates]);
 
   // Processed & Filtered Data
   const currentData = useMemo(() => {
