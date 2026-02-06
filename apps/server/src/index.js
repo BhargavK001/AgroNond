@@ -26,7 +26,6 @@ import analyticsRouter from './routes/analytics.js';
 import auditRouter from './routes/audit.js';
 import connectDB from './config/db.js';
 
-// Connect to Database
 connectDB();
 
 const app = express();
@@ -36,11 +35,9 @@ const HOST = process.env.HOST || '0.0.0.0'; // Bind to all interfaces for cloud 
 // Parse allowed origins from environment (supports comma-separated list)
 const getAllowedOrigins = () => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-  // Support comma-separated origins for multi-environment CORS
   return frontendUrl.split(',').map(url => url.trim());
 };
 
-// CORS configuration with multiple origin support
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = getAllowedOrigins();
@@ -56,15 +53,13 @@ const corsOptions = {
   credentials: true,
 };
 
-// Middleware
-app.use(helmet()); // Security headers
-app.use(compression()); // Gzip compression
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev')); // Logger
+app.use(helmet());
+app.use(compression());
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -73,7 +68,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/records', recordsRouter);
@@ -90,12 +84,10 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/admin', auditRouter); // Audit logs under /api/admin
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   res.status(500).json({
@@ -104,7 +96,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
 app.listen(PORT, HOST, () => {
   const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
   console.log(`🚀 AgroNond Server running on http://${displayHost}:${PORT}`);

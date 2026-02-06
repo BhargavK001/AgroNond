@@ -79,14 +79,26 @@ const calculateSale = async (record, qty, carat) => {
         sale_amount = qty * record.sale_rate;
     }
 
-    // Fetch active commission rules
-    const [farmerRule, traderRule] = await Promise.all([
-        CommissionRule.findOne({ role_type: 'farmer', is_active: true, crop_type: 'All' }).sort({ createdAt: -1 }),
-        CommissionRule.findOne({ role_type: 'trader', is_active: true, crop_type: 'All' }).sort({ createdAt: -1 })
-    ]);
+    // 1. Determine Rates: Check if already stored, otherwise fetch current
+    let farmerRate, traderRate;
 
-    const farmerRate = farmerRule ? farmerRule.rate : 0.04; // Default 4%
-    const traderRate = traderRule ? traderRule.rate : 0.09; // Default 9%
+    // Check if we are re-calculating an old record that already has rates
+    if (record.farmer_commission_rate > 0 || record.trader_commission_rate > 0) {
+        farmerRate = record.farmer_commission_rate || 0.04;
+        traderRate = record.trader_commission_rate || 0.09;
+    } else {
+        // Fetch active commission rules
+        // Try specific crop first, if not found, try 'All'
+        const [farmerSpecific, farmerAll, traderSpecific, traderAll] = await Promise.all([
+            CommissionRule.findOne({ role_type: 'farmer', is_active: true, crop_type: record.vegetable }).sort({ createdAt: -1 }),
+            CommissionRule.findOne({ role_type: 'farmer', is_active: true, crop_type: 'All' }).sort({ createdAt: -1 }),
+            CommissionRule.findOne({ role_type: 'trader', is_active: true, crop_type: record.vegetable }).sort({ createdAt: -1 }),
+            CommissionRule.findOne({ role_type: 'trader', is_active: true, crop_type: 'All' }).sort({ createdAt: -1 })
+        ]);
+
+        farmerRate = farmerSpecific ? farmerSpecific.rate : (farmerAll ? farmerAll.rate : 0.04);
+        traderRate = traderSpecific ? traderSpecific.rate : (traderAll ? traderAll.rate : 0.09);
+    }
 
     const farmer_commission = Math.round(sale_amount * farmerRate);
     const trader_commission = Math.round(sale_amount * traderRate);
@@ -95,13 +107,16 @@ const calculateSale = async (record, qty, carat) => {
         sale_amount,
         farmer_commission,
         trader_commission,
+        // Save the rates used for this transaction
+        farmer_commission_rate: farmerRate,
+        trader_commission_rate: traderRate,
         commission: farmer_commission + trader_commission,
         net_payable_to_farmer: sale_amount - farmer_commission,
         net_receivable_from_trader: sale_amount + trader_commission,
         total_amount: sale_amount + trader_commission,
         status: 'Sold',
         sold_at: new Date(),
-        sold_by: record.sold_by, // Keep if exists, or adding it might need context user
+        sold_by: record.sold_by,
         farmer_payment_status: 'Pending',
         trader_payment_status: 'Pending'
     };

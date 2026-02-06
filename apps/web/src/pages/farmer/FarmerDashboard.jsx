@@ -11,6 +11,18 @@ import {
   Plus, TrendingUp, Clock, Package, X, Eye, ArrowLeft,
   Trash2, CheckCircle, Calendar, MapPin, ChevronRight, Edit, FileText, ChevronDown, ChevronUp, AlertTriangle, History, Download
 } from 'lucide-react';
+import { getInvoiceData as getInvoiceDataHelper } from '../../lib/invoiceUtils';
+
+
+// ✅ HELPER: Format Time from Date
+const formatTime = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+};
 
 // --- MODAL COMPONENT ---
 const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
@@ -734,15 +746,7 @@ const FarmerDashboard = () => {
   // We no longer client-side sort or filter the main list, as the backend does it.
   const displayRecords = records;
 
-  // ✅ HELPER: Format Time from Date
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+
 
 
 
@@ -882,87 +886,10 @@ const FarmerDashboard = () => {
     }
   };
 
-  // Helper to create invoice data for PDFDownloadLink
+
   const getInvoiceData = (record) => {
-    // Logic Scope
-    const isParent = record.is_parent === true;
-    const hasQuantity = record.quantity > 0;
-
-    const totalQty = hasQuantity ? record.quantity : record.carat;
-    const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
-
-    let soldQty = 0;
-    let awaitingQty = 0;
-    let totalSaleAmount = 0;
-
-    if (isParent) {
-      soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-      awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
-      totalSaleAmount = record.aggregated_sale_amount || 0;
-    } else {
-      const isSold = ['Sold', 'Completed'].includes(record.status);
-      if (isSold) {
-        soldQty = officialQty > 0 ? officialQty : totalQty;
-        totalSaleAmount = record.sale_amount || 0;
-      }
-      awaitingQty = Math.max(0, totalQty - soldQty);
-    }
-
-    // Status Logic - Use backend's display_status when available
-    let computedStatus = record.display_status || 'Pending';
-    // Fallback computation if display_status not provided
-    if (!record.display_status) {
-      if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-      else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
-    }
-
-    // ✅ NEW: Payment Status Logic
-    let isPaymentPending = false;
-    if (computedStatus === 'Sold') {
-      const paymentStatus = isParent
-        ? (record.aggregated_payment_status || 'Pending')
-        : (record.farmer_payment_status || 'Pending');
-
-      if (paymentStatus === 'Pending') {
-        isPaymentPending = true;
-      }
-    }
-
-    const commission = record.farmer_commission || (totalSaleAmount * 0.04);
-    const netPayable = Math.max(0, totalSaleAmount - commission);
-
-    // Get farmer name from populated data or fallback to profile
-    const farmerName = record.farmer_id?.full_name || profile.name || 'Farmer';
-
-    // Get actual sale rate (use avg rate for parent records with splits)
-    let saleRate = 0;
-    if (isParent && record.aggregated_avg_rate) {
-      saleRate = record.aggregated_avg_rate;
-    } else if (isParent && record.splits?.length > 0 && soldQty > 0) {
-      // Calculate weighted average rate from splits
-      saleRate = totalSaleAmount / soldQty;
-    } else {
-      saleRate = record.sale_rate || 0;
-    }
-
-    return {
-      id: record._id || record.id || 'N/A',
-      date: (record.sold_at || record.createdAt),
-      name: farmerName,
-      crop: record.vegetable,
-      qty: hasQuantity ? soldQty : 0,
-      carat: !hasQuantity ? soldQty : 0,
-      rate: saleRate,
-      splits: record.splits || [], // Pass splits for multi-row PDF display
-      baseAmount: totalSaleAmount,
-      commission: commission,
-      finalAmount: netPayable,
-      status: isPaymentPending ? 'Payment Pending' :
-        (computedStatus === 'Sold' ? 'Full' :
-          (computedStatus === 'Partial' ? 'Partial' :
-            (computedStatus === 'WeightPending' ? 'WeightPending' : 'Pending'))),
-      type: 'pay'
-    };
+    // Use shared utility for consistent logic across Dashboard and History
+    return getInvoiceDataHelper(record, profile.name);
   };
 
 
@@ -1611,7 +1538,8 @@ const FarmerDashboard = () => {
 };
 
 // --- HELPER --
-const formatTime = (date) => new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+// formatTime is already defined above or imported
+
 
 // --- MEMOIZED COMPONENTS ---
 const DownloadInvoiceButton = memo(({ record, getInvoiceData }) => {
@@ -1653,63 +1581,40 @@ const DownloadInvoiceButton = memo(({ record, getInvoiceData }) => {
 });
 
 const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceData }) => {
-  // Logic Scope
-  const isParent = record.is_parent === true;
+  // Logic Scope via Shared Helper
+  const invoiceData = getInvoiceData(record);
+
   const hasQuantity = record.quantity > 0;
   const unit = hasQuantity ? 'kg' : 'Crt';
-
   const totalQty = hasQuantity ? record.quantity : record.carat;
-  const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
 
-  let soldQty = 0;
-  let awaitingQty = 0;
-  let totalSaleAmount = 0;
-  let splits = record.splits || [];
+  // Extract values for UI display from the unified data
+  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat;
+  const avgRate = invoiceData.rate;
+  const netPayable = invoiceData.finalAmount;
+  const totalSaleAmount = invoiceData.baseAmount;
+  const splits = invoiceData.splits || [];
 
-  if (isParent) {
-    soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-    awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
-    totalSaleAmount = record.aggregated_sale_amount || 0;
-  } else {
-    // Legacy or single record logic
-    const isSold = ['Sold', 'Completed'].includes(record.status);
-    if (isSold) {
-      soldQty = officialQty > 0 ? officialQty : totalQty;
-      totalSaleAmount = record.sale_amount || 0;
-      if (splits.length === 0) {
-        splits = [{
-          qty: soldQty,
-          rate: record.sale_rate,
-          amount: record.sale_amount,
-          date: record.sold_at || record.createdAt
-        }];
-      }
-    }
-    awaitingQty = Math.max(0, totalQty - soldQty);
-  }
+  // Computed status for UI rendering (Sold/Partial/Pending)
+  // We can rely on invoiceData.status mostly, but invoiceData.status has 'Full' instead of 'Sold'
+  // Let's re-map or keep basic logic if simpler
 
-  // Correct Status Logic - Use backend's display_status when available
   let computedStatus = record.display_status || 'Pending';
-  // Fallback computation if display_status not provided
   if (!record.display_status) {
-    if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-    else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+    if (soldQty > 0 && totalQty - soldQty <= 0.01) computedStatus = 'Sold';
+    else if (soldQty > 0) computedStatus = 'Partial';
   }
 
-  // ✅ NEW: Payment Status Logic
-  // Check if fully sold but payment is pending
+  // Payment Status Logic
   let isPaymentPending = false;
-
   if (computedStatus === 'Sold') {
-    const paymentStatus = isParent
+    const paymentStatus = record.is_parent
       ? (record.aggregated_payment_status || 'Pending')
       : (record.farmer_payment_status || 'Pending');
-
-    if (paymentStatus === 'Pending') {
-      isPaymentPending = true;
-    }
+    if (paymentStatus === 'Pending') isPaymentPending = true;
   }
 
+  const awaitingQty = Math.max(0, totalQty - soldQty);
   const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
 
   return (
@@ -1850,62 +1755,35 @@ const RecordRow = memo(({ record, handleEditClick, initiateDelete, getInvoiceDat
 });
 
 const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInvoiceData }) => {
-  // Logic Scope
-  const isParent = record.is_parent === true;
+  // Logic Scope via Shared Helper
+  const invoiceData = getInvoiceData(record);
+
   const hasQuantity = record.quantity > 0;
   const unit = hasQuantity ? 'kg' : 'Crt';
-
   const totalQty = hasQuantity ? record.quantity : record.carat;
-  const officialQty = hasQuantity ? (record.official_qty || 0) : (record.official_carat || 0);
 
-  let soldQty = 0;
-  let awaitingQty = 0;
-  let totalSaleAmount = 0;
-  let splits = record.splits || [];
+  // Extract values for UI display
+  const soldQty = invoiceData.qty > 0 ? invoiceData.qty : invoiceData.carat;
+  const totalSaleAmount = invoiceData.baseAmount;
+  const splits = invoiceData.splits || [];
 
-  if (isParent) {
-    soldQty = hasQuantity ? (record.aggregated_sold_qty || 0) : (record.aggregated_sold_carat || 0);
-    awaitingQty = hasQuantity ? (record.awaiting_qty || 0) : (record.awaiting_carat || 0);
-    totalSaleAmount = record.aggregated_sale_amount || 0;
-  } else {
-    // Legacy or single record logic
-    const isSold = ['Sold', 'Completed'].includes(record.status);
-    if (isSold) {
-      soldQty = officialQty > 0 ? officialQty : totalQty;
-      totalSaleAmount = record.sale_amount || 0;
-      if (splits.length === 0) {
-        splits = [{
-          qty: soldQty,
-          rate: record.sale_rate,
-          amount: record.sale_amount,
-          date: record.sold_at || record.createdAt
-        }];
-      }
-    }
-    awaitingQty = Math.max(0, totalQty - soldQty);
-  }
-
-  // Correct Status Logic - Use backend's display_status when available
+  // Status Logic
   let computedStatus = record.display_status || 'Pending';
-  // Fallback computation if display_status not provided
   if (!record.display_status) {
-    if (soldQty > 0 && awaitingQty <= 0.01) computedStatus = 'Sold';
-    else if (soldQty > 0 && awaitingQty > 0.01) computedStatus = 'Partial';
+    if (soldQty > 0 && totalQty - soldQty <= 0.01) computedStatus = 'Sold';
+    else if (soldQty > 0) computedStatus = 'Partial';
   }
 
-  // ✅ NEW: Payment Status Logic (Mobile)
+  // Payment Status Logic
   let isPaymentPending = false;
-
   if (computedStatus === 'Sold') {
-    const paymentStatus = isParent
+    const paymentStatus = record.is_parent
       ? (record.aggregated_payment_status || 'Pending')
       : (record.farmer_payment_status || 'Pending');
-
-    if (paymentStatus === 'Pending') {
-      isPaymentPending = true;
-    }
+    if (paymentStatus === 'Pending') isPaymentPending = true;
   }
 
+  const awaitingQty = Math.max(0, totalQty - soldQty);
   const progressPercent = Math.min(100, (soldQty / totalQty) * 100);
 
   return (
@@ -2032,5 +1910,9 @@ const MobileRecordCard = memo(({ record, handleEditClick, initiateDelete, getInv
     </div>
   );
 });
+
+
+
+
 
 export default FarmerDashboard;

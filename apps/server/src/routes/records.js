@@ -52,7 +52,8 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     if (!parentMap[pId]) {
                         parentMap[pId] = {
                             splits: [], soldQty: 0, soldCarat: 0, totalSaleAmount: 0,
-                            childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingCarat: 0, weightPendingCount: 0
+                            childCount: 0, soldCount: 0, weightPendingQty: 0, weightPendingCarat: 0, weightPendingCount: 0,
+                            totalFarmerCommission: 0, totalTraderCommission: 0
                         };
                     }
                     // Weight Pending Logic
@@ -63,6 +64,10 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     const childCarat = isWeightPending ? (child.allocated_carat || child.carat || 0) : (child.official_carat || child.carat || 0);
                     const amount = child.sale_amount || child.total_amount || 0;
 
+                    // Accumulate Commissions
+                    const fComm = child.farmer_commission || 0;
+                    const tComm = child.trader_commission || 0;
+
                     if (isWeightPending) {
                         parentMap[pId].weightPendingQty += childQty;
                         parentMap[pId].weightPendingCarat += childCarat;
@@ -71,6 +76,11 @@ router.get('/my-records', requireAuth, async (req, res) => {
                         parentMap[pId].soldQty += childQty;
                         parentMap[pId].soldCarat += childCarat;
                         parentMap[pId].totalSaleAmount += amount;
+                        // Only add commission for valid sales
+                        if (['Sold', 'Completed'].includes(child.status)) {
+                            parentMap[pId].totalFarmerCommission += fComm;
+                            parentMap[pId].totalTraderCommission += tComm;
+                        }
                     }
                     parentMap[pId].childCount += 1;
                     if (['Sold', 'Completed'].includes(child.status)) parentMap[pId].soldCount += 1;
@@ -93,6 +103,10 @@ router.get('/my-records', requireAuth, async (req, res) => {
                     record.aggregated_sold_qty = data.soldQty;
                     record.aggregated_sold_carat = data.soldCarat;
                     record.aggregated_sale_amount = data.totalSaleAmount;
+                    // ✅ Map Aggregated Commissions
+                    record.aggregated_farmer_commission = data.totalFarmerCommission;
+                    record.aggregated_trader_commission = data.totalTraderCommission;
+
                     record.child_count = data.childCount;
                     record.sold_count = data.soldCount;
                     record.splits = data.splits;

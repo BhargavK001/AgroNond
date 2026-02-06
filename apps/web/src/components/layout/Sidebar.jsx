@@ -26,6 +26,7 @@ const NAV_ITEMS = {
         { label: 'Farmers', path: '/dashboard/committee/farmers', icon: Users },
         { label: 'Traders', path: '/dashboard/committee/traders', icon: Store },
         { label: 'Weight', path: '/dashboard/committee/weight', icon: Scale },
+        { label: 'Weight History', path: '/dashboard/committee/weight-history', icon: Receipt },
         { label: 'Lilav Entry', path: '/dashboard/committee/lilav', icon: Gavel },
         { label: 'Payments', path: '/dashboard/committee/payments', icon: IndianRupee },
         { label: 'Reports', path: '/dashboard/committee/billing', icon: FileText },

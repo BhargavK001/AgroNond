@@ -128,9 +128,27 @@ const SoldRecordCard = ({ record, farmerName }) => {
   // Avg Rate
   const avgRate = soldQty > 0 ? (totalSaleAmount / soldQty).toFixed(1) : 0;
 
-  // Commission (Est. 4% of total sale amount)
-  const estimatedCommission = record.farmer_commission || (totalSaleAmount * 0.04);
-  const netPayable = Math.max(0, totalSaleAmount - estimatedCommission);
+  // Commission Calculation
+  // Priority: 1. Stored Amount, 2. Stored Rate, 3. Hardcoded Fallback
+  let commissionRate = 0.04; // Default fallback
+  if (record.farmer_commission_rate !== undefined && record.farmer_commission_rate > 0) {
+    commissionRate = record.farmer_commission_rate;
+  }
+
+  const estimatedCommission = isParent
+    ? (record.aggregated_farmer_commission || 0)
+    : (record.farmer_commission !== undefined && record.farmer_commission > 0
+      ? record.farmer_commission
+      : (totalSaleAmount * commissionRate));
+
+  // If we have a definitive commission amount (e.g. from parent aggregation) but no stored rate, derive it
+  if (isParent && totalSaleAmount > 0 && estimatedCommission > 0) {
+    commissionRate = estimatedCommission / totalSaleAmount;
+  }
+
+  const netPayable = isParent
+    ? (totalSaleAmount - estimatedCommission)
+    : (record.net_payable_to_farmer || Math.max(0, totalSaleAmount - estimatedCommission));
 
   const date = record.sold_at ? new Date(record.sold_at) : new Date(record.createdAt);
   const isPaid = computedStatus === 'Sold' && !isPaymentPending; // Strictly used for UI color toggling if needed
@@ -151,6 +169,7 @@ const SoldRecordCard = ({ record, farmerName }) => {
     splits: splits || [], // Pass splits for multi-row PDF display
     baseAmount: totalSaleAmount,
     commission: estimatedCommission,
+    commissionRate: commissionRate, // Pass explicitly for PDF
     finalAmount: netPayable,
     // Invoice status logic:
     // If Payment Pending -> Payment Pending
