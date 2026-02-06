@@ -11,7 +11,8 @@ import {
     Trash2,
     ChevronDown,
     Save,
-    Plus
+    Plus,
+    ShoppingBasket
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../lib/api';
@@ -121,7 +122,8 @@ export default function LilavEntry() {
                 const { nagValue, qtyValue } = getEffectiveValues(crop);
                 const totalQty = nagValue > 0 ? nagValue : qtyValue;
                 details[crop._id] = {
-                    rate: crop.prev_rate || rate?.rate || '',
+                    baseRate: '',
+                    rate: '',
                     qty: totalQty
                 };
             });
@@ -243,6 +245,14 @@ export default function LilavEntry() {
         }));
     };
 
+    // Helper to update multiple fields safely
+    const updateItemFields = (cropId, updates) => {
+        setItemDetails(prev => ({
+            ...prev,
+            [cropId]: { ...prev[cropId], ...updates }
+        }));
+    };
+
     // --- Remove from selection ---
     const removeFromSelection = (cropId) => {
         setSelectedCrops(prev => prev.filter(id => id !== cropId));
@@ -284,7 +294,12 @@ export default function LilavEntry() {
             }
 
             toast.success(`${selectedCrops.length} item(s) sold!`);
-            setPendingCrops(prev => prev.filter(c => !selectedCrops.includes(c._id)));
+
+            // Refetch pending crops to get updated quantities (for partial sales)
+            // or remove fully sold items as returned by backend
+            if (selectedFarmer?._id) {
+                await fetchPendingCrops(selectedFarmer._id);
+            }
             setSelectedCrops([]);
         } catch (error) {
             toast.error('Sale failed');
@@ -320,6 +335,7 @@ export default function LilavEntry() {
     const totalAmount = useMemo(() => {
         return selectedCropsData.reduce((sum, crop) => {
             const detail = itemDetails[crop._id] || {};
+            // Using calculated rate if available in state, otherwise 0
             return sum + (parseFloat(detail.qty) || 0) * (parseFloat(detail.rate) || 0);
         }, 0);
     }, [selectedCropsData, itemDetails]);
@@ -351,41 +367,46 @@ export default function LilavEntry() {
 
             <div className="px-6 py-6">
                 {/* === SELECTION BOXES === */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 
                     {/* BOX 1: Farmer */}
-                    <div ref={farmerDropdownRef} className="relative">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Farmer Name <span className="text-gray-400">*</span>
+                    <div ref={farmerDropdownRef} className="relative group">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                            Farmer Details <span className="text-red-400">*</span>
                         </label>
                         {selectedFarmer ? (
-                            <div className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-semibold text-emerald-700">
-                                        {selectedFarmer.full_name?.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{selectedFarmer.full_name}</p>
-                                        <p className="text-sm text-gray-500">{selectedFarmer.phone} • {selectedFarmer.farmerId || 'N/A'}</p>
+                            <div className="relative flex items-start gap-4 p-5 bg-white border-0 ring-1 ring-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+                                <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-lg font-bold text-emerald-600 shrink-0">
+                                    {selectedFarmer.full_name?.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-lg font-bold text-gray-900 truncate">{selectedFarmer.full_name}</h4>
+                                    <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                                        <span className="font-medium">{selectedFarmer.phone}</span>
+                                        <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                        <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{selectedFarmer.farmerId || 'N/A'}</span>
                                     </div>
                                 </div>
-                                <button onClick={clearFarmer} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                <button
+                                    onClick={clearFarmer}
+                                    className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                >
                                     <X size={18} />
                                 </button>
                             </div>
                         ) : (
                             <>
                                 <div
-                                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors shadow-sm"
+                                    className="w-full h-[88px] bg-white border border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/10 transition-all duration-200 group-hover:shadow-sm"
                                     onClick={() => setShowFarmerList(true)}
                                 >
-                                    <span className="text-gray-400">Select or add a farmer</span>
-                                    <ChevronDown size={18} className="text-gray-400" />
+                                    <span className="text-sm font-medium text-gray-600 group-hover:text-emerald-600 transition-colors">Select Farmer</span>
+                                    <span className="text-xs text-gray-400 mt-1">Search or add new</span>
                                 </div>
 
                                 {showFarmerList && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
-                                        <div className="p-3 border-b border-gray-100 bg-gray-50">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
+                                        <div className="p-3 border-b border-gray-100 bg-gray-50/50">
                                             <div className="relative">
                                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                                 <input
@@ -393,40 +414,38 @@ export default function LilavEntry() {
                                                     autoFocus
                                                     value={farmerSearch}
                                                     onChange={(e) => setFarmerSearch(e.target.value)}
-                                                    placeholder="Search by name, phone, or token..."
-                                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none"
+                                                    placeholder="Search farmer..."
+                                                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="max-h-64 overflow-y-auto">
+                                        <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
                                             {filteredFarmers.length === 0 ? (
-                                                <div className="px-4 py-6 text-center text-gray-400 text-sm">No farmers found</div>
+                                                <div className="px-4 py-8 text-center text-gray-400 text-sm">No farmers found</div>
                                             ) : (
                                                 filteredFarmers.slice(0, 15).map(f => (
                                                     <button
                                                         key={f._id}
                                                         onClick={() => handleSelectFarmer(f)}
-                                                        className="w-full text-left px-4 py-3 hover:bg-emerald-50 flex items-center gap-4 border-b border-gray-50 transition-colors"
+                                                        className="w-full text-left px-4 py-3 hover:bg-emerald-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors group/item"
                                                     >
-                                                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-sm font-semibold text-emerald-700">
+                                                        <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold group-hover/item:bg-white group-hover/item:text-emerald-600 transition-colors">
                                                             {f.full_name?.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="font-medium text-gray-900">{f.full_name}</p>
-                                                            <p className="text-sm text-gray-500">{f.phone} {f.farmerId && `• ${f.farmerId}`}</p>
+                                                            <p className="font-semibold text-gray-900 text-sm">{f.full_name}</p>
+                                                            <p className="text-xs text-gray-500 mt-0.5">{f.phone}</p>
                                                         </div>
                                                     </button>
                                                 ))
                                             )}
                                         </div>
-                                        {/* Add Farmer Button */}
-                                        <div className="p-3 border-t border-gray-100 bg-gray-50">
+                                        <div className="p-2 border-t border-gray-100 bg-gray-50/50">
                                             <button
                                                 onClick={() => { setShowFarmerList(false); setShowAddFarmerModal(true); }}
-                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm"
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm shadow-sm"
                                             >
-                                                <Plus size={16} />
-                                                Add New Farmer
+                                                <Plus size={16} /> Add New Farmer
                                             </button>
                                         </div>
                                     </div>
@@ -436,38 +455,41 @@ export default function LilavEntry() {
                     </div>
 
                     {/* BOX 2: Trader */}
-                    <div ref={traderDropdownRef} className="relative">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Trader <span className="text-gray-400">*</span>
+                    <div ref={traderDropdownRef} className="relative group">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                            Trader Details <span className="text-red-400">*</span>
                         </label>
                         {selectedTrader ? (
-                            <div className="flex items-center justify-between bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-sm">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
-                                        {selectedTrader.full_name?.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{selectedTrader.full_name}</p>
-                                        <p className="text-sm text-gray-500">{selectedTrader.business_name || selectedTrader.phone}</p>
+                            <div className="relative flex items-start gap-4 p-5 bg-white border-0 ring-1 ring-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-lg font-bold text-blue-600 shrink-0">
+                                    {selectedTrader.full_name?.charAt(0)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="text-lg font-bold text-gray-900 truncate">{selectedTrader.full_name}</h4>
+                                    <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                                        <span className="font-medium">{selectedTrader.business_name || 'No Business Name'}</span>
                                     </div>
                                 </div>
-                                <button onClick={clearTrader} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                <button
+                                    onClick={clearTrader}
+                                    className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                >
                                     <X size={18} />
                                 </button>
                             </div>
                         ) : (
                             <>
                                 <div
-                                    className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors shadow-sm"
+                                    className="w-full h-[88px] bg-white border border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/10 transition-all duration-200 group-hover:shadow-sm"
                                     onClick={() => setShowTraderList(true)}
                                 >
-                                    <span className="text-gray-400">Select or add a trader</span>
-                                    <ChevronDown size={18} className="text-gray-400" />
+                                    <span className="text-sm font-medium text-gray-600 group-hover:text-blue-600 transition-colors">Select Trader</span>
+                                    <span className="text-xs text-gray-400 mt-1">Search or add new</span>
                                 </div>
 
                                 {showTraderList && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden">
-                                        <div className="p-3 border-b border-gray-100 bg-gray-50">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100">
+                                        <div className="p-3 border-b border-gray-100 bg-gray-50/50">
                                             <div className="relative">
                                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                                 <input
@@ -476,39 +498,37 @@ export default function LilavEntry() {
                                                     value={traderSearch}
                                                     onChange={(e) => setTraderSearch(e.target.value)}
                                                     placeholder="Search trader..."
-                                                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                                                    className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="max-h-64 overflow-y-auto">
+                                        <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
                                             {filteredTraders.length === 0 ? (
-                                                <div className="px-4 py-6 text-center text-gray-400 text-sm">No traders found</div>
+                                                <div className="px-4 py-8 text-center text-gray-400 text-sm">No traders found</div>
                                             ) : (
                                                 filteredTraders.slice(0, 15).map(t => (
                                                     <button
                                                         key={t._id}
                                                         onClick={() => handleSelectTrader(t)}
-                                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 flex items-center gap-4 border-b border-gray-50 transition-colors"
+                                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 flex items-center gap-3 border-b border-gray-50 last:border-0 transition-colors group/item"
                                                     >
-                                                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
+                                                        <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold group-hover/item:bg-white group-hover/item:text-blue-600 transition-colors">
                                                             {t.full_name?.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="font-medium text-gray-900">{t.full_name}</p>
-                                                            <p className="text-sm text-gray-500">{t.business_name || t.phone}</p>
+                                                            <p className="font-semibold text-gray-900 text-sm">{t.full_name}</p>
+                                                            <p className="text-xs text-gray-500 mt-0.5">{t.business_name || t.phone}</p>
                                                         </div>
                                                     </button>
                                                 ))
                                             )}
                                         </div>
-                                        {/* Add Trader Button */}
-                                        <div className="p-3 border-t border-gray-100 bg-gray-50">
+                                        <div className="p-2 border-t border-gray-100 bg-gray-50/50">
                                             <button
                                                 onClick={() => { setShowTraderList(false); setShowAddTraderModal(true); }}
-                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
                                             >
-                                                <Plus size={16} />
-                                                Add New Trader
+                                                <Plus size={16} /> Add New Trader
                                             </button>
                                         </div>
                                     </div>
@@ -519,26 +539,34 @@ export default function LilavEntry() {
                 </div>
 
                 {/* === PENDING CROPS === */}
-                <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                            <Package size={16} className="text-gray-400" />
-                            Pending Crops {pendingCrops.length > 0 && <span className="text-gray-400">({pendingCrops.length})</span>}
-                        </h3>
+                <div className="bg-white border text- border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+                    <div className="flex items-center justify-between mb-5">
+                        <div className="flex items-center gap-2">
+                            <Package size={20} className="text-gray-400" />
+                            <h3 className="text-base font-bold text-gray-700 uppercase tracking-wide">
+                                Pending Crops <span className="text-gray-400 text-sm font-normal ml-1">({pendingCrops.length})</span>
+                            </h3>
+                        </div>
                         {pendingCrops.length > 0 && (
-                            <button onClick={selectAllCrops} className="text-sm text-emerald-600 hover:text-emerald-800 font-medium hover:underline">
+                            <button
+                                onClick={selectAllCrops}
+                                className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors"
+                            >
                                 Select All
                             </button>
                         )}
                     </div>
 
-                    <div className="min-h-[50px]">
+                    <div className="min-h-[60px]">
                         {pendingCrops.length === 0 ? (
-                            <div className="text-gray-400 text-sm">
-                                {selectedFarmer ? 'No pending crops for this farmer' : 'Select a farmer to view pending crops'}
+                            <div className="flex flex-col items-center justify-center py-6 text-gray-400 border-2 border-dashed border-gray-100 rounded-lg">
+                                <Package className="w-8 h-8 opacity-20 mb-2" />
+                                <span className="text-sm">
+                                    {selectedFarmer ? 'No pending crops available' : 'Select a farmer to view crops'}
+                                </span>
                             </div>
                         ) : (
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-3">
                                 {pendingCrops.map(crop => {
                                     const isSelected = selectedCrops.includes(crop._id);
                                     const { nagValue, qtyValue } = getEffectiveValues(crop);
@@ -550,16 +578,22 @@ export default function LilavEntry() {
                                             key={crop._id}
                                             onClick={() => toggleCropSelection(crop._id)}
                                             className={`
-                                                px-4 py-2.5 rounded-lg text-sm font-medium transition-all border
+                                                relative group flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-full text-sm font-medium transition-all duration-200 border
                                                 ${isSelected
-                                                    ? 'bg-emerald-50 border-emerald-400 text-emerald-800 shadow-sm'
-                                                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                                                    ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm ring-1 ring-emerald-500/20'
+                                                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 shadow-sm'
                                                 }
                                             `}
                                         >
-                                            <span className="font-semibold">{crop.vegetable}</span>
-                                            <span className="ml-2 opacity-70">{qty} {unit}</span>
-                                            {isSelected && <Check size={14} className="inline ml-2 text-emerald-600" />}
+                                            <span className="font-bold">{crop.vegetable}</span>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full ${isSelected ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                {qty} {unit}
+                                            </span>
+                                            {isSelected && (
+                                                <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center animate-in zoom-in duration-200">
+                                                    <Check size={12} strokeWidth={3} />
+                                                </div>
+                                            )}
                                         </button>
                                     );
                                 })}
@@ -569,65 +603,142 @@ export default function LilavEntry() {
                 </div>
 
                 {/* === ITEM TABLE === */}
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8 shadow-sm ring-1 ring-gray-200/50">
                     <table className="w-full">
                         <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Item Details</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">Quantity</th>
-                                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-28">Rate (₹)</th>
-                                <th className="text-right px-5 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">Amount</th>
-                                <th className="w-12"></th>
+                            <tr className="bg-gray-50/80 border-b border-gray-200">
+                                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Item Details</th>
+                                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Rate Calculation</th>
+                                <th className="text-center px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-40">Quantity</th>
+                                <th className="text-right px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-40">Amount</th>
+                                <th className="w-16"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {selectedCropsData.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-5 py-8 text-center text-gray-400 text-sm">
-                                        Type or click to select an item from pending crops above
+                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-400">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <ShoppingBasket className="w-10 h-10 opacity-20" />
+                                            <p className="text-sm font-medium">No items selected yet</p>
+                                        </div>
                                     </td>
                                 </tr>
                             ) : (
                                 selectedCropsData.map(crop => {
-                                    const { nagValue } = getEffectiveValues(crop);
+                                    const { nagValue, qtyValue } = getEffectiveValues(crop);
                                     const unit = nagValue > 0 ? 'Nag' : 'Kg';
+                                    const maxQty = nagValue > 0 ? nagValue : qtyValue;
                                     const detail = itemDetails[crop._id] || {};
-                                    const amount = (parseFloat(detail.qty) || 0) * (parseFloat(detail.rate) || 0);
+
+                                    // Calculate values based on inputs
+                                    const baseRate = parseFloat(detail.baseRate) || 0;
+                                    const calculatedRate = unit === 'Nag'
+                                        ? baseRate / 100
+                                        : baseRate / 10;
+
+                                    const amount = (parseFloat(detail.qty) || 0) * calculatedRate;
 
                                     return (
-                                        <tr key={crop._id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-5 py-4">
-                                                <p className="font-medium text-gray-900">{crop.vegetable}</p>
-                                                <p className="text-xs text-gray-400 mt-0.5">#{crop._id.slice(-6)}</p>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        value={detail.qty || ''}
-                                                        onChange={(e) => updateItemDetail(crop._id, 'qty', e.target.value)}
-                                                        className="w-16 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
-                                                    />
-                                                    <span className="text-xs text-gray-500">{unit}</span>
+                                        <tr key={crop._id} className="group hover:bg-slate-50/50 transition-colors">
+                                            {/* Item Name */}
+                                            <td className="px-6 py-4 align-middle">
+                                                <div>
+                                                    <p className="font-bold text-gray-900 text-base">{crop.vegetable}</p>
+                                                    {/* ID hidden as requested */}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <input
-                                                    type="number"
-                                                    value={detail.rate || ''}
-                                                    onChange={(e) => updateItemDetail(crop._id, 'rate', e.target.value)}
-                                                    className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-sm text-center focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
-                                                />
+
+                                            {/* Rate Calculation Section */}
+                                            <td className="px-6 py-4 align-middle">
+                                                <div className="flex items-center gap-4">
+                                                    {/* Primary Input */}
+                                                    <div className="flex-1 max-w-[140px]">
+                                                        <label className="block text-[10px] font-extrabold text-gray-600 uppercase mb-1">
+                                                            Rate / {unit === 'Nag' ? '100 Nag' : '10 Kg'}
+                                                        </label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                placeholder="0"
+                                                                value={detail.baseRate || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    const rate = val ? parseFloat(val) / (unit === 'Nag' ? 100 : 10) : 0;
+                                                                    updateItemFields(crop._id, { baseRate: val, rate: rate });
+                                                                }}
+                                                                className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Secondary Display (ReadOnly) */}
+                                                    <div className="flex-1 max-w-[100px] opacity-70">
+                                                        <label className="block text-[10px] font-extrabold text-gray-600 uppercase mb-1">
+                                                            Rate / {unit === 'Nag' ? '1 Nag' : '1 Kg'}
+                                                        </label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                value={calculatedRate || ''}
+                                                                readOnly
+                                                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 font-medium cursor-default focus:outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-5 py-4 text-right font-semibold text-gray-900">
-                                                ₹{amount.toLocaleString()}
+
+                                            {/* Quantity Input */}
+                                            <td className="px-6 py-4 align-middle">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="relative flex items-center">
+                                                        <input
+                                                            type="number"
+                                                            value={detail.qty || ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                if (val === '') {
+                                                                    updateItemDetail(crop._id, 'qty', val);
+                                                                    return;
+                                                                }
+                                                                const numVal = parseFloat(val);
+                                                                if (numVal > maxQty) {
+                                                                    toast.error(`Maximum allowed is ${maxQty} ${unit}`);
+                                                                    return;
+                                                                }
+                                                                updateItemDetail(crop._id, 'qty', val);
+                                                            }}
+                                                            className="w-24 pl-3 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-center text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                                                            placeholder="0"
+                                                        />
+                                                        <span className="absolute right-3 text-xs font-medium text-gray-400 pointer-events-none">
+                                                            {unit}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-500 font-bold mt-1.5 uppercase tracking-wide">
+                                                        Max: {maxQty}
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-3 py-4">
+
+                                            {/* Amount Display */}
+                                            <td className="px-6 py-4 align-middle text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="text-lg font-bold text-gray-900">
+                                                        ₹{amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="px-6 py-4 align-middle text-right">
                                                 <button
                                                     onClick={() => removeFromSelection(crop._id)}
-                                                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Remove item"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={18} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -635,29 +746,34 @@ export default function LilavEntry() {
                                 })
                             )}
                         </tbody>
+                        {/* Footer with Total */}
+                        {selectedCropsData.length > 0 && (
+                            <tfoot>
+                                <tr className="bg-gray-50/50 border-t border-gray-200">
+                                    <td colSpan="3" className="px-6 py-5 text-right">
+                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Payable Amount</span>
+                                    </td>
+                                    <td className="px-6 py-5 text-right">
+                                        <span className="text-2xl font-bold text-emerald-600">
+                                            ₹{totalAmount.toLocaleString()}
+                                        </span>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        )}
                     </table>
-
-                    {/* Footer with Total */}
-                    <div className="bg-gray-50 border-t border-gray-200 px-5 py-4 flex items-center justify-between">
-                        <div className="text-sm text-gray-500">
-                            {selectedCropsData.length} item(s) selected
-                        </div>
-                        <div className="text-right">
-                            <span className="text-sm font-medium text-gray-500 uppercase">Total</span>
-                            <p className="text-2xl font-bold text-gray-900 mt-1">₹{totalAmount.toLocaleString()}</p>
-                        </div>
-                    </div>
                 </div>
 
                 {/* === SAVE BUTTON === */}
-                <div className="flex justify-start">
+                <div className="flex justify-end pt-4 pb-12">
                     <button
                         onClick={handleSave}
                         disabled={saving || selectedCrops.length === 0 || !selectedFarmer || !selectedTrader}
-                        className="px-8 py-3.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2 transition-colors shadow-lg disabled:shadow-none"
+                        className="px-8 py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center gap-3 transition-all shadow-lg shadow-emerald-600/20 active:scale-95 disabled:shadow-none"
                     >
                         {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                        Save & Assign for Weight
+                        Save & Create Transaction
                     </button>
                 </div>
             </div>
