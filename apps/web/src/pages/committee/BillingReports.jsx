@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import api from '../../lib/api';
 import { exportToCSV } from '../../lib/csvExport';
-import { FileText, Download, Calendar, Users, ShoppingBag, X, CheckCircle, Clock, RefreshCw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Download, Calendar, Users, ShoppingBag, X, CheckCircle, Clock, RefreshCw, Search, ChevronLeft, ChevronRight, Edit, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import InvoiceDownloadModal from '../../components/committee/InvoiceDownloadModal';
 
@@ -154,6 +154,9 @@ export default function BillingReports() {
   const [invoiceRecord, setInvoiceRecord] = useState(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
+
+
+
   const fetchCommissionRates = useCallback(async () => {
     try {
       const rules = await api.finance.commissionRates.list();
@@ -301,6 +304,8 @@ export default function BillingReports() {
     setInvoiceRecord(record);
     setShowInvoiceModal(true);
   };
+
+
 
   const confirmPayment = async ({ mode, ref }) => {
     if (!selectedRecord) return;
@@ -751,6 +756,13 @@ export default function BillingReports() {
                   >
                     <Download size={18} />
                   </button>
+                  <button
+                    onClick={(e) => handleEditClick(e, item)}
+                    className="px-4 py-2.5 bg-slate-100 text-slate-500 rounded-lg hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                    title="Edit Record"
+                  >
+                    <Edit size={18} />
+                  </button>
                 </div>
               </div>
             ))
@@ -791,6 +803,8 @@ export default function BillingReports() {
           </div>
         )}
       </div>
+
+
     </div>
   );
 }
